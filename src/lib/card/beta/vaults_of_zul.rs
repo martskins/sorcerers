@@ -79,7 +79,7 @@ impl Card for VaultsOfZul {
             id: ON_CARD_STOP_HOOK,
             trigger: EffectQuery::StopAtZone {
                 card: CardQuery::new().avatars(),
-                zone: ZoneQuery::from_zone(self.get_zone().clone()),
+                zone: ZoneQuery::from_location(self.get_location().clone()),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

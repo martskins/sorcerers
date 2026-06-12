@@ -79,7 +79,12 @@ impl Card for Watchtower {
         }
 
         let controller_id = self.get_controller_id(state);
-        let nearby_zones = self.get_zone().get_nearby_sites(state);
+        let nearby_zones: Vec<Zone> = self
+            .get_location()
+            .get_nearby_sites(state)
+            .into_iter()
+            .map(Zone::from)
+            .collect();
 
         Ok(CardQuery::new()
             .units()

@@ -79,7 +79,7 @@ impl Card for AngelsEgg {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-                let site: &dyn Site = match self.get_zone().get_site(state) {
+                let site: &dyn Site = match self.get_location().get_site(state) {
                     Some(site) => site,
                     None => return Ok(vec![]),
                 };

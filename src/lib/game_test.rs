@@ -1,5 +1,5 @@
 use crate::card::Region;
-use crate::zone::{Location, Zone};
+use crate::zone::Location;
 
 #[test]
 fn test_locations_are_adjacent() {
@@ -41,11 +41,9 @@ fn test_locations_are_nearby() {
 
 #[test]
 fn test_get_adjacent_squares() {
-    use crate::game::get_adjacent_zones;
-
-    let adj = get_adjacent_zones(&Zone::Location(Location::Square(8, Region::Surface)));
-    assert!(adj.contains(&Zone::Location(Location::Square(3, Region::Surface))));
-    assert!(adj.contains(&Zone::Location(Location::Square(7, Region::Surface))));
-    assert!(adj.contains(&Zone::Location(Location::Square(9, Region::Surface))));
-    assert!(adj.contains(&Zone::Location(Location::Square(13, Region::Surface))));
+    let adj = Location::Square(8, Region::Surface).get_adjacent();
+    assert!(adj.contains(&Location::Square(3, Region::Surface)));
+    assert!(adj.contains(&Location::Square(7, Region::Surface)));
+    assert!(adj.contains(&Location::Square(9, Region::Surface)));
+    assert!(adj.contains(&Location::Square(13, Region::Surface)));
 }

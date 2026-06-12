@@ -104,14 +104,15 @@ fn border_zones_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<
         })
         .collect();
 
-    Zone::all_intersections()
+    Location::all_intersections()
         .into_iter()
-        .filter(|zone| match zone {
-            Zone::Location(Location::Intersection(squares, _)) => squares
+        .filter(|location| match location {
+            Location::Intersection(squares, _) => squares
                 .iter()
                 .any(|square| controlled_sites.contains(square)),
-            _ => false,
+            Location::Square(_, _) => false,
         })
+        .map(Zone::from)
         .collect()
 }
 

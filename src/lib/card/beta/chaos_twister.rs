@@ -91,7 +91,7 @@ impl Magic for ChaosTwister {
             from: from_zone
                 .into_location()
                 .expect("Chaos Twister target must be in a location"),
-            to: LocationQuery::from_zone(landing_zone.with_region(region)),
+            to: LocationQuery::from_location(landing_zone.with_region(region)),
             tap: false,
             through_path: None,
         }];

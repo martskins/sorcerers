@@ -40,7 +40,7 @@ impl SpireLich {
             return Ok(false);
         }
 
-        let Some(site) = self.get_zone().get_site(state) else {
+        let Some(site) = self.get_location().get_site(state) else {
             return Ok(false);
         };
 

@@ -97,7 +97,7 @@ impl Card for RiftValley {
             .in_play()
             .all(state)
             .into_iter()
-            .filter_map(|card_id| state.get_card(&card_id).get_zone().get_square())
+            .filter_map(|card_id| state.get_card(&card_id).get_location().get_square())
             .collect::<Vec<_>>();
         let controlled_squares = CardQuery::new()
             .sites()
@@ -106,7 +106,7 @@ impl Card for RiftValley {
             .not_named(Rubble::NAME.to_string())
             .all(state)
             .into_iter()
-            .filter_map(|card_id| state.get_card(&card_id).get_zone().get_square())
+            .filter_map(|card_id| state.get_card(&card_id).get_location().get_square())
             .collect::<Vec<_>>();
 
         let rift_valley_zones = Location::all_in_region(Region::Surface)

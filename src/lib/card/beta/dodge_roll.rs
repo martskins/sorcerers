@@ -131,7 +131,7 @@ impl Card for DodgeRoll {
                             .clone()
                             .into_location()
                             .expect("Dodge Roll attacker must be in a location"),
-                        to: LocationQuery::from_zone(defender.get_zone().clone()),
+                        to: LocationQuery::from_location(defender.get_location().clone()),
                         tap: true,
                         through_path: None,
                     },

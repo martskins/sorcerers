@@ -99,7 +99,7 @@ impl Card for AwakenedMummies {
             id: ENTER_ZONE_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: CardQuery::new().minions().controlled_by(&opponent_id),
-                zone: ZoneQuery::from_zone(self.get_zone().with_region(Region::Surface)),
+                zone: ZoneQuery::from_location(self.get_location().with_region(Region::Surface)),
                 from: None,
             },
             timing: HookTiming::After,
@@ -119,7 +119,7 @@ impl Card for AwakenedMummies {
                     Effect::SummonCards { summoned_cards } => {
                         let mut output = vec![];
                         for sc in summoned_cards {
-                            if sc.to_location.square() != self.get_zone().get_square() {
+                            if sc.to_location.square() != self.get_location().square() {
                                 continue;
                             }
 

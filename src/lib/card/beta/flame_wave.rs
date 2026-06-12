@@ -81,13 +81,13 @@ impl Magic for FlameWave {
             .filter(|unit_id| {
                 let unit = state.get_card(unit_id);
                 unit.get_region(state) == &Region::Surface
-                    && unit.get_zone().get_site(state).is_some()
+                    && unit.get_location().get_site(state).is_some()
             })
             .collect::<Vec<CardId>>();
         let effects = all_units
             .into_iter()
             .filter_map(|unit_id| {
-                let square = state.get_card(&unit_id).get_zone().get_square()?;
+                let square = state.get_card(&unit_id).get_location().get_square()?;
                 let col = ((square - 1) % 5) as usize;
                 let distance = if from_left { col } else { 4 - col };
                 Some(Effect::TakeDamage {

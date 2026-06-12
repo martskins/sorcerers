@@ -94,7 +94,7 @@ impl Card for BlackObelisk {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-                let Some(site): Option<&dyn Site> = self.get_zone().get_site(state) else {
+                let Some(site): Option<&dyn Site> = self.get_location().get_site(state) else {
                     return Ok(vec![]);
                 };
 

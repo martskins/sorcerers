@@ -110,14 +110,14 @@ impl Card for Maelström {
                 for minion_id in minion_ids {
                     let minion = state.get_card(&minion_id);
                     let steps = minion
-                        .get_zone()
-                        .steps_to_zone(self.get_zone())
+                        .get_location()
+                        .steps_to_location(self.get_location())
                         .unwrap_or_default();
                     let mut zones = minion.get_locations_within_steps(state, steps);
                     zones.retain(|zone| body_locations.contains(zone));
                     zones.retain(|zone| {
-                        Zone::from(zone)
-                            .steps_to_zone(self.get_zone())
+                        zone
+                            .steps_to_location(self.get_location())
                             .unwrap_or_default()
                             <= steps
                     });
@@ -125,17 +125,15 @@ impl Card for Maelström {
                     let prompt = format!(
                         "Maelström: Pick a zone to move {}({}) to, or pick its current zone to not move it",
                         minion.get_name(),
-                        minion.get_zone().get_square().unwrap_or_default()
+                        minion.get_location().get_square().unwrap_or_default()
                     );
                     let picked_zone =
                         pick_location(controller_id, &zones, state, true, &prompt).await?;
-                    if Some(&picked_zone) != minion.get_zone().location() {
+                    if picked_zone != *minion.get_location() {
                         effects.push(Effect::MoveCard {
                             card_id: minion_id,
                             player_id: controller_id,
-                            from: (minion.get_zone().clone())
-                                .into_location()
-                                .expect("MoveCard source must be a location"),
+                            from: minion.get_location().clone(),
                             to: LocationQuery::from_location(
                                 (picked_zone).with_region(minion.get_region(state).clone()),
                             ),

@@ -104,33 +104,33 @@ impl Card for GuileSirens {
                     .get_adjacent_locations(state)
                     .into_iter()
                     .map(|location| {
-                        let steps = Zone::from(&location).steps_to_zone(self.get_zone());
+                        let steps = location.steps_to_location(self.get_location());
                         (location, steps)
                     })
                     .collect::<Vec<(Location, Option<u8>)>>();
 
-                let mut steps_to_zone = HashMap::new();
-                for (zone, steps) in zones {
+                let mut steps_to_location = HashMap::new();
+                for (location, steps) in zones {
                     if let Some(steps) = steps {
-                        steps_to_zone
+                        steps_to_location
                             .entry(steps)
                             .or_insert(vec![])
-                            .push(zone.clone());
+                            .push(location.clone());
                     }
                 }
 
-                if let Some(min_steps) = steps_to_zone.keys().min() {
-                    let closest_zones = steps_to_zone.get(min_steps).unwrap();
-                    let picked_location = if closest_zones.len() == 1 {
-                        closest_zones.first().unwrap().clone()
+                if let Some(min_steps) = steps_to_location.keys().min() {
+                    let closest_locations = steps_to_location.get(min_steps).unwrap();
+                    let picked_location = if closest_locations.len() == 1 {
+                        closest_locations.first().unwrap().clone()
                     } else {
                         pick_location(
                             &opponent_id,
-                            closest_zones,
+                            closest_locations,
                             state,
                             true,
                             &format!(
-                                "Guile Sirens: Pick a zone to move {} to",
+                                "Guile Sirens: Pick a location to move {} to",
                                 picked_card.get_name()
                             ),
                         )

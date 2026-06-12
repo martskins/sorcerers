@@ -654,10 +654,7 @@ fn test_auras_can_be_played_at_any_surface_intersection() {
         .get_valid_play_locations(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
     locations.sort();
-    let mut expected = Zone::all_intersections()
-        .into_iter()
-        .filter_map(Zone::into_location)
-        .collect::<Vec<_>>();
+    let mut expected = Location::all_intersections();
     expected.sort();
     assert_eq!(locations, expected);
 }

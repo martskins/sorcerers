@@ -64,8 +64,8 @@ impl Magic for BorderMilitia {
             .filter(|c| c.is_site())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| {
-                for zone in c.get_zone().get_adjacent() {
-                    match zone.get_site(state) {
+                for location in c.get_location().get_adjacent() {
+                    match location.get_site(state) {
                         Some(site)
                             if site.get_controller_id(state) != self.get_controller_id(state) =>
                         {

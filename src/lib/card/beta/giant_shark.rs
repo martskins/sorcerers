@@ -92,7 +92,7 @@ impl Card for GiantShark {
                 match effect {
                     Effect::SummonCards { summoned_cards } => {
                         for sc in summoned_cards {
-                            if sc.to_location.square() == self.get_zone().get_square() {
+                            if sc.to_location.square() == self.get_location().square() {
                                 card_ids.push(&sc.card_id);
                             }
                         }

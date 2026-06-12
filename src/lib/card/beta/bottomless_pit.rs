@@ -79,7 +79,7 @@ impl Card for BottomlessPit {
                 card: CardQuery::new()
                     .minions()
                     .without_ability(Ability::Airborne),
-                zone: ZoneQuery::from_zone(self.get_zone().clone()),
+                zone: ZoneQuery::from_location(self.get_location().clone()),
                 from: None,
             },
             timing: HookTiming::After,
@@ -98,7 +98,7 @@ impl Card for BottomlessPit {
                 Effect::SummonCards { summoned_cards } => {
                     let mut effects = vec![];
                     for sc in summoned_cards {
-                        if sc.to_location.square() == self.get_zone().get_square() {
+                        if sc.to_location.square() == self.get_location().square() {
                             effects.push(Effect::KillMinion {
                                 card_id: sc.card_id,
                                 killer_id: *self.get_id(),

@@ -87,7 +87,7 @@ impl Card for DevilSEgg {
                     return Ok(vec![]);
                 }
 
-                let site = match self.get_zone().get_site(state) {
+                let site = match self.get_location().get_site(state) {
                     Some(s) => s,
                     None => return Ok(vec![]),
                 };

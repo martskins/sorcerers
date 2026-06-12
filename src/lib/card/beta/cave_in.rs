@@ -101,8 +101,8 @@ impl Magic for CaveIn {
                     .clone()
                     .into_location()
                     .expect("Cave In target must be in a location"),
-                to: LocationQuery::from_zone(
-                    picked_site.get_zone().with_region(Region::Underground),
+                to: LocationQuery::from_location(
+                    picked_site.get_location().with_region(Region::Underground),
                 ),
                 tap: false,
                 through_path: None,

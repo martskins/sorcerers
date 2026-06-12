@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, CardType, Region, Rubble, Site},
-    game::{CardId, Direction, PlayerId, get_adjacent_zones, get_nearby_zones},
+    game::{CardId, Direction, PlayerId},
     query::CardQuery,
     state::{OngoingEffect, State},
 };
@@ -231,9 +231,25 @@ impl Location {
             .find(|card| {
                 card.is_site()
                     && card.get_zone().is_in_play()
-                    && card.get_zone().get_square() == Some(square)
+                    && card.get_location().square() == Some(square)
             })
             .and_then(|card| card.get_site())
+    }
+
+    pub fn is_location(&self, state: &State) -> bool {
+        match self {
+            Location::Square(_, Region::Surface) => self.get_site_at_square(state).is_some(),
+            Location::Square(_, Region::Void) => self.get_site_at_square(state).is_none(),
+            Location::Square(_, Region::Underground) => self
+                .get_site_at_square(state)
+                .is_some_and(|site| site.is_land_site(state).unwrap_or_default()),
+            Location::Square(_, Region::Underwater) => self
+                .get_site_at_square(state)
+                .is_some_and(|site| site.is_water_site(state).unwrap_or_default()),
+            Location::Intersection(squares, region) => squares
+                .iter()
+                .all(|square| Location::Square(*square, region.clone()).is_location(state)),
+        }
     }
 
     pub fn get_adjacent(&self) -> Vec<Self> {
@@ -298,10 +314,76 @@ impl Location {
     }
 
     pub fn get_nearby(&self) -> Vec<Self> {
-        get_nearby_zones(&Zone::from(self))
-            .into_iter()
-            .filter_map(Zone::into_location)
-            .collect()
+        let mut nearby = self.get_adjacent();
+        let region = self.region().clone();
+
+        match self {
+            Location::Square(square, _) => {
+                let diagonals = match square % 5 {
+                    0 => vec![
+                        Location::Square(square.saturating_add(4), region.clone()),
+                        Location::Square(square.saturating_sub(6), region.clone()),
+                    ],
+                    1 => vec![
+                        Location::Square(square.saturating_sub(4), region.clone()),
+                        Location::Square(square.saturating_add(6), region.clone()),
+                    ],
+                    _ => vec![
+                        Location::Square(square.saturating_sub(4), region.clone()),
+                        Location::Square(square.saturating_add(6), region.clone()),
+                        Location::Square(square.saturating_add(4), region.clone()),
+                        Location::Square(square.saturating_sub(6), region.clone()),
+                    ],
+                };
+                nearby.extend(diagonals);
+                nearby.retain(|location| location.square().unwrap_or(0) > 0);
+                nearby.retain(|location| location.square().unwrap_or(0) <= 20);
+                nearby.dedup();
+                nearby
+            }
+            Location::Intersection(squares, _) => {
+                nearby.clear();
+                for square in squares {
+                    let square_location = Location::Square(*square, region.clone());
+                    nearby.extend(square_location.get_adjacent());
+
+                    let diagonals = match square % 5 {
+                        0 => vec![
+                            Location::Square(square.saturating_add(4), region.clone()),
+                            Location::Square(square.saturating_sub(6), region.clone()),
+                        ],
+                        1 => vec![
+                            Location::Square(square.saturating_sub(4), region.clone()),
+                            Location::Square(square.saturating_add(6), region.clone()),
+                        ],
+                        _ => vec![
+                            Location::Square(square.saturating_sub(4), region.clone()),
+                            Location::Square(square.saturating_add(6), region.clone()),
+                            Location::Square(square.saturating_add(4), region.clone()),
+                            Location::Square(square.saturating_sub(6), region.clone()),
+                        ],
+                    };
+                    nearby.extend(diagonals);
+                }
+
+                for intersection in Location::all_intersections() {
+                    if let Location::Intersection(intersection_squares, _) = &intersection
+                        && intersection_squares != squares
+                        && intersection_squares
+                            .iter()
+                            .any(|square| squares.contains(square))
+                    {
+                        nearby.push(Location::Intersection(
+                            intersection_squares.clone(),
+                            region.clone(),
+                        ));
+                    }
+                }
+
+                nearby.dedup();
+                nearby
+            }
+        }
     }
 
     pub fn is_nearby(&self, other: &Location) -> bool {
@@ -312,17 +394,42 @@ impl Location {
         self.get_adjacent().contains(other)
     }
 
+    pub fn steps_to_location(&self, other: &Location) -> Option<u8> {
+        self.min_steps_to_location(other)
+    }
+
+    pub fn min_steps_to_location(&self, other: &Location) -> Option<u8> {
+        let mut visited = Vec::new();
+        let mut to_visit = vec![(self.clone(), 0)];
+
+        while let Some((current_location, current_step)) = to_visit.pop() {
+            if &current_location == other {
+                return Some(current_step);
+            }
+
+            if !visited.contains(&current_location) {
+                visited.push(current_location.clone());
+
+                for adjacent in current_location.get_adjacent() {
+                    to_visit.push((adjacent, current_step + 1));
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
         self.get_nearby()
             .into_iter()
-            .filter(|location| Zone::from(location).is_location(state))
+            .filter(|location| location.is_location(state))
             .collect()
     }
 
     pub fn get_adjacent_locations(&self, state: &State) -> Vec<Self> {
         self.get_adjacent()
             .into_iter()
-            .filter(|location| Zone::from(location).is_location(state))
+            .filter(|location| location.is_location(state))
             .collect()
     }
 
@@ -346,7 +453,7 @@ impl Location {
             .filter_map(|location| {
                 let square = location.get_square()?;
                 let void = Location::Square(square, Region::Void);
-                Zone::from(&void).is_location(state).then_some(void)
+                void.is_location(state).then_some(void)
             })
             .collect()
     }
@@ -357,7 +464,7 @@ impl Location {
             .filter_map(|location| {
                 let square = location.get_square()?;
                 let void = Location::Square(square, Region::Void);
-                Zone::from(&void).is_location(state).then_some(void)
+                void.is_location(state).then_some(void)
             })
             .collect()
     }
@@ -413,9 +520,9 @@ impl Location {
                     return None;
                 }
 
-                for intersection in Zone::all_intersections() {
-                    if let Zone::Location(Location::Intersection(ilocs, _)) = &intersection
-                        && ilocs == &new_squares
+                for intersection in Location::all_intersections() {
+                    if let Location::Intersection(intersection_squares, _) = &intersection
+                        && intersection_squares == &new_squares
                     {
                         return Some(Location::Intersection(new_squares, region.clone()));
                     }
@@ -546,7 +653,7 @@ impl Location {
                             .controlled_by(player_id)
                             .all(state)
                             .into_iter()
-                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
+                            .filter_map(|cid| state.get_card(&cid).get_location().square())
                             .collect();
                         Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
                     }
@@ -633,60 +740,6 @@ impl Zone {
         )
     }
 
-    pub fn steps_to_zone(&self, other: &Zone) -> Option<u8> {
-        self.min_steps_to_zone(other)
-    }
-
-    pub fn min_steps_to_zone(&self, other: &Zone) -> Option<u8> {
-        let mut visited = Vec::new();
-        let mut to_visit = vec![(self.clone(), 0)];
-
-        while let Some((current_zone, current_step)) = to_visit.pop() {
-            if &current_zone == other {
-                return Some(current_step);
-            }
-
-            if !visited.contains(&current_zone) {
-                visited.push(current_zone.clone());
-
-                for adjacent in current_zone.get_adjacent() {
-                    to_visit.push((adjacent, current_step + 1));
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn all_intersections() -> Vec<Zone> {
-        vec![
-            Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![2, 3, 7, 8], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![3, 4, 8, 9], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![4, 5, 9, 10], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![6, 7, 11, 12], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![7, 8, 12, 13], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![8, 9, 13, 14], Region::Surface)),
-            Zone::Location(Location::Intersection(vec![9, 10, 14, 15], Region::Surface)),
-            Zone::Location(Location::Intersection(
-                vec![11, 12, 16, 17],
-                Region::Surface,
-            )),
-            Zone::Location(Location::Intersection(
-                vec![12, 13, 17, 18],
-                Region::Surface,
-            )),
-            Zone::Location(Location::Intersection(
-                vec![13, 14, 18, 19],
-                Region::Surface,
-            )),
-            Zone::Location(Location::Intersection(
-                vec![14, 15, 19, 20],
-                Region::Surface,
-            )),
-        ]
-    }
-
     pub fn get_square(&self) -> Option<u8> {
         match self {
             Zone::Location(Location::Square(sq, _)) => Some(*sq),
@@ -707,7 +760,15 @@ impl Zone {
     }
 
     pub fn get_nearby(&self) -> Vec<Zone> {
-        get_nearby_zones(self)
+        self.location()
+            .map(|location| {
+                location
+                    .get_nearby()
+                    .into_iter()
+                    .map(Zone::Location)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
@@ -730,23 +791,33 @@ impl Zone {
             .find(|card| {
                 card.is_site()
                     && card.get_zone().is_in_play()
-                    && card.get_zone().get_square() == Some(square)
+                    && card.get_location().square() == Some(square)
             })
             .and_then(|card| card.get_site())
     }
 
     pub fn get_nearby_locations(&self, state: &State) -> Vec<Zone> {
-        self.get_nearby()
-            .into_iter()
-            .filter(|zone| zone.is_location(state))
-            .collect()
+        self.location()
+            .map(|location| {
+                location
+                    .get_nearby_locations(state)
+                    .into_iter()
+                    .map(Zone::Location)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub fn get_adjacent_locations(&self, state: &State) -> Vec<Zone> {
-        self.get_adjacent()
-            .into_iter()
-            .filter(|zone| zone.is_location(state))
-            .collect()
+        self.location()
+            .map(|location| {
+                location
+                    .get_adjacent_locations(state)
+                    .into_iter()
+                    .map(Zone::Location)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub fn get_nearby_sites(&self, state: &State) -> Vec<Zone> {
@@ -798,29 +869,19 @@ impl Zone {
     }
 
     fn is_location(&self, state: &State) -> bool {
-        match self {
-            Zone::Location(Location::Square(_, Region::Surface)) => {
-                self.get_site_at_square(state).is_some()
-            }
-            Zone::Location(Location::Square(_, Region::Void)) => {
-                self.get_site_at_square(state).is_none()
-            }
-            Zone::Location(Location::Square(_, Region::Underground)) => self
-                .get_site_at_square(state)
-                .is_some_and(|site| site.is_land_site(state).unwrap_or_default()),
-            Zone::Location(Location::Square(_, Region::Underwater)) => self
-                .get_site_at_square(state)
-                .is_some_and(|site| site.is_water_site(state).unwrap_or_default()),
-            Zone::Location(Location::Intersection(squares, region)) => {
-                squares.iter().all(|square| {
-                    Zone::Location(Location::Square(*square, region.clone())).is_location(state)
-                })
-            }
-            _ => false,
-        }
+        self.location()
+            .is_some_and(|location| location.is_location(state))
     }
 
     pub fn get_adjacent(&self) -> Vec<Zone> {
-        get_adjacent_zones(self)
+        self.location()
+            .map(|location| {
+                location
+                    .get_adjacent()
+                    .into_iter()
+                    .map(Zone::Location)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }

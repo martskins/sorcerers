@@ -99,7 +99,7 @@ impl Card for MarinersCurse {
                     Effect::SummonCards { summoned_cards } => {
                         let mut output = None;
                         for sc in summoned_cards {
-                            if sc.to_location.square() == self.get_zone().get_square()
+                            if sc.to_location.square() == self.get_location().square()
                                 && sc.to_location.region() == &Region::Surface
                             {
                                 output = Some(&sc.card_id);

@@ -92,8 +92,8 @@ impl Card for PolarBears {
             if !visited.contains(&current_location) {
                 visited.push(current_location.clone());
 
-                for adjacent in Zone::from(&current_location).get_adjacent() {
-                    to_visit.push((adjacent.into_location().unwrap(), current_step + 1));
+                for adjacent in current_location.get_adjacent() {
+                    to_visit.push((adjacent, current_step + 1));
                 }
 
                 for wrapped in PolarBears::wrapped_neighbours(&current_location.clone().into()) {

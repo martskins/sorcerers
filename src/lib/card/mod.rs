@@ -2667,7 +2667,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
-        let mut candidates = Location::all_in_region(Region::Surface);
+        let mut candidates = if self.get_card_type() == CardType::Aura {
+            Location::all_intersections()
+        } else {
+            Location::all_in_region(Region::Surface)
+        };
         if self.has_ability(state, &Ability::Burrowing) {
             candidates.extend(Location::all_in_region(Region::Underground));
         }
@@ -2965,7 +2969,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         let starts_in_intersection = matches!(self.get_location(), Location::Intersection(_, _));
         for location in &self.get_locations_within_steps(state, self.get_steps_per_movement(state)?)
         {
-            let zone = Zone::from(location);
             if starts_in_intersection {
                 if matches!(location, Location::Intersection(_, _))
                     && location != self.get_location()
@@ -2979,7 +2982,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             }
 
-            if zone.get_site(state).is_none() {
+            if location.get_site(state).is_none() {
                 if self.has_ability(state, &Ability::Voidwalk)
                     || is_continuously_connected_zone(state, self.get_id(), location)
                 {
@@ -2992,7 +2995,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             if self.is_oversized(state)
                 && let Location::Intersection(sqs, region) = location
                 && sqs.iter().all(|sq| {
-                    Zone::Location(Location::Square(*sq, region.clone()))
+                    Location::Square(*sq, region.clone())
                         .get_site(state)
                         .is_some()
                 })
@@ -3001,7 +3004,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             };
 
-            if zone.get_site(state).is_none() {
+            if location.get_site(state).is_none() {
                 continue;
             };
 
@@ -3056,7 +3059,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             activated_abilities.push(Box::new(UnitAction::RangedAttack));
         }
 
-        if let Some(site) = self.get_zone().get_site(state) {
+        if let Some(site) = self.get_location().get_site(state) {
             if self.has_ability(state, &Ability::Burrowing) && site.is_land_site(state)? {
                 if self.get_region(state) == &Region::Surface {
                     activated_abilities.push(Box::new(UnitAction::Burrow));

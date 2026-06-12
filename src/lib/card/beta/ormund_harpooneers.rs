@@ -51,7 +51,7 @@ impl ActivatedAbility for HarpoonPull {
         };
 
         let target = state.get_card(&target_id);
-        let target_zone = target.get_zone().clone();
+        let target_location = target.get_location().clone();
         let target_region = target.get_region(state).clone();
 
         Ok(vec![
@@ -63,10 +63,10 @@ impl ActivatedAbility for HarpoonPull {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: target_id,
-                from: (target_zone)
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone((my_zone).with_region(target_region)),
+                from: target_location,
+                to: LocationQuery::from_location(
+                    harpooneers.get_location().with_region(target_region),
+                ),
                 tap: false,
                 through_path: None,
             },

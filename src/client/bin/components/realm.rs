@@ -158,16 +158,16 @@ impl RealmComponent {
                 CellRect { id: i + 1, rect: r }
             })
             .collect();
-        let intersection_rects = Zone::all_intersections()
+        let intersection_rects = Location::all_intersections()
             .into_iter()
-            .filter_map(|z| match z {
-                Zone::Location(Location::Intersection(locs, _)) => {
+            .filter_map(|location| match location {
+                Location::Intersection(locs, _) => {
                     intersection_rect(&rect, &locs, mirrored).map(|r| IntersectionRect {
                         locations: locs,
                         rect: r,
                     })
                 }
-                _ => None,
+                Location::Square(_, _) => None,
             })
             .collect();
 
@@ -194,16 +194,16 @@ impl RealmComponent {
             cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
         }
 
-        self.intersection_rects = Zone::all_intersections()
+        self.intersection_rects = Location::all_intersections()
             .into_iter()
-            .filter_map(|z| match z {
-                Zone::Location(Location::Intersection(locs, _)) => {
+            .filter_map(|location| match location {
+                Location::Intersection(locs, _) => {
                     intersection_rect(&self.rect, &locs, self.mirrored).map(|r| IntersectionRect {
                         locations: locs,
                         rect: r,
                     })
                 }
-                _ => None,
+                Location::Square(_, _) => None,
             })
             .collect();
     }

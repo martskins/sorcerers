@@ -82,6 +82,10 @@ impl ZoneQuery {
         }
     }
 
+    pub fn from_location(location: Location) -> Self {
+        Self::from_zone(Zone::Location(location))
+    }
+
     pub fn adjacent_to(mut self, zone: &Zone) -> Self {
         self.spatial_filters
             .push(ZoneSpatialFilter::AdjacentLocations(zone.clone()));

@@ -243,12 +243,24 @@ impl<'a> PreparedCardQuery<'a> {
                 SpatialFilter::NearbyZonesToCard(card_id) => state
                     .cards
                     .get(card_id)
-                    .map(|card| card.get_zone().get_nearby())
+                    .map(|card| {
+                        card.get_location()
+                            .get_nearby()
+                            .into_iter()
+                            .map(Zone::from)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 SpatialFilter::NearbyLocationsToCard(card_id) => state
                     .cards
                     .get(card_id)
-                    .map(|card| card.get_zone().get_nearby_locations(state))
+                    .map(|card| {
+                        card.get_location()
+                            .get_nearby_locations(state)
+                            .into_iter()
+                            .map(Zone::from)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 SpatialFilter::AffectedZonesOfCard(card_id) => state
                     .cards
@@ -269,7 +281,13 @@ impl<'a> PreparedCardQuery<'a> {
                 SpatialFilter::NearbySitesToCard(card_id) => state
                     .cards
                     .get(card_id)
-                    .map(|card| card.get_zone().get_nearby_sites(state))
+                    .map(|card| {
+                        card.get_location()
+                            .get_nearby_sites(state)
+                            .into_iter()
+                            .map(Zone::from)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
                 SpatialFilter::NearbyVoids(zone) => zone.get_nearby_voids(state),

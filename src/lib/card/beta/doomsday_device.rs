@@ -113,8 +113,9 @@ impl Card for DoomsdayDevice {
 
                 if self.doom_counters == 1 {
                     // Trigger the explosion.
-                    let explosion_zones: Vec<Zone> = std::iter::once(self.get_zone().clone())
-                        .chain(self.get_zone().get_nearby())
+                    let explosion_zones: Vec<Zone> = std::iter::once(self.get_location().clone())
+                        .chain(self.get_location().get_nearby())
+                        .map(Zone::from)
                         .collect();
 
                     let mut effects: Vec<Effect> = CardQuery::new()

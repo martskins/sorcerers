@@ -91,7 +91,7 @@ impl Card for WayfaringPilgrim {
             .map(Zone::Location)
             .collect();
 
-        let Some(square) = self.get_zone().get_square() else {
+        let Some(square) = self.get_location().get_square() else {
             return Ok(vec![]);
         };
 
@@ -119,7 +119,7 @@ impl Card for WayfaringPilgrim {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             VISIT_CORNER_HOOK => {
-                let Some(square) = self.get_zone().get_square() else {
+                let Some(square) = self.get_location().get_square() else {
                     return Ok(vec![]);
                 };
                 if self.corners_visited.contains(&square) {

@@ -62,7 +62,7 @@ impl Card for EastWestDragon {
     }
 
     async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
-        let sq = match self.get_zone().get_square() {
+        let sq = match self.get_location().get_square() {
             Some(s) => s,
             None => return Ok(vec![]),
         };

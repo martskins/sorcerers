@@ -189,11 +189,13 @@ fn score_avatar_health(state: &State, player_id: &PlayerId) -> f32 {
 /// Reward a unit for being close to the enemy avatar.
 /// Returns 0 if the enemy avatar zone is unknown.
 fn advancement_score(unit_zone: &Zone, enemy_avatar_zone: Option<&Zone>) -> f32 {
-    let enemy_zone = match enemy_avatar_zone {
-        Some(z) => z,
-        None => return 0.0,
+    let (Some(unit_location), Some(enemy_location)) = (
+        unit_zone.location(),
+        enemy_avatar_zone.and_then(Zone::location),
+    ) else {
+        return 0.0;
     };
-    if let Some(dist) = unit_zone.min_steps_to_zone(enemy_zone) {
+    if let Some(dist) = unit_location.min_steps_to_location(enemy_location) {
         // On the 4×5 board the maximum possible distance is ~8 steps.
         (8u8.saturating_sub(dist)) as f32 * BOARD_ADVANCEMENT_WEIGHT
     } else {
