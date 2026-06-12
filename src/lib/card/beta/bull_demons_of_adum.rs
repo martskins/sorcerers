@@ -41,7 +41,7 @@ impl ActivatedAbility for TapMoveAndStrike {
         let mut current_location = start_zone.clone();
 
         for _ in 0..3 {
-            match current_location.steps_in_direction(&direction, 1) {
+            match current_location.steps_in_direction(&direction, 1, state, Some(card_id)) {
                 Some(next_location) => {
                     // Strike each untapped unit in the destination zone.
                     let targets = CardQuery::new()

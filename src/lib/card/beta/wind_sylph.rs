@@ -125,7 +125,10 @@ impl Card for WindSylph {
                 let unit = state.get_card(&unit_id);
                 let mut valid_locations = vec![];
                 for dir in &PUSH_DIRECTIONS {
-                    let Some(location) = unit.get_location().steps_in_direction(dir, 1) else {
+                    let Some(location) =
+                        unit.get_location()
+                            .steps_in_direction(dir, 1, state, Some(&unit_id))
+                    else {
                         continue;
                     };
                     let zone = Zone::from(&location);

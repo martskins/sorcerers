@@ -51,7 +51,7 @@ impl GreatWall {
         }
 
         self.get_location()
-            .step_in_direction(&Direction::Up)
+            .step_in_direction(&Direction::Up, state, Some(card_id))
             .map(Zone::Location)
             .is_some_and(|top_zone| &top_zone == other_side)
     }

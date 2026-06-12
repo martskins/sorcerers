@@ -232,7 +232,12 @@ impl<'a> PreparedCardQuery<'a> {
                             .location()
                             .and_then(|location| {
                                 location
-                                    .steps_in_direction(&direction.normalise(board_flipped), *steps)
+                                    .steps_in_direction(
+                                        &direction.normalise(board_flipped),
+                                        *steps,
+                                        state,
+                                        Some(card_id),
+                                    )
                             })
                         {
                             zones.push(Zone::Location(location));

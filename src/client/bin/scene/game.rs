@@ -142,9 +142,8 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
 pub struct PendingProjectileAnimation {
     pub id: uuid::Uuid,
     pub shooter: CardId,
-    pub origin: Location,
+    pub path: Vec<Location>,
     pub direction: Direction,
-    pub range: Option<u8>,
     pub ranged_strike: bool,
 }
 

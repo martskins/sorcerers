@@ -70,13 +70,13 @@ impl Magic for ConeOfFlame {
         let location = caster.get_location();
         let region = location.region().clone();
         let square_dmg = vec![
-            (location.square_in_direction(&dir, 1), 5),
-            (location.square_in_direction(&dir, 2), 3),
-            (location.square_in_direction(&dir, 3), 1),
-            (location.square_in_direction(&dir.rotate(1)?, 1), 3),
-            (location.square_in_direction(&dir.rotate(1)?, 2), 1),
-            (location.square_in_direction(&dir.rotate(7)?, 1), 3),
-            (location.square_in_direction(&dir.rotate(7)?, 2), 1),
+            (location.square_in_direction(&dir, 1, state, Some(caster_id)), 5),
+            (location.square_in_direction(&dir, 2, state, Some(caster_id)), 3),
+            (location.square_in_direction(&dir, 3, state, Some(caster_id)), 1),
+            (location.square_in_direction(&dir.rotate(1)?, 1, state, Some(caster_id)), 3),
+            (location.square_in_direction(&dir.rotate(1)?, 2, state, Some(caster_id)), 1),
+            (location.square_in_direction(&dir.rotate(7)?, 1, state, Some(caster_id)), 3),
+            (location.square_in_direction(&dir.rotate(7)?, 2, state, Some(caster_id)), 1),
         ];
 
         let mut effects = vec![];

@@ -48,27 +48,35 @@ impl MeteorShower {
             .collect()
     }
 
-    fn large_impact(location: &Location) -> Vec<(Option<Location>, u16)> {
+    fn large_impact(
+        location: &Location,
+        state: &State,
+        caster_id: &CardId,
+    ) -> Vec<(Option<Location>, u16)> {
         vec![
             (Some(location.clone()), 7),
-            (location.steps_in_direction(&Direction::Up, 1), 5),
-            (location.steps_in_direction(&Direction::Down, 1), 5),
-            (location.steps_in_direction(&Direction::Left, 1), 5),
-            (location.steps_in_direction(&Direction::Right, 1), 5),
-            (location.steps_in_direction(&Direction::TopLeft, 1), 3),
-            (location.steps_in_direction(&Direction::TopRight, 1), 3),
-            (location.steps_in_direction(&Direction::BottomLeft, 1), 3),
-            (location.steps_in_direction(&Direction::BottomRight, 1), 3),
+            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)), 3),
         ]
     }
 
-    fn medium_impact(location: &Location) -> Vec<(Option<Location>, u16)> {
+    fn medium_impact(
+        location: &Location,
+        state: &State,
+        caster_id: &CardId,
+    ) -> Vec<(Option<Location>, u16)> {
         vec![
             (Some(location.clone()), 4),
-            (location.steps_in_direction(&Direction::Up, 1), 2),
-            (location.steps_in_direction(&Direction::Down, 1), 2),
-            (location.steps_in_direction(&Direction::Left, 1), 2),
-            (location.steps_in_direction(&Direction::Right, 1), 2),
+            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 2),
+            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 2),
+            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 2),
+            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 2),
         ]
     }
 
@@ -105,7 +113,7 @@ impl Magic for MeteorShower {
     async fn resolve_magic(
         &self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -140,8 +148,8 @@ impl Magic for MeteorShower {
         let third_location = state.get_card(&third_site_id).get_location().clone();
 
         let impacts = vec![
-            Self::large_impact(&first_location),
-            Self::medium_impact(&second_location),
+            Self::large_impact(&first_location, state, caster_id),
+            Self::medium_impact(&second_location, state, caster_id),
             Self::small_impact(&third_location),
         ];
 

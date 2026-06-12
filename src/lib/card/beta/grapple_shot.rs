@@ -81,7 +81,9 @@ impl Magic for GrappleShot {
         .await?;
         let mut cur_location = ally_location.clone();
         let mut hit_unit_id = None;
-        while let Some(next_location) = cur_location.step_in_direction(&direction) {
+        while let Some(next_location) =
+            cur_location.step_in_direction(&direction, state, Some(&ally_id))
+        {
             cur_location = next_location;
             let units = CardQuery::new()
                 .units()

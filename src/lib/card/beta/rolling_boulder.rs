@@ -49,7 +49,9 @@ impl ActivatedAbility for RollBoulder {
             });
         }
 
-        while let Some(location) = last_location.step_in_direction(&picked_direction) {
+        while let Some(location) =
+            last_location.step_in_direction(&picked_direction, state, Some(boulder.get_id()))
+        {
             effects.push(Effect::MoveCard {
                 card_id: *boulder.get_id(),
                 from: last_location.clone(),

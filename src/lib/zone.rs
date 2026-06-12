@@ -59,30 +59,100 @@ impl Location {
         square: u8,
         direction: &Direction,
         steps: u8,
+        state: &State,
+        source_card_id: Option<&CardId>,
     ) -> Option<u8> {
+        let wraps_top_bottom = Self::connects_top_bottom_edges(state, source_card_id);
+        let wraps_left_right = Self::connects_left_right_edges(state, source_card_id);
         let mut current_square = square;
         for _ in 0..steps {
-            current_square = match direction {
-                Direction::Up => current_square.saturating_add(5),
-                Direction::Down => current_square.saturating_sub(5),
-                Direction::Left => current_square.saturating_sub(1),
-                Direction::Right => current_square.saturating_add(1),
-                Direction::TopLeft => current_square.saturating_add(4),
-                Direction::TopRight => current_square.saturating_add(6),
-                Direction::BottomLeft => current_square.saturating_sub(6),
-                Direction::BottomRight => current_square.saturating_sub(4),
-            };
-
-            if !(1..=20).contains(&current_square) {
-                return None;
-            }
+            current_square = Self::next_square_in_direction(
+                current_square,
+                direction,
+                wraps_top_bottom,
+                wraps_left_right,
+            )?;
         }
 
         Some(current_square)
     }
 
-    pub fn square_in_direction(&self, direction: &Direction, steps: u8) -> Option<u8> {
-        Self::square_after_steps_in_direction(self.square()?, direction, steps)
+    pub fn square_in_direction(
+        &self,
+        direction: &Direction,
+        steps: u8,
+        state: &State,
+        source_card_id: Option<&CardId>,
+    ) -> Option<u8> {
+        Self::square_after_steps_in_direction(
+            self.square()?,
+            direction,
+            steps,
+            state,
+            source_card_id,
+        )
+    }
+
+    fn next_square_in_direction(
+        square: u8,
+        direction: &Direction,
+        wraps_top_bottom: bool,
+        wraps_left_right: bool,
+    ) -> Option<u8> {
+        if !(1..=20).contains(&square) {
+            return None;
+        }
+
+        let row = (square - 1) / 5;
+        let col = (square - 1) % 5;
+        let (row_delta, col_delta) = match direction {
+            Direction::Up => (1, 0),
+            Direction::Down => (-1, 0),
+            Direction::Left => (0, -1),
+            Direction::Right => (0, 1),
+            Direction::TopLeft => (1, -1),
+            Direction::TopRight => (1, 1),
+            Direction::BottomLeft => (-1, -1),
+            Direction::BottomRight => (-1, 1),
+        };
+
+        let mut next_row = row as i8 + row_delta;
+        if !(0..=3).contains(&next_row) {
+            if !wraps_top_bottom {
+                return None;
+            }
+            next_row = next_row.rem_euclid(4);
+        }
+
+        let mut next_col = col as i8 + col_delta;
+        if !(0..=4).contains(&next_col) {
+            if !wraps_left_right {
+                return None;
+            }
+            next_col = next_col.rem_euclid(5);
+        }
+
+        Some((next_row as u8 * 5) + next_col as u8 + 1)
+    }
+
+    fn connects_top_bottom_edges(state: &State, source_card_id: Option<&CardId>) -> bool {
+        state.active_continuous_effects().into_iter().any(|ce| {
+            matches!(
+                ce,
+                OngoingEffect::ConnectTopBottomEdges { affected_cards }
+                    if source_card_id.is_some_and(|card_id| affected_cards.matches(card_id, state))
+            )
+        })
+    }
+
+    fn connects_left_right_edges(state: &State, source_card_id: Option<&CardId>) -> bool {
+        state.active_continuous_effects().into_iter().any(|ce| {
+            matches!(
+                ce,
+                OngoingEffect::ConnectLeftRightEdges { affected_cards }
+                    if source_card_id.is_some_and(|card_id| affected_cards.matches(card_id, state))
+            )
+        })
     }
 
     pub fn all_in_region(region: Region) -> Vec<Location> {
@@ -249,10 +319,16 @@ impl Location {
             .collect()
     }
 
-    pub fn steps_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
+    pub fn steps_in_direction(
+        &self,
+        direction: &Direction,
+        steps: u8,
+        state: &State,
+        source_card_id: Option<&CardId>,
+    ) -> Option<Self> {
         let mut current_zone = self.clone();
         for _ in 0..steps {
-            match current_zone.step_in_direction(direction) {
+            match current_zone.step_in_direction(direction, state, source_card_id) {
                 Some(z) => current_zone = z,
                 None => return None,
             }
@@ -260,16 +336,29 @@ impl Location {
         Some(current_zone)
     }
 
-    pub fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
+    pub fn step_in_direction(
+        &self,
+        direction: &Direction,
+        state: &State,
+        source_card_id: Option<&CardId>,
+    ) -> Option<Self> {
         match self {
             Location::Square(square, region) => Some(Location::Square(
-                Self::square_after_steps_in_direction(*square, direction, 1)?,
+                Self::square_after_steps_in_direction(*square, direction, 1, state, source_card_id)?,
                 region.clone(),
             )),
             Location::Intersection(locs, region) => {
                 let new_squares: Vec<u8> = locs
                     .iter()
-                    .filter_map(|sq| Self::square_after_steps_in_direction(*sq, direction, 1))
+                    .filter_map(|sq| {
+                        Self::square_after_steps_in_direction(
+                            *sq,
+                            direction,
+                            1,
+                            state,
+                            source_card_id,
+                        )
+                    })
                     .collect();
                 if new_squares.len() != locs.len() {
                     return None;
@@ -287,6 +376,7 @@ impl Location {
             }
         }
     }
+
 }
 
 impl std::fmt::Display for Location {

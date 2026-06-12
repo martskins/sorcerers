@@ -79,9 +79,8 @@ pub enum ServerMessage {
     ProjectileFired {
         player_id: PlayerId,
         shooter: CardId,
-        origin: Location,
+        path: Vec<Location>,
         direction: Direction,
-        range: Option<u8>,
         ranged_strike: bool,
     },
     PlayerDisconnected {

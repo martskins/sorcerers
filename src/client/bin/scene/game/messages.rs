@@ -32,9 +32,8 @@ impl Game {
             }
             ServerMessage::ProjectileFired {
                 shooter,
-                origin,
+                path,
                 direction,
-                range,
                 ranged_strike,
                 ..
             } => {
@@ -43,9 +42,8 @@ impl Game {
                     .push(PendingProjectileAnimation {
                         id: uuid::Uuid::new_v4(),
                         shooter: *shooter,
-                        origin: origin.clone(),
+                        path: path.clone(),
                         direction: direction.clone(),
-                        range: *range,
                         ranged_strike: *ranged_strike,
                     });
                 None

@@ -61,7 +61,7 @@ impl Magic for Craterize {
     async fn resolve_magic(
         &self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let sites = state
@@ -90,8 +90,10 @@ impl Magic for Craterize {
             return Ok(effects);
         };
         let square_then = |square: u8, first: &Direction, second: &Direction| {
-            Location::square_after_steps_in_direction(square, first, 1)
-                .and_then(|square| Location::square_after_steps_in_direction(square, second, 1))
+            Location::square_after_steps_in_direction(square, first, 1, state, Some(caster_id))
+                .and_then(|square| {
+                    Location::square_after_steps_in_direction(square, second, 1, state, Some(caster_id))
+                })
         };
         // Damage Pattern:
         // -------------------------------
@@ -108,22 +110,22 @@ impl Magic for Craterize {
         #[rustfmt::skip]
         let square_damage = vec![
             (Some(picked_square), 10),
-            (picked_location.square_in_direction(&Direction::Up, 1), 7),
-            (picked_location.square_in_direction(&Direction::Up, 2), 4),
-            (picked_location.square_in_direction(&Direction::Down, 1), 7),
-            (picked_location.square_in_direction(&Direction::Down, 2), 4),
-            (picked_location.square_in_direction(&Direction::Right, 1), 7),
-            (picked_location.square_in_direction(&Direction::Right, 2), 4),
-            (picked_location.square_in_direction(&Direction::Left, 1), 7),
-            (picked_location.square_in_direction(&Direction::Left, 2), 4),
-            (picked_location.square_in_direction(&Direction::TopLeft, 1), 4),
-            (picked_location.square_in_direction(&Direction::TopLeft, 2), 1),
-            (picked_location.square_in_direction(&Direction::TopRight, 1), 4),
-            (picked_location.square_in_direction(&Direction::TopRight, 2), 1),
-            (picked_location.square_in_direction(&Direction::BottomLeft, 1), 4),
-            (picked_location.square_in_direction(&Direction::BottomLeft, 2), 1),
-            (picked_location.square_in_direction(&Direction::BottomRight, 1), 4),
-            (picked_location.square_in_direction(&Direction::BottomRight, 2), 1),
+            (picked_location.square_in_direction(&Direction::Up, 1, state, Some(caster_id)), 7),
+            (picked_location.square_in_direction(&Direction::Up, 2, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::Down, 1, state, Some(caster_id)), 7),
+            (picked_location.square_in_direction(&Direction::Down, 2, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::Right, 1, state, Some(caster_id)), 7),
+            (picked_location.square_in_direction(&Direction::Right, 2, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::Left, 1, state, Some(caster_id)), 7),
+            (picked_location.square_in_direction(&Direction::Left, 2, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::TopLeft, 2, state, Some(caster_id)), 1),
+            (picked_location.square_in_direction(&Direction::TopRight, 1, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::TopRight, 2, state, Some(caster_id)), 1),
+            (picked_location.square_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::BottomLeft, 2, state, Some(caster_id)), 1),
+            (picked_location.square_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)), 4),
+            (picked_location.square_in_direction(&Direction::BottomRight, 2, state, Some(caster_id)), 1),
             (square_then(picked_square, &Direction::TopLeft, &Direction::Up), 2),
             (square_then(picked_square, &Direction::TopLeft, &Direction::Left), 2),
             (square_then(picked_square, &Direction::TopRight, &Direction::Up), 2),

@@ -72,8 +72,8 @@ impl Magic for IceLance {
 
         let location_dmg = vec![
             (Some(location.clone()), 3),
-            (location.steps_in_direction(&direction, 1), 2),
-            (location.steps_in_direction(&direction, 2), 1),
+            (location.steps_in_direction(&direction, 1, state, Some(caster_id)), 2),
+            (location.steps_in_direction(&direction, 2, state, Some(caster_id)), 1),
         ];
 
         let mut effects = vec![];

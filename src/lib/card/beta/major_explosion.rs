@@ -71,14 +71,14 @@ impl Magic for MajorExplosion {
         .await?;
         let location_dmg: Vec<(Option<Location>, u16)> = vec![
             (Some(location.clone()), 7),
-            (location.steps_in_direction(&Direction::Up, 1), 5),
-            (location.steps_in_direction(&Direction::Down, 1), 5),
-            (location.steps_in_direction(&Direction::Left, 1), 5),
-            (location.steps_in_direction(&Direction::Right, 1), 5),
-            (location.steps_in_direction(&Direction::TopLeft, 1), 3),
-            (location.steps_in_direction(&Direction::TopRight, 1), 3),
-            (location.steps_in_direction(&Direction::BottomLeft, 1), 3),
-            (location.steps_in_direction(&Direction::BottomRight, 1), 3),
+            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)), 3),
         ];
         let mut effects = vec![];
         for (location, dmg) in location_dmg {

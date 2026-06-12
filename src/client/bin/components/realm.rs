@@ -700,9 +700,7 @@ impl RealmComponent {
         &self,
         data: &GameData,
         shooter: CardId,
-        origin: &Location,
-        direction: &Direction,
-        range: Option<u8>,
+        path: &[Location],
     ) -> Vec<Pos2> {
         let mut points = Vec::new();
         let fallback_start = data
@@ -710,39 +708,14 @@ impl RealmComponent {
             .iter()
             .find(|card| card.id == shooter)
             .and_then(|card| self.location_center(&card.zone.location().cloned().unwrap()));
-        let Some(start) = self.location_center(origin).or(fallback_start) else {
-            return points;
-        };
-        points.push(start);
-
-        let mut current_zone = origin.clone();
-        let mut steps = 0u8;
-        loop {
-            if let Some(max_range) = range
-                && steps >= max_range
-            {
-                break;
-            }
-
-            let Some(next_zone) = current_zone.step_in_direction(direction) else {
-                break;
-            };
-            if let Some(point) = self.location_center(&next_zone) {
+        for location in path {
+            if let Some(point) = self.location_center(location) {
                 points.push(point);
+            } else if points.is_empty()
+                && let Some(fallback_start) = fallback_start
+            {
+                points.push(fallback_start);
             }
-            current_zone = next_zone;
-            steps = steps.saturating_add(1);
-        }
-
-        if points.len() == 1 {
-            let board = Rect::from_points(&board_corners(&self.rect));
-            let vector = Self::direction_vector(direction);
-            let far = start + vector * board.width().max(board.height());
-            let clipped = pos2(
-                far.x.clamp(board.min.x, board.max.x),
-                far.y.clamp(board.min.y, board.max.y),
-            );
-            points.push(clipped);
         }
 
         points
@@ -763,9 +736,7 @@ impl RealmComponent {
             let points = self.projectile_points(
                 data,
                 projectile.shooter,
-                &projectile.origin,
-                &projectile.direction,
-                projectile.range,
+                &projectile.path,
             );
             if points.len() < 2 {
                 continue;

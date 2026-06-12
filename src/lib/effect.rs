@@ -429,6 +429,37 @@ fn projectile_damage(amount: u16, ranged_strike: bool) -> Damage {
     }
 }
 
+fn projectile_path(
+    origin: &Location,
+    direction: &Direction,
+    range: Option<u8>,
+    state: &State,
+    shooter: &CardId,
+) -> Vec<Location> {
+    let mut path = vec![origin.clone()];
+    let mut current_location = origin.clone();
+    let mut steps = 0u8;
+    loop {
+        if let Some(max_range) = range
+            && steps >= max_range
+        {
+            break;
+        }
+
+        let Some(next_location) =
+            current_location.step_in_direction(direction, state, Some(shooter))
+        else {
+            break;
+        };
+
+        path.push(next_location.clone());
+        current_location = next_location;
+        steps = steps.saturating_add(1);
+    }
+
+    path
+}
+
 impl Effect {
     pub async fn affected_cards(&self) -> Option<Vec<CardId>> {
         match self {
@@ -1213,14 +1244,14 @@ impl Effect {
                 splash_damage,
                 ..
             } => {
+                let path = projectile_path(from_zone, direction, *range, state, shooter);
                 state
                     .get_sender()
                     .send(ServerMessage::ProjectileFired {
                         player_id: *player_id,
                         shooter: *shooter,
-                        origin: from_zone.clone(),
+                        path: path.clone(),
                         direction: direction.clone(),
-                        range: *range,
                         ranged_strike: *ranged_strike,
                     })
                     .await?;
@@ -1235,19 +1266,8 @@ impl Effect {
                         modifier: Ability::Stealth,
                     });
                 }
-                let mut next_zone = Some(from_zone.clone());
                 let mut is_starting_location = true;
-                let mut range: Option<u8> = *range;
-                while let Some(location) = next_zone {
-                    // Check if the projectile is out of range. If not, decrease the remaning range.
-                    if !is_starting_location && let Some(steps) = range.as_mut() {
-                        if *steps == 0 {
-                            break;
-                        }
-
-                        *steps -= 1;
-                    }
-
+                for location in path {
                     let picked_unit_id = match self.affected_cards().await {
                         Some(affected_cards) => affected_cards.first().cloned(),
                         None => {
@@ -1307,7 +1327,6 @@ impl Effect {
                         }
                     }
 
-                    next_zone = location.step_in_direction(direction);
                     is_starting_location = false;
                 }
 

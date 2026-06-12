@@ -79,7 +79,7 @@ impl Magic for Windblast {
             }
 
             let from_location = unit.get_location();
-            let Some(to_location) = from_location.step_in_direction(&direction) else {
+            let Some(to_location) = from_location.step_in_direction(&direction, state, Some(&unit_id)) else {
                 continue;
             };
             if to_location.get_site(state).is_none()

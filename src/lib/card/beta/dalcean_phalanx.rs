@@ -67,7 +67,7 @@ impl Card for DalceanPhalanx {
         while let Some(location) = valid_locations
             .last()
             .unwrap()
-            .step_in_direction(&Direction::Up)
+            .step_in_direction(&Direction::Up, state, Some(self.get_id()))
         {
             valid_locations.push(location);
         }

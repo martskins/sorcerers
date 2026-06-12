@@ -8,7 +8,7 @@ use crate::{
     },
     deck::Deck,
     effect::{Effect, FightContext},
-    game::{NO_CONTROLLER, Thresholds},
+    game::{Direction, NO_CONTROLLER, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{
@@ -95,6 +95,36 @@ async fn insert_realm_card(state: &mut State, mut card: Box<dyn Card>, zone: Zon
         .await
         .unwrap();
     card_id
+}
+
+#[tokio::test]
+async fn test_location_direction_wraps_when_edges_are_connected() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.player_one;
+    let unit_id = insert_realm_card(
+        &mut state,
+        Box::new(FootSoldier::new(player_id)),
+        Zone::Location(Location::Square(3, Region::Surface)),
+    )
+    .await;
+
+    state.ongoing_effects.push(TimedOngoingEffect {
+        effect: OngoingEffect::ConnectTopBottomEdges {
+            affected_cards: CardQuery::new().in_play(),
+        },
+        source: None,
+        timestamp: 1,
+    });
+
+    let location = Location::Square(3, Region::Surface);
+    assert_eq!(
+        location.step_in_direction(&Direction::Down, &state, Some(&unit_id)),
+        Some(Location::Square(18, Region::Surface))
+    );
+    assert_eq!(
+        location.step_in_direction(&Direction::Down, &state, None),
+        None
+    );
 }
 
 #[tokio::test]
