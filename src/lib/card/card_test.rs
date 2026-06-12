@@ -1,9 +1,11 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, AwakenedMummies,
-        Card, Cost, Drought, GreatWall, OgreGoons, Region, RimlandNomads, RootSpider,
-        SimpleVillage, SpectralStalker, SpringRiver,
+        Ability, AdditionalCost, ApprenticeWizard, AridDesert, AssortedAnimals, AstralAlcazar,
+        AwakenedMummies, Card, CauldronCrones, Cost, CostOptions, Drought, GreatWall, ManaCost,
+        OgreGoons, PayableCost, Region, RimlandNomads, RootSpider, SimpleVillage, SpectralStalker,
+        SpringRiver,
     },
+    game::Thresholds,
     query::CardQuery,
     state::State,
     zone::{Location, Zone},
@@ -39,6 +41,53 @@ fn test_additional_cost_tap() {
         .can_afford(&state, player_id)
         .expect("should not error");
     assert!(!can_afford, "only unit in zone is tapped");
+}
+
+#[test]
+fn test_alternative_additional_only_cost_does_not_change_printed_mana_cost() {
+    let costs = CostOptions::basic(3, "FF").with_alternative(PayableCost::additional_only(
+        AdditionalCost::discard(CardQuery::new().minions()),
+    ));
+
+    assert_eq!(costs.printed_mana_value(), Some(3));
+    assert_eq!(costs.printed_thresholds(), &Thresholds::parse("FF"));
+
+    let payable_options = costs.payable_options();
+    assert_eq!(payable_options[0].payable_mana_value(), Some(3));
+    assert_eq!(payable_options[1].payable_mana_value(), Some(0));
+}
+
+#[test]
+fn test_variable_costs_expose_variable_printed_mana_cost() {
+    let costs = CostOptions::variable("EE");
+
+    assert_eq!(costs.printed_mana_cost(), &ManaCost::Variable);
+    assert_eq!(costs.printed_mana_value(), None);
+}
+
+#[test]
+fn test_card_query_mana_cost_filter_uses_printed_mana_value() {
+    let mut state = State::new_mock_state(Vec::new());
+    let player_id = state.players[0].id;
+
+    let cauldron_crones = CauldronCrones::new(player_id);
+    let cauldron_crones_id = *cauldron_crones.get_id();
+    state
+        .cards
+        .insert(cauldron_crones_id, Box::new(cauldron_crones));
+
+    let assorted_animals = AssortedAnimals::new(player_id);
+    let assorted_animals_id = *assorted_animals.get_id();
+    state
+        .cards
+        .insert(assorted_animals_id, Box::new(assorted_animals));
+
+    let matching_cards = CardQuery::new()
+        .including_not_in_play()
+        .with_mana_cost(3)
+        .all(&state);
+    assert!(matching_cards.contains(&cauldron_crones_id));
+    assert!(!matching_cards.contains(&assorted_animals_id));
 }
 
 #[tokio::test]

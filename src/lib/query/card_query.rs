@@ -420,7 +420,9 @@ impl<'a> PreparedCardQuery<'a> {
         // Complex/Computed filters
         if let Some(mc) = &query.mana_cost
             && let Ok(costs) = card.get_costs(state)
-            && !mc.matches(costs.mana_value())
+            && !costs
+                .printed_mana_value()
+                .is_some_and(|mana| mc.matches(mana))
         {
             return false;
         }

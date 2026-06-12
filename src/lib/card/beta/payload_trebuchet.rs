@@ -43,7 +43,8 @@ impl ActivatedAbility for ShootPayload {
                             card.get_costs(state)
                                 .cloned()
                                 .unwrap_or_default()
-                                .mana_value(),
+                                .printed_mana_value()
+                                .unwrap_or_default(),
                         )
                     }
                     _ => None,

@@ -1147,7 +1147,14 @@ async fn test_get_effective_costs_donnybrook_inn() {
     let regular_costs = state
         .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
         .unwrap();
-    assert_eq!(regular_costs.mana_value(), 3);
+    assert_eq!(regular_costs.printed_mana_value(), Some(3));
+    assert_eq!(
+        regular_costs
+            .payable_options()
+            .first()
+            .and_then(|cost| cost.payable_mana_value()),
+        Some(3)
+    );
 
     let inn_costs = state
         .get_effective_costs(
@@ -1156,7 +1163,14 @@ async fn test_get_effective_costs_donnybrook_inn() {
             &player_id,
         )
         .unwrap();
-    assert_eq!(inn_costs.mana_value(), 2);
+    assert_eq!(inn_costs.printed_mana_value(), Some(3));
+    assert_eq!(
+        inn_costs
+            .payable_options()
+            .first()
+            .and_then(|cost| cost.payable_mana_value()),
+        Some(2)
+    );
 }
 
 #[tokio::test]
@@ -1174,8 +1188,15 @@ async fn test_get_effective_costs_ignoring_thresholds() {
     let regular_costs = state
         .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
         .unwrap();
-    assert_eq!(regular_costs.mana_value(), 3);
-    assert_eq!(regular_costs.thresholds_cost(), &Thresholds::parse("F"));
+    assert_eq!(regular_costs.printed_mana_value(), Some(3));
+    assert_eq!(regular_costs.printed_thresholds(), &Thresholds::parse("F"));
+    assert_eq!(
+        regular_costs
+            .payable_options()
+            .first()
+            .map(|cost| cost.payable_thresholds()),
+        Some(&Thresholds::parse("F"))
+    );
 
     state
         .temporary_effects_mut()
@@ -1188,8 +1209,15 @@ async fn test_get_effective_costs_ignoring_thresholds() {
     let costs = state
         .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
         .unwrap();
-    assert_eq!(costs.mana_value(), 3);
-    assert_eq!(costs.thresholds_cost(), &Thresholds::ZERO);
+    assert_eq!(costs.printed_mana_value(), Some(3));
+    assert_eq!(costs.printed_thresholds(), &Thresholds::parse("F"));
+    assert_eq!(
+        costs
+            .payable_options()
+            .first()
+            .map(|cost| cost.payable_thresholds()),
+        Some(&Thresholds::ZERO)
+    );
 }
 
 #[test]

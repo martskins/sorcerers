@@ -31,7 +31,11 @@ impl ActivatedAbility for ReadManuscript {
             return Ok(vec![]);
         };
         let top_spell_id = *top_spell_id;
-        let damage = state.get_card(&top_spell_id).get_costs(state)?.mana_value() as u16;
+        let damage = state
+            .get_card(&top_spell_id)
+            .get_costs(state)?
+            .printed_mana_value()
+            .unwrap_or_default() as u16;
         let opponent_id = state.get_opponent_id(&controller_id)?;
         reveal_cards(
             &controller_id,

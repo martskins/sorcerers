@@ -83,7 +83,7 @@ impl Card for HighlandPrincess {
                     .filter(|c| c.get_controller_id(state) == controller_id)
                     .filter(|c| {
                         c.get_costs(state)
-                            .map(|costs| costs.mana_value())
+                            .map(|costs| costs.printed_mana_value().unwrap_or(u8::MAX))
                             .unwrap_or(u8::MAX)
                             <= 1
                     })

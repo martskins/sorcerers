@@ -1110,13 +1110,13 @@ impl State {
 
         let mut thresholds_diff = ThresholdsDiff::default();
         if ignore_thresholds {
-            thresholds_diff = card.get_costs(self)?.thresholds_cost().into();
+            thresholds_diff = base_costs.primary.payable_thresholds().into();
             thresholds_diff = thresholds_diff.negate();
         }
 
         Ok(base_costs
-            .with_mana_adjusted(total_mana_diff)
-            .with_thresholds_adjusted(thresholds_diff))
+            .with_payable_mana_adjusted(total_mana_diff)
+            .with_payable_thresholds_adjusted(thresholds_diff))
     }
 
     pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {

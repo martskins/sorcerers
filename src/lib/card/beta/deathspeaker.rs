@@ -21,7 +21,7 @@ impl ActivatedAbility for DeathspeakerAbility {
         let has_dead_minion = !dead_minions.is_empty();
         let can_afford_any = dead_minions.iter().any(|id| {
             let card = state.get_card(id);
-            let mana_cost = card.get_base().costs.mana_cost();
+            let mana_cost = card.get_base().costs.printed.payable();
 
             mana_cost.can_afford(state, player_id).unwrap_or_default()
         });

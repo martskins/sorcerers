@@ -59,13 +59,7 @@ impl Magic for TwistOfFate {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
-        let paid_mana = cost_paid
-            .into_iter()
-            .find_map(|cost| match cost {
-                CostType::ManaCost(mana) => Some(mana),
-                _ => None,
-            })
-            .unwrap_or_default();
+        let paid_mana = cost_paid.payable_mana_value().unwrap_or_default();
 
         let controller_avatar_id = state.get_player_avatar_id(&controller_id)?;
         let opponent_avatar_id = state.get_player_avatar_id(&opponent_id)?;

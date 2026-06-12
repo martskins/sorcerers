@@ -61,14 +61,7 @@ impl Magic for AssortedAnimals {
         let controller_id = self.get_controller_id(state);
         let deck = state.get_player_deck(&controller_id)?.clone();
 
-        let x_cost = cost_paid
-            .into_iter()
-            .find_map(|cost| match cost {
-                CostType::ManaCost(mana_paid) => Some(mana_paid),
-                _ => None,
-            })
-            .unwrap_or_default();
-
+        let x_cost = cost_paid.payable_mana_value().unwrap_or_default();
         let mut beasts = CardQuery::new()
             .in_zone(&Zone::Spellbook)
             .minions()
@@ -82,7 +75,10 @@ impl Magic for AssortedAnimals {
                 (
                     card.get_name().to_string(),
                     *card.get_id(),
-                    card.get_base().costs.mana_value(),
+                    card.get_base()
+                        .costs
+                        .printed_mana_value()
+                        .unwrap_or_default(),
                 )
             })
             .collect::<Vec<_>>();

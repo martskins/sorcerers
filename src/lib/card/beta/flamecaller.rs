@@ -39,7 +39,7 @@ impl ActivatedAbility for ShootProjectile {
                     .unwrap_or_default()
                     .contains(&Element::Fire)
             })
-            .map(|c| c.get_costs(state).unwrap().thresholds_cost().clone())
+            .map(|c| c.get_costs(state).unwrap().printed_thresholds().clone())
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);

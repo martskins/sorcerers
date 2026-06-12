@@ -231,29 +231,265 @@ impl AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum CostType {
-    // VariableManaCost is used for cards that have a variable cost (represented by X on the card).
-    // When paying for a cost with VariableManaCost, the player will be prompted to choose how much
-    // mana to pay, up to the amount of mana they have available. The chosen amount will then be
-    // paid and returned as a ManaCost in the paid cost.
-    VariableManaCost,
-    ManaCost(u8),
-    Thresholds(Thresholds),
-    Additional(Vec<AdditionalCost>),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManaCost {
+    Fixed(u8),
+    Variable,
 }
 
-impl Default for CostType {
+impl Default for ManaCost {
     fn default() -> Self {
-        CostType::ManaCost(0)
+        ManaCost::Fixed(0)
     }
 }
 
-impl CostType {
-    async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<CostType> {
+impl ManaCost {
+    pub fn fixed_value(&self) -> Option<u8> {
         match self {
-            CostType::Thresholds(_) => Ok(self.clone()),
-            CostType::VariableManaCost => {
+            ManaCost::Fixed(value) => Some(*value),
+            ManaCost::Variable => None,
+        }
+    }
+
+    fn adjusted(&self, diff: i8) -> Self {
+        match self {
+            ManaCost::Fixed(value) => {
+                ManaCost::Fixed(((*value as i16) + (diff as i16)).max(0) as u8)
+            }
+            ManaCost::Variable => ManaCost::Variable,
+        }
+    }
+
+    fn label(&self) -> String {
+        match self {
+            ManaCost::Fixed(value) => format!("{} Mana", value),
+            ManaCost::Variable => "X Mana".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PrintedCost {
+    pub mana: ManaCost,
+    pub thresholds: Thresholds,
+}
+
+impl PrintedCost {
+    pub const ZERO: PrintedCost = PrintedCost {
+        mana: ManaCost::Fixed(0),
+        thresholds: Thresholds::ZERO,
+    };
+
+    pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
+        Self {
+            mana: ManaCost::Fixed(mana),
+            thresholds: thresholds.into(),
+        }
+    }
+
+    pub fn variable(thresholds: impl Into<Thresholds>) -> Self {
+        Self {
+            mana: ManaCost::Variable,
+            thresholds: thresholds.into(),
+        }
+    }
+
+    pub fn payable(&self) -> PayableCost {
+        PayableCost {
+            mana: self.mana.clone(),
+            thresholds: self.thresholds.clone(),
+            additional: vec![],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PayableCost {
+    pub mana: ManaCost,
+    pub thresholds: Thresholds,
+    pub additional: Vec<AdditionalCost>,
+}
+
+pub type Cost = PayableCost;
+
+impl PayableCost {
+    pub const ZERO: PayableCost = PayableCost {
+        mana: ManaCost::Fixed(0),
+        thresholds: Thresholds::ZERO,
+        additional: Vec::new(),
+    };
+
+    pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
+        Self {
+            mana: ManaCost::Fixed(mana),
+            thresholds: thresholds.into(),
+            additional: vec![],
+        }
+    }
+
+    pub fn from_variable_mana(thresholds: impl Into<Thresholds>) -> Self {
+        Self {
+            mana: ManaCost::Variable,
+            thresholds: thresholds.into(),
+            additional: vec![],
+        }
+    }
+
+    pub fn mana_only(mana: u8) -> Self {
+        Self::new(mana, Thresholds::ZERO)
+    }
+
+    pub fn thresholds_only(thresholds: impl Into<Thresholds>) -> Self {
+        Self::new(0, thresholds)
+    }
+
+    pub fn additional_only(additional: AdditionalCost) -> Self {
+        Self {
+            additional: vec![additional],
+            ..Self::default()
+        }
+    }
+
+    pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
+        self.additional.push(additional);
+        self
+    }
+
+    pub fn payable_mana_cost(&self) -> &ManaCost {
+        &self.mana
+    }
+
+    pub fn payable_mana_value(&self) -> Option<u8> {
+        self.mana.fixed_value()
+    }
+
+    pub fn payable_thresholds(&self) -> &Thresholds {
+        &self.thresholds
+    }
+
+    pub fn get_label(&self) -> String {
+        let mut parts = vec![];
+        if !matches!(self.mana, ManaCost::Fixed(0)) {
+            parts.push(self.mana.label());
+        }
+        if self.thresholds != Thresholds::ZERO {
+            parts.push(format!("Thresholds: {:?}", self.thresholds));
+        }
+        for add in &self.additional {
+            match add.action {
+                CostAction::Tap => parts.push("Tap card".to_string()),
+                CostAction::Discard => parts.push("Discard card".to_string()),
+                CostAction::Sacrifice => parts.push("Sacrifice card".to_string()),
+                CostAction::Surface => parts.push("Put card on Surface".to_string()),
+            }
+        }
+
+        parts.join(" + ")
+    }
+
+    fn with_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
+        Self {
+            thresholds: &self.thresholds + &diff,
+            ..self.clone()
+        }
+    }
+
+    fn with_mana_adjusted(&self, diff: i8) -> Self {
+        Self {
+            mana: self.mana.adjusted(diff),
+            ..self.clone()
+        }
+    }
+
+    async fn pay_additional(
+        additional_costs: &[AdditionalCost],
+        state: &mut State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<()> {
+        for ac in additional_costs {
+            let ac = ac.clone();
+            let mut query = ac.card;
+            match ac.action {
+                CostAction::Tap => {
+                    query = query
+                        .untapped()
+                        .without_status(CardStatus::SummoningSickness)
+                }
+                CostAction::Discard => query = query.in_zone(&Zone::Hand),
+                CostAction::Sacrifice => query = query.in_play(),
+                CostAction::Surface => {
+                    let mut subsurface_zones = Location::all_in_region(Region::Underwater);
+                    subsurface_zones.extend(Location::all_in_region(Region::Underground));
+                    query = query.in_locations(&subsurface_zones)
+                }
+            }
+
+            let options = query.all(state);
+            let effect = match options.len() {
+                0 => unreachable!(),
+                1 => {
+                    let card_id = options.first().expect("options to have exactly one element");
+                    match ac.action {
+                        CostAction::Tap => Effect::SetTapped {
+                            card_id: *card_id,
+                            tapped: true,
+                        },
+                        CostAction::Discard => Effect::DiscardCard {
+                            card_id: *card_id,
+                            player_id: *player_id,
+                        },
+                        CostAction::Sacrifice => Effect::BuryCard { card_id: *card_id },
+                        CostAction::Surface => Effect::SetCardRegion {
+                            card_id: *card_id,
+                            destination: Region::Surface,
+                            tap: false,
+                        },
+                    }
+                }
+                _ => {
+                    let card_id = pick_card(
+                        player_id,
+                        &options,
+                        state,
+                        "Choose a card to tap for additional cost",
+                    )
+                    .await?;
+                    match ac.action {
+                        CostAction::Tap => Effect::SetTapped {
+                            card_id,
+                            tapped: true,
+                        },
+                        CostAction::Discard => Effect::DiscardCard {
+                            card_id,
+                            player_id: *player_id,
+                        },
+                        CostAction::Sacrifice => Effect::BuryCard { card_id },
+                        CostAction::Surface => Effect::SetCardRegion {
+                            card_id,
+                            destination: Region::Surface,
+                            tap: true,
+                        },
+                    }
+                }
+            };
+
+            effect.apply(state).await?;
+            let turn = state.turns;
+            state.effect_log_mut().push(LoggedEffect::new(effect, turn));
+            crate::game::force_sync(player_id, state).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<PayableCost> {
+        let paid_mana = match self.mana {
+            ManaCost::Fixed(mana_cost) => {
+                let mana = state.get_player_mana_mut(player_id);
+                *mana = mana.saturating_sub(mana_cost);
+                ManaCost::Fixed(mana_cost)
+            }
+            ManaCost::Variable => {
                 let resources = state.get_player_resources(player_id)?;
                 let max_mana = resources.mana;
                 if max_mana == 0 {
@@ -264,92 +500,17 @@ impl CostType {
                         .await?;
                 let mana = state.get_player_mana_mut(player_id);
                 *mana = mana.saturating_sub(mana_to_pay);
-                Ok(CostType::ManaCost(mana_to_pay))
+                ManaCost::Fixed(mana_to_pay)
             }
-            CostType::ManaCost(mc) => {
-                let mana = state.get_player_mana_mut(player_id);
-                *mana = mana.saturating_sub(*mc);
-                Ok(self.clone())
-            }
-            CostType::Additional(additional_costs) => {
-                for ac in additional_costs {
-                    let ac = ac.clone();
-                    let mut query = ac.card;
-                    match ac.action {
-                        CostAction::Tap => {
-                            query = query
-                                .untapped()
-                                .without_status(CardStatus::SummoningSickness)
-                        }
-                        CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => query = query.in_play(),
-                        CostAction::Surface => {
-                            let mut subsurface_zones = Location::all_in_region(Region::Underwater);
-                            subsurface_zones.extend(Location::all_in_region(Region::Underground));
-                            query = query.in_locations(&subsurface_zones)
-                        }
-                    }
+        };
 
-                    let options = query.all(state);
-                    let effect = match options.len() {
-                        0 => unreachable!(),
-                        1 => {
-                            let card_id = options
-                                .first()
-                                .expect("options to have exactly one element");
-                            match ac.action {
-                                CostAction::Tap => Effect::SetTapped {
-                                    card_id: *card_id,
-                                    tapped: true,
-                                },
-                                CostAction::Discard => Effect::DiscardCard {
-                                    card_id: *card_id,
-                                    player_id: *player_id,
-                                },
-                                CostAction::Sacrifice => Effect::BuryCard { card_id: *card_id },
-                                CostAction::Surface => Effect::SetCardRegion {
-                                    card_id: *card_id,
-                                    destination: Region::Surface,
-                                    tap: false,
-                                },
-                            }
-                        }
-                        _ => {
-                            let card_id = pick_card(
-                                player_id,
-                                &options,
-                                state,
-                                "Choose a card to tap for additional cost",
-                            )
-                            .await?;
-                            match ac.action {
-                                CostAction::Tap => Effect::SetTapped {
-                                    card_id,
-                                    tapped: true,
-                                },
-                                CostAction::Discard => Effect::DiscardCard {
-                                    card_id,
-                                    player_id: *player_id,
-                                },
-                                CostAction::Sacrifice => Effect::BuryCard { card_id },
-                                CostAction::Surface => Effect::SetCardRegion {
-                                    card_id,
-                                    destination: Region::Surface,
-                                    tap: true,
-                                },
-                            }
-                        }
-                    };
+        Self::pay_additional(&self.additional, state, player_id).await?;
 
-                    effect.apply(state).await?;
-                    let turn = state.turns;
-                    state.effect_log_mut().push(LoggedEffect::new(effect, turn));
-                    crate::game::force_sync(player_id, state).await?;
-                }
-
-                Ok(self.clone())
-            }
-        }
+        Ok(PayableCost {
+            mana: paid_mana,
+            thresholds: self.thresholds.clone(),
+            additional: self.additional.clone(),
+        })
     }
 
     pub fn can_afford(
@@ -357,171 +518,189 @@ impl CostType {
         state: &State,
         player_id: impl AsRef<PlayerId>,
     ) -> anyhow::Result<bool> {
-        let resources = state.get_player_resources(player_id.as_ref())?;
-        let thresholds = state.get_thresholds_for_player(player_id.as_ref());
+        let player_id = player_id.as_ref();
+        let resources = state.get_player_resources(player_id)?;
+        let thresholds = state.get_thresholds_for_player(player_id);
+        let can_pay_mana = match self.mana {
+            ManaCost::Fixed(mc) => resources.mana >= mc,
+            ManaCost::Variable => resources.mana > 0,
+        };
+        if !can_pay_mana
+            || thresholds.fire < self.thresholds.fire
+            || thresholds.air < self.thresholds.air
+            || thresholds.earth < self.thresholds.earth
+            || thresholds.water < self.thresholds.water
+        {
+            return Ok(false);
+        }
 
-        match self {
-            CostType::VariableManaCost => Ok(resources.mana > 0),
-            CostType::ManaCost(mc) => Ok(resources.mana >= *mc),
-            CostType::Thresholds(tc) => Ok(thresholds.fire >= tc.fire
-                && thresholds.air >= tc.air
-                && thresholds.earth >= tc.earth
-                && thresholds.water >= tc.water),
-            CostType::Additional(additional_costs) => {
-                let mut snapshot = state.clone();
-                for ac in additional_costs {
-                    let ac = ac.clone();
-                    let mut query = ac.card;
-                    match ac.action {
-                        CostAction::Tap => {
-                            query = query
-                                .untapped()
-                                .without_status(CardStatus::SummoningSickness)
-                        }
-                        CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => query = query.in_play(),
-                        CostAction::Surface => {
-                            let mut subsurface_zones = Location::all_in_region(Region::Underwater);
-                            subsurface_zones.extend(Location::all_in_region(Region::Underground));
-                            query = query.in_locations(&subsurface_zones)
-                        }
-                    }
-
-                    let options = query.all(&snapshot);
-                    if options.is_empty() {
-                        return Ok(false);
-                    }
-
-                    let card_id = options
-                        .first()
-                        .expect("options to have at least one element");
-                    match ac.action {
-                        CostAction::Tap => snapshot.get_card_mut(card_id).set_tapped(true),
-                        CostAction::Discard => {
-                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
-                        }
-                        CostAction::Sacrifice => {
-                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
-                        }
-                        CostAction::Surface => {
-                            snapshot.get_card_mut(card_id).set_region(Region::Surface)
-                        }
-                    }
+        let mut snapshot = state.clone();
+        for ac in &self.additional {
+            let ac = ac.clone();
+            let mut query = ac.card;
+            match ac.action {
+                CostAction::Tap => {
+                    query = query
+                        .untapped()
+                        .without_status(CardStatus::SummoningSickness)
                 }
+                CostAction::Discard => query = query.in_zone(&Zone::Hand),
+                CostAction::Sacrifice => query = query.in_play(),
+                CostAction::Surface => {
+                    let mut subsurface_zones = Location::all_in_region(Region::Underwater);
+                    subsurface_zones.extend(Location::all_in_region(Region::Underground));
+                    query = query.in_locations(&subsurface_zones)
+                }
+            }
 
-                Ok(true)
+            let options = query.all(&snapshot);
+            if options.is_empty() {
+                return Ok(false);
+            }
+
+            let card_id = options.first().expect("options to have at least one element");
+            match ac.action {
+                CostAction::Tap => snapshot.get_card_mut(card_id).set_tapped(true),
+                CostAction::Discard => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
+                CostAction::Sacrifice => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
+                CostAction::Surface => snapshot.get_card_mut(card_id).set_region(Region::Surface),
             }
         }
+
+        Ok(true)
     }
 }
 
-// Costs represents the different ways a card or ability can be paid for. It is represented as a vec
-// of Cost, where each Cost is a different way to pay for the card, and the player can choose which
-// one to pay when playing the card.
 #[derive(Debug, Clone, Default)]
-pub struct Costs(Vec<Cost>);
+pub struct CostOptions {
+    pub printed: PrintedCost,
+    pub primary: PayableCost,
+    pub alternatives: Vec<PayableCost>,
+}
 
-impl Costs {
-    pub const ZERO: Costs = Costs(vec![]);
+pub type Costs = CostOptions;
 
-    pub fn single(cost: Cost) -> Self {
-        Self(vec![cost])
+impl CostOptions {
+    pub const ZERO: CostOptions = CostOptions {
+        printed: PrintedCost::ZERO,
+        primary: PayableCost {
+            mana: ManaCost::Fixed(0),
+            thresholds: Thresholds::ZERO,
+            additional: vec![],
+        },
+        alternatives: vec![],
+    };
+
+    pub fn single(cost: PayableCost) -> Self {
+        Self {
+            printed: PrintedCost {
+                mana: cost.mana.clone(),
+                thresholds: cost.thresholds.clone(),
+            },
+            primary: cost,
+            alternatives: vec![],
+        }
     }
 
     pub fn mana_only(mana: u8) -> Self {
-        Self(vec![Cost::mana_only(mana)])
+        Self::basic(mana, Thresholds::ZERO)
     }
 
     pub fn basic(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
-        Self(vec![Cost::new(mana, thresholds)])
+        let thresholds = thresholds.into();
+        Self {
+            printed: PrintedCost::new(mana, thresholds.clone()),
+            primary: PayableCost::new(mana, thresholds),
+            alternatives: vec![],
+        }
     }
 
     pub fn threshold_only(thresholds: impl Into<Thresholds>) -> Self {
-        Self(vec![Cost::new(0, thresholds)])
+        Self::basic(0, thresholds)
     }
 
-    pub fn multi(costs: Vec<Cost>) -> Self {
-        Self(costs)
-    }
-
-    pub fn mana_cost(&self) -> &Cost {
-        if self.0.is_empty() {
-            return Cost::ZERO;
+    pub fn variable(thresholds: impl Into<Thresholds>) -> Self {
+        let thresholds = thresholds.into();
+        Self {
+            printed: PrintedCost::variable(thresholds.clone()),
+            primary: PayableCost::from_variable_mana(thresholds),
+            alternatives: vec![],
         }
-
-        for cost in &self.0 {
-            for cost_type in &cost.0 {
-                if let CostType::ManaCost(_) = cost_type {
-                    return cost;
-                }
-            }
-        }
-
-        Cost::ZERO
     }
 
-    pub fn mana_value(&self) -> u8 {
-        if self.0.is_empty() {
-            return 0;
-        }
+    pub fn multi(costs: Vec<PayableCost>) -> Self {
+        let mut costs = costs.into_iter();
+        let Some(primary) = costs.next() else {
+            return Self::ZERO;
+        };
 
-        for cost in &self.0 {
-            for cost_type in &cost.0 {
-                if let CostType::ManaCost(mc) = cost_type {
-                    return *mc;
-                }
-            }
-        }
-
-        0
+        Self::single(primary).with_alternatives(costs.collect())
     }
 
-    pub fn thresholds_cost(&self) -> &Thresholds {
-        if self.0.is_empty() {
-            return &Thresholds::ZERO;
-        }
-
-        for cost in &self.0 {
-            for cost_type in &cost.0 {
-                if let CostType::Thresholds(tc) = cost_type {
-                    return tc;
-                }
-            }
-        }
-
-        &Thresholds::ZERO
+    pub fn payable_options(&self) -> Vec<PayableCost> {
+        let mut options = vec![self.primary.clone()];
+        options.extend(self.alternatives.clone());
+        options
     }
 
-    pub fn with_alternative(mut self, alternative_cost: Cost) -> Self {
-        self.0.push(alternative_cost);
-        Self(self.0)
+    pub fn printed_mana_cost(&self) -> &ManaCost {
+        &self.printed.mana
     }
 
-    /// Returns a new `Costs` with every mana component adjusted by `diff`, clamped to 0.
-    pub fn with_mana_adjusted(&self, diff: i8) -> Self {
-        Self(self.0.iter().map(|c| c.with_mana_adjusted(diff)).collect())
+    pub fn printed_mana_value(&self) -> Option<u8> {
+        self.printed.mana.fixed_value()
     }
 
-    /// Returns a new `Costs` with every mana component adjusted by `diff`, clamped to 0.
-    pub fn with_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
-        Self(
-            self.0
+    pub fn printed_thresholds(&self) -> &Thresholds {
+        &self.printed.thresholds
+    }
+
+    pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
+        self.primary.additional.push(additional);
+        self
+    }
+
+    pub fn with_alternative(mut self, alternative_cost: PayableCost) -> Self {
+        self.alternatives.push(alternative_cost);
+        self
+    }
+
+    pub fn with_alternatives(mut self, alternatives: Vec<PayableCost>) -> Self {
+        self.alternatives.extend(alternatives);
+        self
+    }
+
+    pub fn with_payable_mana_adjusted(&self, diff: i8) -> Self {
+        Self {
+            primary: self.primary.with_mana_adjusted(diff),
+            alternatives: self
+                .alternatives
                 .iter()
-                .map(|c| c.with_thresholds_adjusted(diff.clone()))
+                .map(|cost| cost.with_mana_adjusted(diff))
                 .collect(),
-        )
+            ..self.clone()
+        }
     }
 
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
-        match self.0.len() {
-            0 => Ok(Cost::ZERO.clone()),
-            1 => {
-                let cost = self.0.first().expect("costs to have one item");
-                Box::pin(cost.pay(state, player_id)).await
-            }
+    pub fn with_payable_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
+        Self {
+            primary: self.primary.with_thresholds_adjusted(diff.clone()),
+            alternatives: self
+                .alternatives
+                .iter()
+                .map(|cost| cost.with_thresholds_adjusted(diff.clone()))
+                .collect(),
+            ..self.clone()
+        }
+    }
+
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<PayableCost> {
+        let payable_options = self.payable_options();
+        match payable_options.len() {
+            0 => Ok(PayableCost::ZERO.clone()),
+            1 => Box::pin(payable_options[0].pay(state, player_id)).await,
             _ => {
-                let affordable_costs = self
-                    .0
+                let affordable_costs = payable_options
                     .iter()
                     .filter(|c| c.can_afford(state, player_id).unwrap_or(false))
                     .cloned()
@@ -543,158 +722,13 @@ impl Costs {
         state: &State,
         player_id: impl AsRef<PlayerId>,
     ) -> anyhow::Result<bool> {
-        if self.0.is_empty() {
-            return Ok(true);
-        }
-
-        for cost in &self.0 {
+        for cost in self.payable_options() {
             if cost.can_afford(state, player_id.as_ref())? {
                 return Ok(true);
             }
         }
 
         Ok(false)
-    }
-}
-
-// Cost represents the cost to play a card or activate an ability. It is represented as a vec of
-// vecs of CostType, where each CostType is a different type of cost (e.g: mana, threshold,
-// additional costs) and all of them must be paid together.
-#[derive(Debug, Clone, Default)]
-pub struct Cost(Vec<CostType>);
-
-impl IntoIterator for Cost {
-    type Item = CostType;
-    type IntoIter = std::vec::IntoIter<CostType>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-impl Cost {
-    pub const ZERO: &'static Cost = &Cost(vec![]);
-
-    pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
-        let mut basic_cost = vec![];
-        if mana > 0 {
-            basic_cost.push(CostType::ManaCost(mana));
-        }
-
-        let thresholds = thresholds.into();
-        if thresholds != Thresholds::ZERO {
-            basic_cost.push(CostType::Thresholds(thresholds));
-        }
-
-        Self(basic_cost)
-    }
-
-    pub fn from_variable_mana(thresholds: impl Into<Thresholds>) -> Self {
-        let mut basic_cost = vec![CostType::VariableManaCost];
-        let thresholds = thresholds.into();
-        if thresholds != Thresholds::ZERO {
-            basic_cost.push(CostType::Thresholds(thresholds));
-        }
-
-        Self(basic_cost)
-    }
-
-    pub fn mana_only(mana: u8) -> Self {
-        Self::new(mana, Thresholds::ZERO)
-    }
-
-    pub fn thresholds_only(thresholds: impl Into<Thresholds>) -> Self {
-        Self::new(0, thresholds)
-    }
-
-    pub fn additional_only(additional: AdditionalCost) -> Self {
-        Self(vec![CostType::Additional(vec![additional])])
-    }
-
-    pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
-        for cost_type in &mut self.0 {
-            if let CostType::Additional(additional_costs) = cost_type {
-                additional_costs.push(additional);
-                return Self(self.0);
-            }
-        }
-        self.0.push(CostType::Additional(vec![additional]));
-        Self(self.0)
-    }
-
-    pub fn get_label(&self) -> String {
-        let mut parts = vec![];
-        for cost_type in &self.0 {
-            match cost_type {
-                CostType::VariableManaCost => parts.push("X Mana".to_string()),
-                CostType::ManaCost(mc) => parts.push(format!("{} Mana", mc)),
-                CostType::Thresholds(tc) => parts.push(format!("Thresholds: {:?}", tc)),
-                CostType::Additional(additional) => {
-                    for add in additional {
-                        match add.action {
-                            CostAction::Tap => parts.push("Tap card".to_string()),
-                            CostAction::Discard => parts.push("Discard card".to_string()),
-                            CostAction::Sacrifice => parts.push("Sacrifice card".to_string()),
-                            CostAction::Surface => parts.push("Put card on Surface".to_string()),
-                        }
-                    }
-                }
-            }
-        }
-
-        parts.join(" + ")
-    }
-
-    /// Returns a copy of this `Cost` with every `Threshold` adjusted by `diff`, clamped to 0.
-    pub fn with_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
-        Self(
-            self.0
-                .iter()
-                .map(|ct| match ct {
-                    CostType::Thresholds(t) => CostType::Thresholds(t + &diff),
-                    other => other.clone(),
-                })
-                .collect(),
-        )
-    }
-
-    /// Returns a copy of this `Cost` with every `ManaCost` adjusted by `diff`, clamped to 0.
-    pub fn with_mana_adjusted(&self, diff: i8) -> Self {
-        Self(
-            self.0
-                .iter()
-                .map(|ct| match ct {
-                    CostType::ManaCost(mc) => {
-                        CostType::ManaCost(((*mc as i16) + (diff as i16)).max(0) as u8)
-                    }
-                    other => other.clone(),
-                })
-                .collect(),
-        )
-    }
-
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
-        let mut paid_cost = Cost(vec![]);
-        for cost_type in &self.0 {
-            let paid = cost_type.pay(state, player_id).await?;
-            paid_cost.0.push(paid);
-        }
-
-        Ok(paid_cost)
-    }
-
-    pub fn can_afford(
-        &self,
-        state: &State,
-        player_id: impl AsRef<PlayerId>,
-    ) -> anyhow::Result<bool> {
-        for cost_type in &self.0 {
-            if !cost_type.can_afford(state, player_id.as_ref())? {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
     }
 }
 
@@ -1326,7 +1360,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .provided_thresholds
                 .clone()
         } else {
-            self.get_costs(state)?.thresholds_cost().clone()
+            self.get_costs(state)?.printed_thresholds().clone()
         };
 
         let mut elements = Vec::new();

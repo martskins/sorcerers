@@ -150,7 +150,7 @@ impl Card for Enchantress {
                 )
                 .await?;
                 let aura = state.get_card(&aura_id);
-                let power = aura.get_costs(state)?.mana_value() as u16;
+                let power = aura.get_costs(state)?.printed_mana_value().unwrap_or_default() as u16;
 
                 Ok(vec![Effect::Animate {
                     card_id: aura_id,

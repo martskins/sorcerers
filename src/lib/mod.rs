@@ -23,8 +23,8 @@ pub(crate) mod prelude {
     pub use crate::card::{
         Ability, AdditionalCost, Artifact, ArtifactBase, ArtifactType, Aura, AuraBase, Avatar,
         AvatarBase, Card, CardBase, CardBaseMethods, CardConstructor, CardStatus, CardType, Cost,
-        CostType, Costs, DEATHRITE_HOOK_ID, Damage, Edition, GENESIS_HOOK_ID, Hook, HookId,
-        HookSourceZones, HookTiming, Magic, MinionType, Rarity, Region, ResourceProvider,
+        Costs, DEATHRITE_HOOK_ID, Damage, Edition, GENESIS_HOOK_ID, Hook, HookId, HookSourceZones,
+        HookTiming, Magic, MinionType, Rarity, Region, ResourceProvider,
         ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
     };
     pub use crate::effect::{

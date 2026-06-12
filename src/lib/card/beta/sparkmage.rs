@@ -56,7 +56,7 @@ impl ActivatedAbility for DealDamageAction {
                         .get_costs(state)
                         .cloned()
                         .unwrap_or_default()
-                        .thresholds_cost()
+                        .printed_thresholds()
                         .element(&Element::Air)
                 }
                 Effect::PlayCard {
@@ -69,7 +69,7 @@ impl ActivatedAbility for DealDamageAction {
                         .get_costs(state)
                         .cloned()
                         .unwrap_or_default()
-                        .thresholds_cost()
+                        .printed_thresholds()
                         .element(&Element::Air)
                 }
                 _ => acc,
