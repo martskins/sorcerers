@@ -92,10 +92,8 @@ impl Card for HeadlessHaunt {
                 Ok(vec![Effect::MoveCard {
                     player_id: *self.get_owner_id(),
                     card_id: *self.get_id(),
-                    from: (self.get_zone().clone())
-                        .into_location()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::random(Zone::all_in_surface()),
+                    from: self.get_location().clone(),
+                    to: LocationQuery::random(Location::all_in_region(Region::Surface)),
                     tap: false,
                     through_path: None,
                 }])

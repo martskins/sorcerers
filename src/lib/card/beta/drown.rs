@@ -60,7 +60,7 @@ impl Magic for Drown {
         let controller_id = self.get_controller_id(state);
         let Some(picked_card_id) = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_zones(&Zone::all_in_surface())
+            .in_locations(&Location::all_in_region(Region::Surface))
             .with_prompt("Pick a minion or artifact to submerge")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

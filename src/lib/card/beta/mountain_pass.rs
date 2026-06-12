@@ -40,7 +40,7 @@ impl Site for MountainPass {
     fn can_be_entered_by(
         &self,
         card_id: &CardId,
-        _from: &Zone,
+        _from: &Location,
         region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {

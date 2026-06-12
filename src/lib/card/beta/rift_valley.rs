@@ -109,13 +109,13 @@ impl Card for RiftValley {
             .filter_map(|card_id| state.get_card(&card_id).get_zone().get_square())
             .collect::<Vec<_>>();
 
-        let rift_valley_zones = Zone::all_in_surface()
+        let rift_valley_zones = Location::all_in_region(Region::Surface)
             .into_iter()
-            .filter(|zone| zone.get_site(state).is_none())
-            .filter_map(|zone| {
-                let square = zone.get_square()?;
+            .filter(|location| location.get_site(state).is_none())
+            .filter_map(|location| {
+                let square = location.get_square()?;
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(&zone), player_id)
+                    .get_effective_costs(self.get_id(), Some(&location), player_id)
                     .ok()?;
                 if !costs.can_afford(state, player_id).unwrap_or_default() {
                     return None;
@@ -130,10 +130,7 @@ impl Card for RiftValley {
                         .iter()
                         .any(|controlled_square| Self::same_column(square, *controlled_square));
 
-                (can_pull_apart_row || can_pull_apart_column).then_some(
-                    zone.into_location()
-                        .expect("Rift Valley play location must be a location"),
-                )
+                (can_pull_apart_row || can_pull_apart_column).then_some(location)
             });
 
         valid_zones.extend(rift_valley_zones);

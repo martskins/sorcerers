@@ -227,19 +227,14 @@ impl<'a> PreparedCardQuery<'a> {
                         let board_flipped = *normalise_for_owner
                             && card.get_controller_id(state) != state.player_one;
                         let mut zones = vec![card.get_zone().clone()];
-                        if let Some(location) = card
-                            .get_zone()
-                            .location()
-                            .and_then(|location| {
-                                location
-                                    .steps_in_direction(
-                                        &direction.normalise(board_flipped),
-                                        *steps,
-                                        state,
-                                        Some(card_id),
-                                    )
-                            })
-                        {
+                        if let Some(location) = card.get_zone().location().and_then(|location| {
+                            location.steps_in_direction(
+                                &direction.normalise(board_flipped),
+                                *steps,
+                                state,
+                                Some(card_id),
+                            )
+                        }) {
                             zones.push(Zone::Location(location));
                         }
                         zones
@@ -888,7 +883,7 @@ impl CardQuery {
 
     pub fn in_play(self) -> Self {
         Self {
-            in_zones: Some(Zone::all_board()),
+            in_zones: Some(Location::all().into_iter().map(|l| l.into()).collect()),
             include_not_in_play: Some(false),
             ..self
         }

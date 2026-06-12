@@ -59,7 +59,7 @@ impl Magic for RainOfArrows {
     ) -> anyhow::Result<Vec<Effect>> {
         let effects = CardQuery::new()
             .minions()
-            .in_zones(&Zone::all_in_surface())
+            .in_locations(&Location::all_in_region(Region::Surface))
             .all(state)
             .into_iter()
             .map(|minion_id| Effect::TakeDamage {

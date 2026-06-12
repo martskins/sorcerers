@@ -1,4 +1,4 @@
-use crate::{card::zones_cross_border, prelude::*};
+use crate::{card::locations_cross_border, prelude::*};
 
 const MOVE_THROUGH_HERE_HOOK: HookId = 1;
 
@@ -125,9 +125,7 @@ impl Card for WallOfFire {
                 }
 
                 if !path.windows(2).any(|step| {
-                    let from = Zone::from(&step[0]);
-                    let to = Zone::from(&step[1]);
-                    zones_cross_border(&from, &to, self.get_zone())
+                    locations_cross_border(&step[0], &step[1], self.get_location())
                 }) {
                     return Ok(vec![]);
                 }

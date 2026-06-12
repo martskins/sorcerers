@@ -38,10 +38,10 @@ fn setup_carrying_state_with_client() -> (
     let avatar_two = Enchantress::new(player_two_id);
     let avatar_two_id = *avatar_two.get_id();
 
-    let zones = Zone::all_realm();
-    let mut p1_cards: Vec<Box<dyn Card>> = zones
+    let locations = Location::all_in_region(Region::Surface);
+    let mut p1_cards: Vec<Box<dyn Card>> = locations
         .iter()
-        .map(|z| from_name_and_zone(AridDesert::NAME, &player_one_id, z.clone()))
+        .map(|l| from_name_and_zone(AridDesert::NAME, &player_one_id, l.clone().into()))
         .collect();
     p1_cards.push(Box::new(avatar_one));
 
@@ -1152,7 +1152,7 @@ async fn test_get_effective_costs_donnybrook_inn() {
     let inn_costs = state
         .get_effective_costs(
             cauldron_crones.get_id(),
-            Some(donnybrook_inn.get_zone()),
+            Some(donnybrook_inn.get_location()),
             &player_id,
         )
         .unwrap();
@@ -1729,14 +1729,14 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
             .has_status(&state, &CardStatus::Disabled)
     );
 
-    let target_zone = Zone::Location(Location::Square(8, Region::Surface));
-    let new_source_zone = Zone::all_realm()
+    let target_zone = Location::Square(8, Region::Surface);
+    let new_source_location = Location::all_in_region(Region::Surface)
         .into_iter()
         .find(|zone| zone != &target_zone && !zone.get_nearby_sites(&state).contains(&target_zone))
         .expect("a non-nearby source zone should exist");
     Effect::SetCardZone {
         card_id: source_id,
-        zone: new_source_zone,
+        zone: new_source_location.clone().into(),
     }
     .apply(&mut state)
     .await

@@ -55,10 +55,9 @@ impl Magic for StarSeedsOfUhr {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = state.get_card(caster_id).get_controller_id(state);
-        let mut locations: Vec<Location> = Zone::all_realm()
+        let mut locations: Vec<Location> = Location::all_in_region(Region::Void)
             .into_iter()
-            .filter(|zone| zone.get_site(state).is_none())
-            .filter_map(Zone::into_location)
+            .filter(|loc| loc.get_site(state).is_none())
             .collect();
         if locations.is_empty()
             || !yes_or_no_source(

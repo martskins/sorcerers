@@ -605,9 +605,11 @@ fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
 
     assert!(locations.contains(&Location::Square(1, Region::Underground)));
     assert!(!locations.contains(&Location::Square(2, Region::Underground)));
-    assert!(locations
-        .iter()
-        .all(|location| matches!(location, Location::Square(_, Region::Underground))));
+    assert!(
+        locations
+            .iter()
+            .all(|location| matches!(location, Location::Square(_, Region::Underground)))
+    );
 }
 
 #[test]
@@ -671,26 +673,23 @@ fn test_auras_can_only_be_played_surface_or_void() {
     state.cards.insert(card_id, Box::new(card));
 
     assert!(
-        Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface))
-            .is_valid_play_zone_for(&state, &card_id, &player_id)
+        Location::Intersection(vec![1, 2, 6, 7], Region::Surface)
+            .is_valid_play_location_for(&state, &card_id, &player_id)
             .expect("surface intersection should validate")
     );
     assert!(
-        Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Void))
-            .is_valid_play_zone_for(&state, &card_id, &player_id)
+        Location::Intersection(vec![1, 2, 6, 7], Region::Void)
+            .is_valid_play_location_for(&state, &card_id, &player_id)
             .expect("void intersection should validate")
     );
     assert!(
-        !Zone::Location(Location::Intersection(
-            vec![1, 2, 6, 7],
-            Region::Underground
-        ))
-        .is_valid_play_zone_for(&state, &card_id, &player_id)
-        .expect("underground intersection should validate")
+        !Location::Intersection(vec![1, 2, 6, 7], Region::Underground)
+            .is_valid_play_location_for(&state, &card_id, &player_id)
+            .expect("underground intersection should validate")
     );
     assert!(
-        !Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Underwater))
-            .is_valid_play_zone_for(&state, &card_id, &player_id)
+        !Location::Intersection(vec![1, 2, 6, 7], Region::Underwater)
+            .is_valid_play_location_for(&state, &card_id, &player_id)
             .expect("underwater intersection should validate")
     );
 }

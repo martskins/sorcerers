@@ -131,18 +131,17 @@ impl Card for WindSylph {
                     else {
                         continue;
                     };
-                    let zone = Zone::from(&location);
 
-                    let can_enter = match zone.get_site(state) {
+                    let can_enter = match location.get_site(state) {
                         Some(site) => site.can_be_entered_by(
                             &unit_id,
-                            unit.get_zone(),
+                            unit.get_location(),
                             unit.get_region(state),
                             state,
                         )?,
                         None => {
                             unit.has_ability(state, &Ability::Voidwalk)
-                                && zone.can_be_entered_by(state, &unit_id)?
+                                && location.can_be_entered_by(state, &unit_id)?
                         }
                     };
 

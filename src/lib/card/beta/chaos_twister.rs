@@ -81,8 +81,8 @@ impl Magic for ChaosTwister {
         let from_zone = target.get_zone().clone();
         let region = target.get_region(state).clone();
 
-        let all_realm = Zone::all_realm();
-        let landing_zone = all_realm
+        let all_surfaces = Location::all_in_region(Region::Surface);
+        let landing_zone = all_surfaces
             .choose(&mut rand::rng())
             .expect("choose to yield one result");
         let mut effects = vec![Effect::MoveCard {

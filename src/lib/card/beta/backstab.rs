@@ -61,7 +61,7 @@ impl Magic for Backstab {
         let caster_region = state.get_card(caster_id).get_region(state).clone();
         let Some(striker_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
-            .in_zones(&Zone::all_in_region(caster_region))
+            .in_locations(&Location::all_in_region(caster_region))
             .with_prompt("Pick a minion to move")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

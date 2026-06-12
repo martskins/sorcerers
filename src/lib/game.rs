@@ -1750,9 +1750,8 @@ impl Game {
                 card.get_valid_play_locations(&self.state, &acting_player, &avatar_id)?
                     .into_iter()
                     .filter(|location| {
-                        let zone = Zone::from(location);
                         self.state
-                            .get_effective_costs(card_id, Some(&zone), &acting_player)
+                            .get_effective_costs(card_id, Some(location), &acting_player)
                             .and_then(|cost| cost.can_afford(&self.state, acting_player))
                             .unwrap_or(false)
                     })

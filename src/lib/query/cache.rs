@@ -1,6 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
+    card::Region,
     game::{CardId, PlayerId, pick_location_source},
     query::ZoneQuery,
     state::State,
@@ -151,11 +152,7 @@ impl QueryCache {
             Zone::Location(
                 pick_location_source(
                     player_id,
-                    &Zone::all_realm()
-                        .iter()
-                        .filter_map(Zone::location)
-                        .cloned()
-                        .collect::<Vec<_>>(),
+                    &Location::all_in_region(Region::Surface),
                     state,
                     false,
                     qry.prompt(),

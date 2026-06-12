@@ -55,6 +55,24 @@ impl Location {
         self.square()
     }
 
+    pub fn can_be_entered_by(&self, state: &State, card_id: &CardId) -> anyhow::Result<bool> {
+        let mut can_enter = true;
+        for ce in state.active_continuous_effects() {
+            match ce {
+                OngoingEffect::MakeZoneUnvisitable {
+                    location,
+                    affected_cards,
+                } if location == self && affected_cards.matches(card_id, state) => {
+                    can_enter = false;
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        Ok(can_enter)
+    }
+
     pub fn square_after_steps_in_direction(
         square: u8,
         direction: &Direction,
@@ -155,10 +173,35 @@ impl Location {
         })
     }
 
+    pub fn all() -> Vec<Location> {
+        let mut all = Location::all_in_region(Region::Surface);
+        all.extend(Location::all_in_region(Region::Underground));
+        all.extend(Location::all_in_region(Region::Underwater));
+        all.extend(Location::all_in_region(Region::Void));
+        all
+    }
+
     pub fn all_in_region(region: Region) -> Vec<Location> {
         (1..=20)
             .map(|sq| Location::Square(sq, region.clone()))
             .collect()
+    }
+
+    pub fn all_intersections() -> Vec<Location> {
+        vec![
+            Location::Intersection(vec![1, 2, 6, 7], Region::Surface),
+            Location::Intersection(vec![2, 3, 7, 8], Region::Surface),
+            Location::Intersection(vec![3, 4, 8, 9], Region::Surface),
+            Location::Intersection(vec![4, 5, 9, 10], Region::Surface),
+            Location::Intersection(vec![6, 7, 11, 12], Region::Surface),
+            Location::Intersection(vec![7, 8, 12, 13], Region::Surface),
+            Location::Intersection(vec![8, 9, 13, 14], Region::Surface),
+            Location::Intersection(vec![9, 10, 14, 15], Region::Surface),
+            Location::Intersection(vec![11, 12, 16, 17], Region::Surface),
+            Location::Intersection(vec![12, 13, 17, 18], Region::Surface),
+            Location::Intersection(vec![13, 14, 18, 19], Region::Surface),
+            Location::Intersection(vec![14, 15, 19, 20], Region::Surface),
+        ]
     }
 
     pub fn with_region(&self, region: Region) -> Self {
@@ -344,7 +387,13 @@ impl Location {
     ) -> Option<Self> {
         match self {
             Location::Square(square, region) => Some(Location::Square(
-                Self::square_after_steps_in_direction(*square, direction, 1, state, source_card_id)?,
+                Self::square_after_steps_in_direction(
+                    *square,
+                    direction,
+                    1,
+                    state,
+                    source_card_id,
+                )?,
                 region.clone(),
             )),
             Location::Intersection(locs, region) => {
@@ -377,6 +426,136 @@ impl Location {
         }
     }
 
+    pub fn occupied_regions(&self, state: &State) -> Vec<Region> {
+        match self {
+            Location::Square(square, region) => {
+                vec![Self::occupied_square_region(*square, region, state)]
+            }
+            Location::Intersection(squares, region) => {
+                let mut regions = squares
+                    .iter()
+                    .map(|square| Self::occupied_square_region(*square, region, state))
+                    .collect::<Vec<_>>();
+                regions.sort();
+                regions.dedup();
+                regions
+            }
+        }
+    }
+
+    fn occupied_square_region(square: u8, region: &Region, state: &State) -> Region {
+        let location = Location::Square(square, region.clone());
+        let Some(site) = location.get_site_at_square(state) else {
+            return Region::Void;
+        };
+
+        match region {
+            Region::Void | Region::Surface => Region::Surface,
+            Region::Underground | Region::Underwater => {
+                if site.is_water_site(state).unwrap_or_default() {
+                    Region::Underwater
+                } else {
+                    Region::Underground
+                }
+            }
+        }
+    }
+
+    pub fn is_valid_play_location_for(
+        &self,
+        state: &State,
+        card_id: &CardId,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<bool> {
+        let should_override = state
+            .active_continuous_effects()
+            .into_iter()
+            .filter(|e| match e {
+                OngoingEffect::OverrideValidPlayZone {
+                    affected_locations,
+                    affected_cards,
+                    ..
+                } => {
+                    affected_locations.options(state).contains(self)
+                        && affected_cards.matches(card_id, state)
+                }
+                _ => false,
+            })
+            .count()
+            > 0;
+        if should_override {
+            return Ok(true);
+        }
+
+        match self {
+            Location::Square(_, _) => {
+                let card = state.get_card(card_id);
+                // Auras should be played on intersections unless otherwise stated.
+                if card.get_card_type() == CardType::Aura {
+                    return Ok(false);
+                }
+
+                let site_in_zone = self.get_site(state);
+                if let Some(site) = site_in_zone {
+                    return site.is_valid_play_site_for(state, card_id, player_id);
+                }
+
+                // If there's no site in the zone, only cards with Voidwalk can be played there.
+                match card.get_card_type() {
+                    CardType::Site => {
+                        let has_played_site = !CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(player_id)
+                            .all(state)
+                            .is_empty();
+                        if !has_played_site {
+                            let avatar_id = state.get_player_avatar_id(player_id)?;
+                            let avatar = state.get_card(&avatar_id);
+                            return Ok(avatar.get_location() == self);
+                        }
+
+                        let empty_adjacent_zones: Vec<Location> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(player_id)
+                            .not_named(Rubble::NAME.to_string())
+                            .all(state)
+                            .into_iter()
+                            .map(|cid| state.get_card(&cid).get_location())
+                            .flat_map(|l| l.get_adjacent())
+                            .filter(|l| l.get_site(state).is_none())
+                            .collect();
+
+                        Ok(empty_adjacent_zones.contains(self))
+                    }
+                    _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
+                }
+            }
+            Location::Intersection(sqs, region) => {
+                let card = state.get_card(card_id);
+                match card.get_card_type() {
+                    CardType::Minion => {
+                        if !card.is_oversized(state) {
+                            return Ok(false);
+                        }
+
+                        let site_squares: Vec<u8> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(player_id)
+                            .all(state)
+                            .into_iter()
+                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
+                            .collect();
+                        Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
+                    }
+                    CardType::Aura => Ok(matches!(region, Region::Surface | Region::Void)),
+                    _ => Ok(false),
+                }
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for Location {
@@ -447,176 +626,11 @@ impl Zone {
         }
     }
 
-    pub fn squares(&self) -> Vec<u8> {
-        match self {
-            Zone::Location(Location::Square(square, _)) => vec![*square],
-            Zone::Location(Location::Intersection(squares, _)) => squares.clone(),
-            _ => vec![],
-        }
-    }
-
-    pub fn occupied_regions(&self, state: &State) -> Vec<Region> {
-        match self {
-            Zone::Location(Location::Square(square, region)) => {
-                vec![Self::occupied_square_region(*square, region, state)]
-            }
-            Zone::Location(Location::Intersection(squares, region)) => {
-                let mut regions = squares
-                    .iter()
-                    .map(|square| Self::occupied_square_region(*square, region, state))
-                    .collect::<Vec<_>>();
-                regions.sort();
-                regions.dedup();
-                regions
-            }
-            _ => vec![],
-        }
-    }
-
-    fn occupied_square_region(square: u8, region: &Region, state: &State) -> Region {
-        let zone = Zone::Location(Location::Square(square, region.clone()));
-        let Some(site) = zone.get_site_at_square(state) else {
-            return Region::Void;
-        };
-
-        match region {
-            Region::Void | Region::Surface => Region::Surface,
-            Region::Underground | Region::Underwater => {
-                if site.is_water_site(state).unwrap_or_default() {
-                    Region::Underwater
-                } else {
-                    Region::Underground
-                }
-            }
-        }
-    }
-
     pub fn is_in_play(&self) -> bool {
         matches!(
             self,
             Zone::Location(Location::Square(_, _)) | Zone::Location(Location::Intersection(_, _))
         )
-    }
-
-    pub fn can_be_entered_by(&self, state: &State, card_id: &CardId) -> anyhow::Result<bool> {
-        let mut can_enter = true;
-        for ce in state.active_continuous_effects() {
-            match ce {
-                OngoingEffect::MakeZoneUnvisitable {
-                    location,
-                    affected_cards,
-                } if location == self.location().unwrap()
-                    && affected_cards.matches(card_id, state) =>
-                {
-                    can_enter = false;
-                    break;
-                }
-                _ => {}
-            }
-        }
-
-        Ok(can_enter)
-    }
-
-    pub fn is_valid_play_zone_for(
-        &self,
-        state: &State,
-        card_id: &CardId,
-        player_id: &PlayerId,
-    ) -> anyhow::Result<bool> {
-        if !self.is_in_play() {
-            return Ok(false);
-        }
-
-        let should_override = state
-            .active_continuous_effects()
-            .into_iter()
-            .filter(|e| match e {
-                OngoingEffect::OverrideValidPlayZone {
-                    affected_locations,
-                    affected_cards,
-                    ..
-                } => self.location().is_some_and(|location| {
-                    affected_locations.options(state).contains(location)
-                        && affected_cards.matches(card_id, state)
-                }),
-                _ => false,
-            })
-            .count()
-            > 0;
-        if should_override {
-            return Ok(true);
-        }
-
-        match self {
-            Zone::Location(Location::Square(_, _)) => {
-                let card = state.get_card(card_id);
-                // Auras should be played on intersections unless otherwise stated.
-                if card.get_card_type() == CardType::Aura {
-                    return Ok(false);
-                }
-
-                let site_in_zone = self.get_site(state);
-                if let Some(site) = site_in_zone {
-                    return site.is_valid_play_site_for(state, card_id, player_id);
-                }
-
-                // If there's no site in the zone, only cards with Voidwalk can be played there.
-                match card.get_card_type() {
-                    CardType::Site => {
-                        let has_played_site = !CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .controlled_by(player_id)
-                            .all(state)
-                            .is_empty();
-                        if !has_played_site {
-                            let avatar_id = state.get_player_avatar_id(player_id)?;
-                            let avatar = state.get_card(&avatar_id);
-                            return Ok(avatar.get_zone() == self);
-                        }
-
-                        let empty_adjacent_zones: Vec<Zone> = CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .controlled_by(player_id)
-                            .not_named(Rubble::NAME.to_string())
-                            .all(state)
-                            .into_iter()
-                            .map(|cid| state.get_card(&cid).get_zone())
-                            .flat_map(|z| z.get_adjacent())
-                            .filter(|z| z.get_site(state).is_none())
-                            .collect();
-
-                        Ok(empty_adjacent_zones.contains(self))
-                    }
-                    _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
-                }
-            }
-            Zone::Location(Location::Intersection(sqs, region)) => {
-                let card = state.get_card(card_id);
-                match card.get_card_type() {
-                    CardType::Minion => {
-                        if !card.is_oversized(state) {
-                            return Ok(false);
-                        }
-
-                        let site_squares: Vec<u8> = CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .controlled_by(player_id)
-                            .all(state)
-                            .into_iter()
-                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
-                            .collect();
-                        Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
-                    }
-                    CardType::Aura => Ok(matches!(region, Region::Surface | Region::Void)),
-                    _ => Ok(false),
-                }
-            }
-            _ => Ok(false),
-        }
     }
 
     pub fn steps_to_zone(&self, other: &Zone) -> Option<u8> {
@@ -671,30 +685,6 @@ impl Zone {
                 Region::Surface,
             )),
         ]
-    }
-
-    pub fn all_in_surface() -> Vec<Zone> {
-        (1..=20)
-            .map(|sq| Zone::Location(Location::Square(sq, Region::Surface)))
-            .collect()
-    }
-
-    pub fn all_in_region(region: Region) -> Vec<Zone> {
-        (1..=20)
-            .map(|sq| Zone::Location(Location::Square(sq, region.clone())))
-            .collect()
-    }
-
-    pub fn all_realm() -> Vec<Zone> {
-        (1..=20)
-            .map(|sq| Zone::Location(Location::Square(sq, Region::Surface)))
-            .collect()
-    }
-
-    pub fn all_board() -> Vec<Zone> {
-        let mut zones = Self::all_realm();
-        zones.extend(Self::all_intersections());
-        zones
     }
 
     pub fn get_square(&self) -> Option<u8> {

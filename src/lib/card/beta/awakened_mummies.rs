@@ -69,27 +69,26 @@ impl Card for AwakenedMummies {
         player_id: &PlayerId,
         _caster_id: &CardId,
     ) -> anyhow::Result<Vec<Location>> {
-        Ok(Zone::all_in_region(Region::Underground)
+        Ok(Location::all_in_region(Region::Underground)
             .into_iter()
-            .filter(|zone| {
+            .filter(|loc| {
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(zone), player_id)
+                    .get_effective_costs(self.get_id(), Some(loc), player_id)
                     .unwrap_or_default();
                 if !costs.can_afford(state, player_id).unwrap_or_default() {
                     return false;
                 }
 
-                if !zone
-                    .is_valid_play_zone_for(state, self.get_id(), player_id)
+                if !loc
+                    .is_valid_play_location_for(state, self.get_id(), player_id)
                     .unwrap_or_default()
                 {
                     return false;
                 }
 
-                zone.get_site(state)
+                loc.get_site(state)
                     .is_some_and(|site| !site.is_water_site(state).unwrap_or_default())
             })
-            .filter_map(Zone::into_location)
             .collect())
     }
 

@@ -1,4 +1,5 @@
 use crate::{
+    card::Region,
     game::{CardId, PlayerId},
     query::QueryCache,
     state::State,
@@ -225,13 +226,20 @@ impl ZoneQuery {
             sites.dedup();
             (sites, self.spatial_filters.as_slice())
         } else if self.voids_only {
-            let all_voids = Zone::all_realm()
+            let all_voids = Location::all_in_region(Region::Surface)
                 .into_iter()
-                .filter(|z| z.get_site(state).is_none())
+                .filter(|l| l.get_site(state).is_none())
+                .map(|l| l.into())
                 .collect();
             (all_voids, self.spatial_filters.as_slice())
         } else {
-            (Zone::all_board(), self.spatial_filters.as_slice())
+            (
+                Location::all_in_region(Region::Surface)
+                    .into_iter()
+                    .map(|l| l.into())
+                    .collect(),
+                self.spatial_filters.as_slice(),
+            )
         };
 
         for filter in filters_to_apply {
@@ -317,9 +325,9 @@ impl LocationQuery {
         }
     }
 
-    pub fn random(options: Vec<Zone>) -> Self {
+    pub fn random(options: Vec<Location>) -> Self {
         Self {
-            zone_query: ZoneQuery::random(options),
+            zone_query: ZoneQuery::random(options.into_iter().map(|l| l.into()).collect()),
         }
     }
 

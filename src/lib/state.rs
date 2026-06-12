@@ -1061,14 +1061,14 @@ impl State {
     /// Returns the effective play costs for a card after applying all matching
     /// `ModifyManaCost` continuous effects.
     ///
-    /// `target_zone` is the zone the card is about to be placed in (e.g. the
-    /// realm zone chosen by the player). Effects whose `zones` filter does not
-    /// include `target_zone` are skipped; effects with `zones: None` are always
+    /// `target_location` is the location the card is about to be placed in.
+    /// Effects whose `zones` filter does not include `target_location` are skipped;
+    /// effects with `zones: None` are always
     /// applied.
     pub fn get_effective_costs(
         &self,
         card_id: &CardId,
-        target_zone: Option<&Zone>,
+        target_location: Option<&Location>,
         player_id: &PlayerId,
     ) -> anyhow::Result<Costs> {
         let card = self.get_card(card_id);
@@ -1088,8 +1088,12 @@ impl State {
                     }
                     let zone_ok = match zones {
                         None => true,
-                        Some(effect_zones) => target_zone
-                            .map(|z| effect_zones.options(self).contains(z))
+                        Some(effect_zones) => target_location
+                            .map(|target_location| {
+                                effect_zones.options(self).iter().any(|zone| {
+                                    zone.location() == Some(target_location)
+                                })
+                            })
                             .unwrap_or_default(),
                     };
                     if zone_ok { Some(mana_diff) } else { None }

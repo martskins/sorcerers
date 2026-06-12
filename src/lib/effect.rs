@@ -44,7 +44,8 @@ fn location_survival_effects_for_zones(
 ) -> Vec<Effect> {
     let mut squares = zones
         .into_iter()
-        .flat_map(|zone| zone.squares())
+        .filter_map(|zone| zone.location().cloned())
+        .flat_map(|location| location.squares())
         .collect::<Vec<_>>();
     squares.sort();
     squares.dedup();
@@ -54,7 +55,7 @@ fn location_survival_effects_for_zones(
         .values()
         .filter(|card| card.get_zone().is_in_play())
         .filter(|card| {
-            card.get_zone()
+            card.get_location()
                 .squares()
                 .into_iter()
                 .any(|square| squares.contains(&square))
@@ -1489,8 +1490,7 @@ impl Effect {
                 location,
                 ..
             } => {
-                let costs =
-                    state.get_effective_costs(card_id, Some(&location.into()), player_id)?;
+                let costs = state.get_effective_costs(card_id, Some(location), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let card = state.get_card(card_id);
                 let is_minion = card.is_minion();

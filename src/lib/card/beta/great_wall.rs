@@ -36,7 +36,7 @@ impl GreatWall {
     fn is_enemy_ground_unit_crossing_top_border(
         &self,
         card_id: &CardId,
-        other_side: &Zone,
+        other_side: &Location,
         region: &Region,
         state: &State,
     ) -> bool {
@@ -52,8 +52,7 @@ impl GreatWall {
 
         self.get_location()
             .step_in_direction(&Direction::Up, state, Some(card_id))
-            .map(Zone::Location)
-            .is_some_and(|top_zone| &top_zone == other_side)
+            .is_some_and(|top_location| &top_location == other_side)
     }
 }
 
@@ -62,7 +61,7 @@ impl Site for GreatWall {
     fn can_be_entered_by(
         &self,
         card_id: &CardId,
-        from: &Zone,
+        from: &Location,
         region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -75,7 +74,7 @@ impl Site for GreatWall {
     fn can_be_exited_by(
         &self,
         card_id: &CardId,
-        to: &Zone,
+        to: &Location,
         region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {

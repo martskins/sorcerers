@@ -282,11 +282,11 @@ impl CostType {
                                 .without_status(CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
+                        CostAction::Sacrifice => query = query.in_play(),
                         CostAction::Surface => {
-                            let mut subsurface_zones = Zone::all_in_region(Region::Underwater);
-                            subsurface_zones.extend(Zone::all_in_region(Region::Underground));
-                            query = query.in_zones(&subsurface_zones)
+                            let mut subsurface_zones = Location::all_in_region(Region::Underwater);
+                            subsurface_zones.extend(Location::all_in_region(Region::Underground));
+                            query = query.in_locations(&subsurface_zones)
                         }
                     }
 
@@ -379,11 +379,11 @@ impl CostType {
                                 .without_status(CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
+                        CostAction::Sacrifice => query = query.in_play(),
                         CostAction::Surface => {
-                            let mut subsurface_zones = Zone::all_in_region(Region::Underwater);
-                            subsurface_zones.extend(Zone::all_in_region(Region::Underground));
-                            query = query.in_zones(&subsurface_zones)
+                            let mut subsurface_zones = Location::all_in_region(Region::Underwater);
+                            subsurface_zones.extend(Location::all_in_region(Region::Underground));
+                            query = query.in_locations(&subsurface_zones)
                         }
                     }
 
@@ -732,8 +732,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         player_id: &PlayerId,
         caster_id: &CardId,
     ) -> anyhow::Result<bool> {
-        // A card is playable if affordable at ANY of its valid target zones
-        // (accounting for zone-specific cost reductions like Donnybrook Inn).
+        // A card is playable if affordable at any of its valid target locations
+        // (accounting for location-specific cost reductions like Donnybrook Inn).
         let card_id = self.get_id();
         let valid_locations = self.get_valid_play_locations(state, player_id, caster_id)?;
         let affordable = if valid_locations.is_empty() {
@@ -742,9 +742,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .can_afford(state, player_id)?
         } else {
             valid_locations.iter().any(|location| {
-                let zone = Zone::from(location);
                 state
-                    .get_effective_costs(card_id, Some(&zone), player_id)
+                    .get_effective_costs(card_id, Some(location), player_id)
                     .and_then(|costs| costs.can_afford(state, player_id))
                     .unwrap_or(false)
             })
@@ -1132,34 +1131,34 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(true);
         }
 
-        let from_zone = Zone::from(from);
-        let to_zone = Zone::from(to);
-
         for ce in state.active_continuous_effects() {
             if let OngoingEffect::BlockMovementThrough {
                 border,
                 affected_cards,
             } = ce
                 && affected_cards.matches(self.get_id(), state)
-                && zones_cross_border(&from_zone, &to_zone, &border.clone().into())
+                && locations_cross_border(from, to, border)
             {
                 return Ok(false);
             }
         }
 
+        let from_zone = Zone::from(from);
+        let to_zone = Zone::from(to);
+
         if let Some(site) = from_zone.get_site(state)
-            && !site.can_be_exited_by(self.get_id(), &to_zone, self.get_region(state), state)?
+            && !site.can_be_exited_by(self.get_id(), to, self.get_region(state), state)?
         {
             return Ok(false);
         }
 
         if let Some(site) = to_zone.get_site(state)
-            && !site.can_be_entered_by(self.get_id(), &from_zone, self.get_region(state), state)?
+            && !site.can_be_entered_by(self.get_id(), from, self.get_region(state), state)?
         {
             return Ok(false);
         }
 
-        to_zone.can_be_entered_by(state, self.get_id())
+        to.can_be_entered_by(state, self.get_id())
     }
 
     fn can_move_between_zones(
@@ -1190,7 +1189,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return None;
         }
 
-        let occupied_regions = self.get_zone().occupied_regions(state);
+        let occupied_regions = self.get_location().occupied_regions(state);
         let fails_void = occupied_regions.contains(&Region::Void)
             && !self.has_ability(state, &Ability::Voidwalk);
         if fails_void {
@@ -1443,7 +1442,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|target| {
                 target
                     .get_zone()
-                    .can_be_entered_by(state, self.get_id())
+                    .location()
+                    .map(|location| location.can_be_entered_by(state, self.get_id()))
+                    .transpose()
+                    .unwrap_or_default()
                     .unwrap_or_default()
             })
             .filter(|target| {
@@ -1865,7 +1867,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         }
                     }
                     false => {
-                        let locations = self.get_valid_play_locations(state, player_id, caster_id)?;
+                        let locations =
+                            self.get_valid_play_locations(state, player_id, caster_id)?;
                         let picked_zone = pick_location(
                             player_id,
                             &locations,
@@ -2229,17 +2232,17 @@ pub trait Site: Card + ResourceProvider {
     fn base_can_be_entered_by(
         &self,
         card: &uuid::Uuid,
-        _from: &Zone,
+        _from: &Location,
         _region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {
-        self.get_zone().can_be_entered_by(state, card)
+        self.get_location().can_be_entered_by(state, card)
     }
 
     fn can_be_entered_by(
         &self,
         card: &uuid::Uuid,
-        from: &Zone,
+        from: &Location,
         region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -2249,7 +2252,7 @@ pub trait Site: Card + ResourceProvider {
     fn can_be_exited_by(
         &self,
         _card: &uuid::Uuid,
-        _to: &Zone,
+        _to: &Location,
         _region: &Region,
         _state: &State,
     ) -> anyhow::Result<bool> {
@@ -2664,34 +2667,33 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
-        let mut candidate_zones = Zone::all_board();
+        let mut candidates = Location::all_in_region(Region::Surface);
         if self.has_ability(state, &Ability::Burrowing) {
-            candidate_zones.extend(Zone::all_in_region(Region::Underground));
+            candidates.extend(Location::all_in_region(Region::Underground));
         }
         if self.has_ability(state, &Ability::Submerge) {
-            candidate_zones.extend(Zone::all_in_region(Region::Underwater));
+            candidates.extend(Location::all_in_region(Region::Underwater));
         }
         if self.has_ability(state, &Ability::Voidwalk) {
-            candidate_zones.extend(Zone::all_in_region(Region::Void));
+            candidates.extend(Location::all_in_region(Region::Void));
         }
-        candidate_zones.sort();
-        candidate_zones.dedup();
+        candidates.sort();
+        candidates.dedup();
 
-        Ok(candidate_zones
+        Ok(candidates
             .into_iter()
-            .filter(|z| {
+            .filter(|loc| {
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(z), player_id)
+                    .get_effective_costs(self.get_id(), Some(loc), player_id)
                     .unwrap_or_default();
                 let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
                 if !can_afford {
                     return false;
                 }
 
-                z.is_valid_play_zone_for(state, self.get_id(), player_id)
+                loc.is_valid_play_location_for(state, self.get_id(), player_id)
                     .unwrap_or_default()
             })
-            .filter_map(Zone::into_location)
             .collect::<Vec<Location>>())
     }
 
@@ -2973,7 +2975,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             }
 
-            if !Zone::from(location).can_be_entered_by(state, self.get_id())? {
+            if !location.can_be_entered_by(state, self.get_id())? {
                 continue;
             }
 
@@ -3131,13 +3133,13 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
     card
 }
 
-pub(crate) fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
+pub(crate) fn locations_cross_border(from: &Location, to: &Location, border: &Location) -> bool {
     let (Some(from_square), Some(to_square)) = (from.get_square(), to.get_square()) else {
         return false;
     };
 
     match border {
-        Zone::Location(Location::Intersection(squares, _)) => {
+        Location::Intersection(squares, _) => {
             squares.contains(&from_square) && squares.contains(&to_square)
         }
         _ => false,
