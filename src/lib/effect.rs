@@ -175,6 +175,9 @@ pub struct SummonCard {
 #[derive(Debug, Clone)]
 pub enum Effect {
     Noop,
+    Notify {
+        message: String,
+    },
     PlayerLost {
         player_id: PlayerId,
     },
@@ -481,6 +484,7 @@ impl Effect {
     pub fn source_id(&self) -> Option<&uuid::Uuid> {
         match self {
             Effect::Noop => None,
+            Effect::Notify { .. } => None,
             Effect::PlayerLost { player_id } => Some(player_id),
             Effect::SkipNextTurn { player_id } => Some(player_id),
             Effect::OverrideNextTurn { .. } => None,
@@ -550,6 +554,7 @@ impl Effect {
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
             Effect::Noop => None,
+            Effect::Notify { message } => Some(message.clone()),
             Effect::PlayerLost { player_id } => Some(format!(
                 "{} has lost the game",
                 player_name(player_id, state)
@@ -1047,7 +1052,10 @@ impl Effect {
         EffectLifecycle::modify_effect(state, &mut effect).await?;
 
         match &effect {
-            Effect::Noop | Effect::TriggerGenesis { .. } | Effect::TriggerDeathrite { .. } => {}
+            Effect::Noop
+            | Effect::Notify { .. }
+            | Effect::TriggerGenesis { .. }
+            | Effect::TriggerDeathrite { .. } => {}
             Effect::PlayerLost { player_id } => {
                 state.eliminate_player(*player_id);
             }

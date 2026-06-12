@@ -176,8 +176,6 @@ impl Component for ActionOverlay {
             let client = self.client.clone();
             let game_id = self.game_id;
             let player_id = self.player_id;
-            let mut set_invisible = false;
-
             egui::Area::new(egui::Id::new("action_overlay_btns"))
                 .fixed_pos(pos2(button_x, button_y))
                 .show(ui.ctx(), |ui| {
@@ -194,7 +192,6 @@ impl Component for ActionOverlay {
                                     take_action: true,
                                 })
                                 .ok();
-                            set_invisible = true;
                             should_close = true;
                         }
                         ui.add_space(40.0);
@@ -211,17 +208,12 @@ impl Component for ActionOverlay {
                                     take_action: false,
                                 })
                                 .ok();
-                            set_invisible = true;
                             should_close = true;
                         }
                     });
                 });
-            if set_invisible {
-                self.visible = false;
-            }
         } else {
             let button_x = (sw - button_width) / 2.0;
-            let mut set_invisible = false;
             egui::Area::new(egui::Id::new("action_overlay_ok_btn"))
                 .fixed_pos(pos2(button_x, button_y))
                 .show(ui.ctx(), |ui| {
@@ -230,12 +222,9 @@ impl Component for ActionOverlay {
                     )
                     .min_size(vec2(button_width, button_height));
                     if ui.add(ok).clicked() {
-                        set_invisible = true;
+                        should_close = true;
                     }
                 });
-            if set_invisible {
-                self.visible = false;
-            }
         }
 
         if should_close {

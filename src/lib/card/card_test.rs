@@ -1,10 +1,11 @@
 use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, AssortedAnimals, AstralAlcazar,
-        AwakenedMummies, Card, CauldronCrones, Cost, CostOptions, Drought, GreatWall, ManaCost,
-        OgreGoons, PayableCost, Region, RimlandNomads, RootSpider, SimpleVillage, SpectralStalker,
-        SpringRiver,
+        AwakenedMummies, Card, CauldronCrones, Cost, CostOptions, Drought, GreatWall, Magic,
+        ManaCost, MinionType, OgreGoons, PayableCost, Region, RimlandNomads, RootSpider,
+        SimpleVillage, SpectralStalker, SpringRiver, WildBoars,
     },
+    effect::Effect,
     game::Thresholds,
     query::CardQuery,
     state::State,
@@ -88,6 +89,44 @@ fn test_card_query_mana_cost_filter_uses_printed_mana_value() {
         .all(&state);
     assert!(matching_cards.contains(&cauldron_crones_id));
     assert!(!matching_cards.contains(&assorted_animals_id));
+}
+
+#[tokio::test]
+async fn test_assorted_animals_reports_when_no_valid_beasts_exist() {
+    let state = State::new_mock_state(Vec::new());
+    let player_id = state.players[0].id;
+    let assorted_animals = AssortedAnimals::new(player_id);
+
+    let effects = assorted_animals
+        .resolve_magic(&state, assorted_animals.get_id(), Cost::mana_only(3))
+        .await
+        .expect("Assorted Animals should resolve");
+
+    assert!(matches!(
+        effects.first(),
+        Some(Effect::Notify { message }) if message == "No valid cards to summon with Assorted Animals."
+    ));
+}
+
+#[test]
+fn test_assorted_animals_query_finds_beasts_in_spellbook() {
+    let mut state = State::new_mock_state(Vec::new());
+    let player_id = state.players[0].id;
+
+    let wild_boars = WildBoars::new(player_id);
+    let wild_boars_id = *wild_boars.get_id();
+    state.cards.insert(wild_boars_id, Box::new(wild_boars));
+
+    let beasts = CardQuery::new()
+        .including_not_in_play()
+        .in_zone(&Zone::Spellbook)
+        .minions()
+        .minion_types(vec![MinionType::Beast])
+        .mana_cost_lte(1)
+        .controlled_by(&player_id)
+        .all(&state);
+
+    assert_eq!(beasts, vec![wild_boars_id]);
 }
 
 #[tokio::test]

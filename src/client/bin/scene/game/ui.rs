@@ -470,63 +470,85 @@ impl Game {
             return None;
         };
         let mut submitted = false;
-        let menu_w = 260.0;
-        let menu_h = 170.0;
-        let screen =
-            screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+        let screen = screen_rect().unwrap_or(Rect::ZERO);
+        let panel_w = 420.0_f32.min(screen.width() - 32.0);
+        let panel_h = 172.0_f32.min(screen.height() - 32.0);
         let origin = pos2(
-            (screen.width() - menu_w) / 2.0,
-            (screen.height() - menu_h) / 2.0,
+            screen.center().x - panel_w / 2.0,
+            screen.center().y - panel_h / 2.0,
         );
         egui::Area::new(egui::Id::new("amount_picker_popup"))
             .fixed_pos(origin)
             .order(egui::Order::Foreground)
-            .show(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.add_space(16.0);
-                        ui.label(RichText::new(prompt).size(16.0).color(theme::TEXT_BRIGHT));
-                        ui.add_space(18.0);
-                        if ui
-                            .add_enabled(
-                                *selected_amount > min_amount as i32,
-                                egui::Button::new("-").min_size(vec2(32.0, 32.0)),
-                            )
-                            .clicked()
-                        {
-                            *selected_amount -= 1;
-                        }
-                        let amt_field = egui::DragValue::new(selected_amount)
-                            .range(min_amount as i32..=max_amount as i32)
-                            .speed(1)
-                            .fixed_decimals(0)
-                            .min_decimals(0)
-                            .max_decimals(0)
-                            .prefix("")
-                            .suffix("");
-                        ui.add_sized([60.0, 32.0], amt_field);
-                        if ui
-                            .add_enabled(
-                                *selected_amount < max_amount as i32,
-                                egui::Button::new("+").min_size(vec2(32.0, 32.0)),
-                            )
-                            .clicked()
-                        {
-                            *selected_amount += 1;
-                        }
-                        ui.add_space(18.0);
-                        if ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new("Submit").size(18.0).color(Color32::WHITE),
+            .show(ui.ctx(), |ui| {
+                egui::Frame::new()
+                    .fill(theme::PANEL_BG)
+                    .stroke(egui::Stroke::new(1.0, theme::PANEL_BORDER))
+                    .corner_radius(8.0)
+                    .inner_margin(egui::Margin::same(18))
+                    .show(ui, |ui| {
+                        ui.set_min_width(panel_w - 36.0);
+                        ui.set_min_height(panel_h - 36.0);
+
+                        ui.label(
+                            RichText::new(prompt)
+                                .size(16.0)
+                                .strong()
+                                .color(theme::TEXT_BRIGHT),
+                        );
+                        ui.add_space(14.0);
+
+                        ui.horizontal(|ui| {
+                            if ui
+                                .add_enabled(
+                                    *selected_amount > min_amount as i32,
+                                    egui::Button::new(
+                                        RichText::new("-").size(20.0).color(Color32::WHITE),
+                                    )
+                                    .min_size(vec2(44.0, 40.0)),
                                 )
-                                .min_size(vec2(120.0, 36.0)),
-                            )
-                            .clicked()
-                        {
-                            submitted = true;
-                        }
-                    });
+                                .clicked()
+                            {
+                                *selected_amount -= 1;
+                            }
+                            let amt_field = egui::DragValue::new(selected_amount)
+                                .range(min_amount as i32..=max_amount as i32)
+                                .speed(1)
+                                .fixed_decimals(0)
+                                .min_decimals(0)
+                                .max_decimals(0)
+                                .prefix("")
+                                .suffix("");
+                            ui.add_sized([92.0, 40.0], amt_field);
+                            if ui
+                                .add_enabled(
+                                    *selected_amount < max_amount as i32,
+                                    egui::Button::new(
+                                        RichText::new("+").size(20.0).color(Color32::WHITE),
+                                    )
+                                    .min_size(vec2(44.0, 40.0)),
+                                )
+                                .clicked()
+                            {
+                                *selected_amount += 1;
+                            }
+                        });
+
+                        ui.add_space(18.0);
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new("Submit").size(16.0).color(Color32::WHITE),
+                                    )
+                                    .fill(theme::ACTION)
+                                    .min_size(vec2(112.0, 38.0)),
+                                )
+                                .clicked()
+                            {
+                                submitted = true;
+                            }
+                        });
                 });
             });
         if submitted {

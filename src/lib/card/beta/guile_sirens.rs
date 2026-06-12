@@ -17,7 +17,7 @@ impl GuileSirens {
                 power: 3,
                 toughness: 3,
                 abilities: vec![Ability::Submerge],
-                types: vec![MinionType::Beast],
+                types: vec![MinionType::Merfolk],
                 tapped: false,
                 ..Default::default()
             },

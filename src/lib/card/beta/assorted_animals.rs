@@ -63,6 +63,7 @@ impl Magic for AssortedAnimals {
 
         let x_cost = cost_paid.payable_mana_value().unwrap_or_default();
         let mut beasts = CardQuery::new()
+            .including_not_in_play()
             .in_zone(&Zone::Spellbook)
             .minions()
             .minion_types(vec![MinionType::Beast])
@@ -89,6 +90,7 @@ impl Magic for AssortedAnimals {
         let mut chosen = Vec::new();
 
         let mut display_card_ids: Vec<CardId> = CardQuery::new()
+            .including_not_in_play()
             .controlled_by(&controller_id)
             .in_zone(&Zone::Spellbook)
             .all(state);
@@ -150,10 +152,17 @@ impl Magic for AssortedAnimals {
         spells.retain(|id| !chosen_ids.contains(id));
         spells.shuffle(&mut rand::rng());
 
-        let mut effects = vec![Effect::RearrangeDeck {
+        let mut effects = vec![];
+        if chosen_ids.is_empty() {
+            effects.push(Effect::Notify {
+                message: "No valid cards to summon with Assorted Animals.".to_string(),
+            });
+        }
+
+        effects.push(Effect::RearrangeDeck {
             spells,
             sites: deck.sites.clone(),
-        }];
+        });
 
         effects.extend(chosen_ids.iter().map(|card_id| Effect::SetCardZone {
             card_id: *card_id,
