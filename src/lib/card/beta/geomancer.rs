@@ -38,6 +38,10 @@ impl ActivatedAbility for GeomancerAbility {
         }
     }
 
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
+    }
+
     async fn on_select(
         &self,
         card_id: &CardId,
@@ -107,10 +111,6 @@ impl ActivatedAbility for GeomancerAbility {
                             card_id: *site_id,
                             zone: rubble.get_zone().clone(),
                         },
-                        Effect::SetTapped {
-                            card_id: *card_id,
-                            tapped: true,
-                        },
                     ]),
                     None => Ok(vec![]),
                 }
@@ -132,10 +132,6 @@ async fn geomancer_play_site_effects(
             card_id: site_id,
             location: Location::Square(square, Region::Surface),
             spellcaster: *geomancer_id,
-        },
-        Effect::SetTapped {
-            card_id: *geomancer_id,
-            tapped: true,
         },
     ];
 
@@ -249,19 +245,13 @@ impl Card for Geomancer {
         Some(self)
     }
 
-    fn base_get_activated_abilities(
+    fn get_additional_activated_abilities(
         &self,
-        state: &State,
+        _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut actions: Vec<Box<dyn ActivatedAbility>> =
-            self.base_unit_activated_abilities(state)?;
-        actions.extend(vec![
-            Box::new(GeomancerAbility::PlaySite) as Box<dyn ActivatedAbility>,
-            Box::new(GeomancerAbility::DrawSite) as Box<dyn ActivatedAbility>,
+        Ok(vec![
             Box::new(GeomancerAbility::ReplaceRubble) as Box<dyn ActivatedAbility>,
-        ]);
-
-        Ok(actions)
+        ])
     }
 }
 
@@ -269,6 +259,10 @@ impl Card for Geomancer {
 impl Avatar for Geomancer {
     fn get_play_site_ability(&self) -> Option<Box<dyn ActivatedAbility>> {
         Some(Box::new(GeomancerAbility::PlaySite))
+    }
+
+    fn get_draw_site_ability(&self) -> Option<Box<dyn ActivatedAbility>> {
+        Some(Box::new(GeomancerAbility::DrawSite))
     }
 
     async fn play_site_at_square(
@@ -286,3 +280,150 @@ impl Avatar for Geomancer {
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Geomancer::NAME, |owner_id: PlayerId| {
     Box::new(Geomancer::new(owner_id))
 });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::SimpleVillage;
+
+    fn setup_geomancer_state(
+        site_in_hand: bool,
+        adjacent_rubble: bool,
+    ) -> (State, PlayerId, CardId) {
+        let mut state = State::new_mock_state(vec![8]);
+        let player_id = state.players[0].id;
+
+        let mut geomancer = Geomancer::new(player_id);
+        let geomancer_id = *geomancer.get_id();
+        geomancer.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(geomancer_id, Box::new(geomancer));
+
+        if site_in_hand {
+            let mut site = SimpleVillage::new(player_id);
+            site.set_zone(Zone::Hand);
+            state.cards.insert(*site.get_id(), Box::new(site));
+        }
+
+        if adjacent_rubble {
+            let mut rubble = Rubble::new(player_id);
+            rubble.set_zone(Zone::Location(Location::Square(9, Region::Surface)));
+            state.cards.insert(*rubble.get_id(), Box::new(rubble));
+        }
+
+        (state, player_id, geomancer_id)
+    }
+
+    fn ability_names(
+        state: &State,
+        geomancer_id: &CardId,
+    ) -> anyhow::Result<Vec<String>> {
+        Ok(state
+            .get_card(geomancer_id)
+            .get_activated_abilities(state)?
+            .into_iter()
+            .map(|ability| ability.get_name())
+            .collect())
+    }
+
+    #[test]
+    fn geomancer_gets_unit_actions_and_custom_avatar_site_actions() {
+        let (state, _player_id, geomancer_id) = setup_geomancer_state(true, true);
+        let names = ability_names(&state, &geomancer_id).unwrap();
+
+        assert!(names.contains(&"Attack".to_string()));
+        assert!(names.contains(&"Move".to_string()));
+        assert!(names.contains(&"Play Site".to_string()));
+        assert!(names.contains(&"Draw Site".to_string()));
+        assert!(names.contains(&"Replace Rubble".to_string()));
+    }
+
+    #[test]
+    fn geomancer_replace_rubble_activation_requires_adjacent_rubble() {
+        let (state, player_id, geomancer_id) = setup_geomancer_state(true, false);
+        let abilities = state
+            .get_card(&geomancer_id)
+            .get_activated_abilities(&state)
+            .unwrap();
+        let replace_rubble = abilities
+            .iter()
+            .find(|ability| ability.get_name() == "Replace Rubble")
+            .expect("Geomancer to have Replace Rubble");
+        assert!(
+            !replace_rubble
+                .can_activate(&geomancer_id, &player_id, &state)
+                .unwrap()
+        );
+
+        let (state, player_id, geomancer_id) = setup_geomancer_state(true, true);
+        let abilities = state
+            .get_card(&geomancer_id)
+            .get_activated_abilities(&state)
+            .unwrap();
+        let replace_rubble = abilities
+            .iter()
+            .find(|ability| ability.get_name() == "Replace Rubble")
+            .expect("Geomancer to have Replace Rubble");
+        assert!(
+            replace_rubble
+                .can_activate(&geomancer_id, &player_id, &state)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn geomancer_custom_abilities_have_tap_costs() {
+        let (mut state, player_id, geomancer_id) = setup_geomancer_state(true, true);
+
+        for ability_name in ["Play Site", "Draw Site", "Replace Rubble"] {
+            state.get_card_mut(&geomancer_id).set_tapped(false);
+            let abilities = state
+                .get_card(&geomancer_id)
+                .get_activated_abilities(&state)
+                .unwrap();
+            let ability = abilities
+                .iter()
+                .find(|ability| ability.get_name() == ability_name)
+                .unwrap_or_else(|| panic!("Geomancer to have {ability_name}"));
+            let cost = ability.get_cost(&geomancer_id, &state).unwrap();
+            assert!(
+                cost.can_afford(&state, player_id).unwrap(),
+                "{ability_name} should be payable while Geomancer is untapped"
+            );
+
+            state.get_card_mut(&geomancer_id).set_tapped(true);
+            assert!(
+                !cost.can_afford(&state, player_id).unwrap(),
+                "{ability_name} should not be payable while Geomancer is tapped"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn geomancer_draw_site_has_tap_cost_and_draws_site() {
+        let (state, player_id, geomancer_id) = setup_geomancer_state(true, false);
+        let abilities = state
+            .get_card(&geomancer_id)
+            .get_activated_abilities(&state)
+            .unwrap();
+        let draw_site = abilities
+            .into_iter()
+            .find(|ability| ability.get_name() == "Draw Site")
+            .expect("Geomancer to have Draw Site");
+
+        let cost = draw_site.get_cost(&geomancer_id, &state).unwrap();
+        assert!(cost.can_afford(&state, player_id).unwrap());
+
+        let effects = draw_site
+            .on_select(&geomancer_id, &player_id, &state)
+            .await
+            .unwrap();
+        assert!(matches!(
+            effects.as_slice(),
+            [Effect::DrawCard {
+                player_id: effect_player_id,
+                count: 1,
+                kind: DrawKind::Site,
+            }] if *effect_player_id == player_id
+        ));
+    }
+}

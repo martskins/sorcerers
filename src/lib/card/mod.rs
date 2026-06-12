@@ -1901,29 +1901,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn base_get_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        if self.is_avatar() {
-            let mut abilities = self.base_avatar_activated_abilities(state)?;
-            if !state.card_has_special_abilities_removed(self.get_id()) {
-                abilities.extend(self.get_additional_activated_abilities(state)?);
-            }
-            Ok(abilities)
-        } else if state.is_unit_card(self.get_id()) {
-            let mut abilities = self.base_unit_activated_abilities(state)?;
-            if !state.card_has_special_abilities_removed(self.get_id()) {
-                abilities.extend(self.get_additional_activated_abilities(state)?);
-            }
-            Ok(abilities)
-        } else if state.card_has_special_abilities_removed(self.get_id()) {
-            Ok(vec![])
-        } else {
-            Ok(self.get_additional_activated_abilities(state)?)
-        }
-    }
-
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(
         &self,
@@ -1933,7 +1910,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![]);
         }
 
-        let mut abilities = self.base_get_activated_abilities(state)?;
+        let mut abilities = CardBaseMethods::base_get_activated_abilities(self, state)?;
         // TODO: Is this check correct? I think we should be filtering these out where this is being
         // called, but haven't properly thought about it yet.
         if !state.card_has_special_abilities_removed(self.get_id()) {
@@ -2426,6 +2403,10 @@ pub trait Avatar: Card {
         Some(Box::new(AvatarAction::PlaySite))
     }
 
+    fn get_draw_site_ability(&self) -> Option<Box<dyn ActivatedAbility>> {
+        Some(Box::new(AvatarAction::DrawSite))
+    }
+
     async fn play_site_at_square(
         &self,
         _state: &State,
@@ -2636,6 +2617,10 @@ pub trait CardBaseMethods: Card {
     fn base_get_affected_zones(&self, state: &State) -> Vec<Location>;
     fn base_get_power(&self, state: &State) -> Option<u16>;
     fn base_get_abilities(&self, state: &State) -> Vec<Ability>;
+    fn base_get_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>>;
     fn base_take_damage(
         &mut self,
         state: &State,
@@ -2661,6 +2646,29 @@ pub trait CardBaseMethods: Card {
 
 #[async_trait::async_trait]
 impl<T: Card + ?Sized> CardBaseMethods for T {
+    fn base_get_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if self.is_avatar() {
+            let mut abilities = self.base_avatar_activated_abilities(state)?;
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
+            Ok(abilities)
+        } else if state.is_unit_card(self.get_id()) {
+            let mut abilities = self.base_unit_activated_abilities(state)?;
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
+            Ok(abilities)
+        } else if state.card_has_special_abilities_removed(self.get_id()) {
+            Ok(vec![])
+        } else {
+            Ok(self.get_additional_activated_abilities(state)?)
+        }
+    }
+
     fn base_get_valid_play_locations(
         &self,
         state: &State,
@@ -3031,7 +3039,13 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
             self.base_unit_activated_abilities(state)?;
-        activated_abilities.push(Box::new(AvatarAction::DrawSite));
+        if let Some(avatar) = self.get_avatar() {
+            if let Some(draw_site_ability) = avatar.get_draw_site_ability() {
+                activated_abilities.push(draw_site_ability);
+            }
+        } else {
+            activated_abilities.push(Box::new(AvatarAction::DrawSite));
+        }
         if state
             .cards
             .values()
