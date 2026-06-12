@@ -90,14 +90,6 @@ impl Card for WayfaringPilgrim {
             })
             .collect();
 
-        let Some(square) = self.get_location().get_square() else {
-            return Ok(vec![]);
-        };
-
-        if self.corners_visited.contains(&square) {
-            return Ok(vec![]);
-        }
-
         Ok(vec![Hook {
             id: VISIT_CORNER_HOOK,
             trigger: EffectQuery::EnterLocation {
