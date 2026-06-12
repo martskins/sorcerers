@@ -177,8 +177,50 @@ static CONSTRUCTOR: (&'static str, CardConstructor) =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::card::FootSoldier;
+    use crate::card::{FootSoldier, SpringRiver};
 
+    #[test]
+    fn can_be_played_underground_at_land_sites() {
+        let mut state = State::new_mock_state(vec![1, 2]);
+        let player_id = state.players[0].id;
+        *state.get_player_mana_mut(&player_id) = 1;
+
+        let water_site_id = state
+            .cards
+            .values()
+            .find(|card| {
+                card.is_site()
+                    && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
+            })
+            .map(|card| *card.get_id())
+            .expect("mock site should exist");
+        state.cards.remove(&water_site_id);
+
+        let mut water_site = SpringRiver::new(player_id);
+        water_site.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        state
+            .cards
+            .insert(*water_site.get_id(), Box::new(water_site));
+
+        let mut card = AwakenedMummies::new(player_id);
+        card.set_zone(Zone::Hand);
+        state.cards.insert(*card.get_id(), Box::new(card.clone()));
+
+        let avatar_id = state
+            .get_player_avatar_id(&player_id)
+            .expect("avatar id to be some");
+        let locations = card
+            .get_valid_play_locations(&state, &player_id, &avatar_id)
+            .expect("zones to be computed");
+
+        assert!(locations.contains(&Location::Square(1, Region::Underground)));
+        assert!(!locations.contains(&Location::Square(2, Region::Underground)));
+        assert!(
+            locations
+                .iter()
+                .all(|location| matches!(location, Location::Square(_, Region::Underground)))
+        );
+    }
     #[tokio::test]
     async fn moving_enemy_above_burrowed_mummies_queues_fight_only() {
         let mut state = State::new_mock_state(vec![8]);

@@ -123,3 +123,107 @@ impl Card for GreatWall {
 static CONSTRUCTOR: (&'static str, CardConstructor) = (GreatWall::NAME, |owner_id: PlayerId| {
     Box::new(GreatWall::new(owner_id))
 });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::ApprenticeWizard;
+
+    #[tokio::test]
+    async fn blocks_enemy_ground_movement_through_top_border() {
+        let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+        let wall_owner = state.players[0].id;
+        let enemy_id = state.players[1].id;
+
+        let mut wall = GreatWall::new(wall_owner);
+        wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*wall.get_id(), Box::new(wall));
+
+        let mut enemy = ApprenticeWizard::new(enemy_id);
+        enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
+        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+        let zones = enemy
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(!zones.contains(&Location::Square(8, Region::Surface)));
+    }
+
+    #[tokio::test]
+    async fn blocks_enemy_ground_movement_out_through_top_border() {
+        let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+        let wall_owner = state.players[0].id;
+        let enemy_id = state.players[1].id;
+
+        let mut wall = GreatWall::new(wall_owner);
+        wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*wall.get_id(), Box::new(wall));
+
+        let mut enemy = ApprenticeWizard::new(enemy_id);
+        enemy.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+        let zones = enemy
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(!zones.contains(&Location::Square(13, Region::Surface)));
+    }
+
+    #[tokio::test]
+    async fn allows_allied_and_airborne_movement_through_top_border() {
+        let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+        let wall_owner = state.players[0].id;
+        let enemy_id = state.players[1].id;
+
+        let mut wall = GreatWall::new(wall_owner);
+        wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*wall.get_id(), Box::new(wall));
+
+        let mut ally = ApprenticeWizard::new(wall_owner);
+        ally.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
+        state.cards.insert(*ally.get_id(), Box::new(ally.clone()));
+
+        let ally_zones = ally
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(ally_zones.contains(&Location::Square(8, Region::Surface)));
+
+        let mut airborne_enemy = ApprenticeWizard::new(enemy_id);
+        airborne_enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
+        airborne_enemy.add_ability(Ability::Airborne);
+        state
+            .cards
+            .insert(*airborne_enemy.get_id(), Box::new(airborne_enemy.clone()));
+
+        let airborne_enemy_zones = airborne_enemy
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(airborne_enemy_zones.contains(&Location::Square(8, Region::Surface)));
+    }
+
+    #[tokio::test]
+    async fn blocks_paths_through_top_border() {
+        let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+        let wall_owner = state.players[0].id;
+        let enemy_id = state.players[1].id;
+
+        let mut wall = GreatWall::new(wall_owner);
+        wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*wall.get_id(), Box::new(wall));
+
+        let mut enemy = ApprenticeWizard::new(enemy_id);
+        enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
+        enemy.add_ability(Ability::Movement(1));
+        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+        let paths = enemy
+            .get_valid_move_paths(&state, &Location::Square(3, Region::Surface))
+            .await
+            .expect("paths to be computed");
+        assert!(paths.is_empty());
+    }
+}

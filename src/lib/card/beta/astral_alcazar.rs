@@ -92,3 +92,56 @@ static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AstralAlcazar::NAME, |owner_id: PlayerId| {
         Box::new(AstralAlcazar::new(owner_id))
     });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::SpectralStalker;
+
+    #[tokio::test]
+    async fn connects_site_to_any_void() {
+        let mut state = State::new_mock_state(vec![8]);
+        let player_id = state.players[0].id;
+
+        let mut alcazar = AstralAlcazar::new(player_id);
+        alcazar.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+
+        let mut unit = SpectralStalker::new(player_id);
+        unit.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+
+        state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let zones = unit
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(zones.contains(&Location::Square(1, Region::Void)));
+        assert!(zones.contains(&Location::Square(20, Region::Void)));
+        assert!(!zones.contains(&Location::Square(8, Region::Void)));
+    }
+
+    #[tokio::test]
+    async fn does_not_connect_any_void_to_site() {
+        let mut state = State::new_mock_state(vec![8]);
+        let player_id = state.players[0].id;
+
+        let mut alcazar = AstralAlcazar::new(player_id);
+        alcazar.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+        state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+
+        let mut unit = SpectralStalker::new(player_id);
+        unit.set_zone(Zone::Location(Location::Square(20, Region::Void)));
+        state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+
+        state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let zones = unit
+            .get_valid_move_locations(&state)
+            .await
+            .expect("zones to be computed");
+        assert!(zones.contains(&Location::Square(20, Region::Void)));
+        assert!(!zones.contains(&Location::Square(1, Region::Void)));
+    }
+}
