@@ -58,7 +58,11 @@ impl Magic for MinecartMadness {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let spans_of_land = state.get_spans_of_land();
+        let spans_of_land = state
+            .get_spans_of_land()
+            .into_iter()
+            .map(|span| span.iter().map(Zone::from).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
         if spans_of_land.is_empty() {
             return Ok(vec![]);
         }

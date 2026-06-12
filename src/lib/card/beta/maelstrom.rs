@@ -94,19 +94,14 @@ impl Card for Maelström {
                     return Ok(vec![]);
                 }
                 let body_of_water = state
-                    .get_body_of_water_at(self.get_zone())
+                    .get_body_of_water_at(self.get_location())
                     .unwrap_or_default();
                 let minion_ids = CardQuery::new()
                     .minions()
-                    .in_zones(&body_of_water)
+                    .in_locations(&body_of_water)
                     .all(state);
 
                 let mut effects = vec![];
-                let body_locations = body_of_water
-                    .iter()
-                    .filter_map(Zone::location)
-                    .cloned()
-                    .collect::<Vec<_>>();
                 for minion_id in minion_ids {
                     let minion = state.get_card(&minion_id);
                     let steps = minion
@@ -114,7 +109,7 @@ impl Card for Maelström {
                         .steps_to_location(self.get_location())
                         .unwrap_or_default();
                     let mut zones = minion.get_locations_within_steps(state, steps);
-                    zones.retain(|zone| body_locations.contains(zone));
+                    zones.retain(|zone| body_of_water.contains(zone));
                     zones.retain(|zone| {
                         zone
                             .steps_to_location(self.get_location())

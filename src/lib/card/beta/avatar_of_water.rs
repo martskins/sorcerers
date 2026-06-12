@@ -17,10 +17,11 @@ impl ActivatedAbility for FloodSite {
     ) -> anyhow::Result<Vec<Effect>> {
         let avatar = state.get_card(card_id);
         let controller_id = avatar.get_controller_id(state);
-        match state.get_body_of_water_at(avatar.get_zone()) {
+        match state.get_body_of_water_at(avatar.get_location()) {
             Some(body_of_water) => {
+                let body_zones = body_of_water.iter().map(Zone::from).collect::<Vec<_>>();
                 let picked_site_id: CardId = CardQuery::new()
-                    .adjacent_to_zones(&body_of_water)
+                    .adjacent_to_zones(&body_zones)
                     .sites()
                     .with_prompt("Pick a site to flood")
                     .with_source_card(*card_id)

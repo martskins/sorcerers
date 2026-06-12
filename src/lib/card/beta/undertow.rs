@@ -84,14 +84,14 @@ impl Card for Undertow {
             GENESIS_HOOK_ID => {
                 let player_id = self.get_controller_id(state);
                 let body_of_water = state
-                    .get_body_of_water_at(self.get_zone())
+                    .get_body_of_water_at(self.get_location())
                     .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
                 let controller_id = self.get_controller_id(state);
                 let Some(unit_id) = CardQuery::new()
                     .units()
                     .with_prompt("Choose a unit in the same body of water to move")
                     .with_source_card(*self.get_id())
-                    .in_zones(&body_of_water)
+                    .in_locations(&body_of_water)
                     .pick(&controller_id, state, false)
                     .await?
                 else {

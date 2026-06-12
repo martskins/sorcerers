@@ -71,8 +71,7 @@ impl Magic for FontOfLife {
             .into_iter()
             .map(|unit_id| {
                 let unit = state.get_card(&unit_id);
-                let zone = unit.get_zone().clone();
-                let heal_amount = state.get_body_of_water_size(&zone).max(1);
+                let heal_amount = state.get_body_of_water_size(unit.get_location()).max(1);
                 Effect::Heal {
                     card_id: unit_id,
                     amount: heal_amount,

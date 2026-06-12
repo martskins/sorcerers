@@ -58,7 +58,11 @@ impl Magic for MarineVoyage {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let bodies_of_water = state.get_bodies_of_water();
+        let bodies_of_water = state
+            .get_bodies_of_water()
+            .into_iter()
+            .map(|body| body.iter().map(Zone::from).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
         let prompt = "Pick a body of water";
         let body_of_water = pick_zone_group_source(
             controller_id,

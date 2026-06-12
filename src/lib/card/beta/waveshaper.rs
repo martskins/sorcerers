@@ -23,11 +23,12 @@ impl ActivatedAbility for WaveshaperFlood {
     ) -> anyhow::Result<Vec<Effect>> {
         let avatar = state.get_card(card_id);
         let controller_id = avatar.get_controller_id(state);
-        let Some(body_of_water) = state.get_body_of_water_at(avatar.get_zone()) else {
+        let Some(body_of_water) = state.get_body_of_water_at(avatar.get_location()) else {
             return Ok(vec![]);
         };
         let near_body_of_water: Vec<Zone> = body_of_water
             .iter()
+            .map(Zone::from)
             .flat_map(|zone| zone.get_nearby_sites(state))
             .collect();
         let Some(picked_site_id) = CardQuery::new()

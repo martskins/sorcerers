@@ -64,7 +64,7 @@ impl Card for GiantShark {
     }
 
     fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let Some(body_of_water) = state.get_body_of_water_at(self.get_zone()) else {
+        let Some(body_of_water) = state.get_body_of_water_at(self.get_location()) else {
             return Ok(vec![]);
         };
 
@@ -73,10 +73,7 @@ impl Card for GiantShark {
             trigger: EffectQuery::EnterLocation {
                 card: CardQuery::new().units().id_not(*self.get_id()),
                 location: LocationQuery::from_locations(
-                    body_of_water
-                        .into_iter()
-                        .filter_map(Zone::into_location)
-                        .collect(),
+                    body_of_water,
                     None,
                 ),
                 from: None,
