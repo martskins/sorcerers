@@ -746,24 +746,43 @@ impl CardQuery {
 
     pub fn any(&self, state: &State) -> bool {
         let prepared = PreparedCardQuery::new(self, state);
-        state.all_cards().any(|c| prepared.matches_card(c))
+        if self.include_not_in_play.is_none_or(|include| !include) {
+            state.cards_in_play().any(|c| prepared.matches_card(c))
+        } else {
+            state.all_cards().any(|c| prepared.matches_card(c))
+        }
     }
 
     pub fn first(&self, state: &State) -> Option<CardId> {
         let prepared = PreparedCardQuery::new(self, state);
-        state
-            .all_cards()
-            .find(|c| prepared.matches_card(*c))
-            .map(|c| *c.get_id())
+        if self.include_not_in_play.is_none_or(|include| !include) {
+            state
+                .cards_in_play()
+                .find(|c| prepared.matches_card(*c))
+                .map(|c| *c.get_id())
+        } else {
+            state
+                .all_cards()
+                .find(|c| prepared.matches_card(*c))
+                .map(|c| *c.get_id())
+        }
     }
 
     pub fn all(&self, state: &State) -> Vec<CardId> {
         let prepared = PreparedCardQuery::new(self, state);
-        state
-            .all_cards()
-            .filter(|c| prepared.matches_card(*c))
-            .map(|c| *c.get_id())
-            .collect()
+        if self.include_not_in_play.is_none_or(|include| !include) {
+            state
+                .cards_in_play()
+                .filter(|c| prepared.matches_card(*c))
+                .map(|c| *c.get_id())
+                .collect()
+        } else {
+            state
+                .all_cards()
+                .filter(|c| prepared.matches_card(*c))
+                .map(|c| *c.get_id())
+                .collect()
+        }
     }
 
     pub fn with_prompt(self, prompt: &str) -> Self {
