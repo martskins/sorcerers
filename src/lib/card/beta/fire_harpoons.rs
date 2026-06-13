@@ -59,13 +59,12 @@ impl Magic for FireHarpoons {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let caster_location = caster.get_location().clone();
-        let caster_zone = Zone::from(&caster_location);
         let controller_id = caster.get_controller_id(state);
 
         // Find adjacent Water sites and collect the zones above/below them.
         let adjacent_water_sites: Vec<Zone> = CardQuery::new()
             .water_sites()
-            .adjacent_to(&caster_zone)
+            .adjacent_to(&caster_location)
             .all(state)
             .into_iter()
             .map(|cid| state.get_card(&cid).get_zone().clone())

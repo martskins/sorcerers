@@ -83,7 +83,7 @@ impl Magic for ShieldWall {
                             let allies_nearby = CardQuery::new()
                                 .units()
                                 .controlled_by(&controller_id)
-                                .near_to(card.get_zone())
+                                .near_to(card.get_location())
                                 .all(state)
                                 .len();
                             damage.amount = damage.amount.saturating_sub(allies_nearby as u16);

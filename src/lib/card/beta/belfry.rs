@@ -88,7 +88,7 @@ impl Card for Belfry {
 
                 Ok(CardQuery::new()
                     .units()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .all(state)
                     .into_iter()
                     .filter(|card_id| {

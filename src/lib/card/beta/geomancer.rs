@@ -31,7 +31,7 @@ impl ActivatedAbility for GeomancerAbility {
                 Ok(!CardQuery::new()
                     .sites()
                     .named(Rubble::NAME.to_string())
-                    .adjacent_to(geomancer.get_zone())
+                    .adjacent_to(geomancer.get_location())
                     .all(state)
                     .is_empty())
             }

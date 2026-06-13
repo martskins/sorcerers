@@ -83,7 +83,7 @@ impl Card for InfernalLegion {
             TURN_END_HOOK => {
                 let adjacent_units = CardQuery::new()
                     .units()
-                    .adjacent_to(self.get_zone())
+                    .adjacent_to(self.get_location())
                     .all(state);
                 let mut effects = Vec::new();
                 for unit in adjacent_units {

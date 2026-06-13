@@ -68,7 +68,7 @@ impl Card for OldSaltAnchorman {
             affected_cards: CardQuery::new()
                 .in_play()
                 .controlled_by_same_controller_as_card(self.get_id())
-                .nearby_zones_to_card(self.get_id())
+                .nearby_to_card(self.get_id())
                 .id_not(*self.get_id()),
         }])
     }

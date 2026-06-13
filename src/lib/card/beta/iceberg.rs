@@ -82,7 +82,7 @@ impl Card for Iceberg {
             removal: AbilityRemoval::exact(Ability::Submerge),
             affected_cards: CardQuery::new()
                 .minions()
-                .nearby_zones_to_card(self.get_id()),
+                .nearby_to_card(self.get_id()),
         }])
     }
 }

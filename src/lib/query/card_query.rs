@@ -172,7 +172,6 @@ impl<T: PartialOrd + PartialEq> NumericFilter<T> {
 
 #[derive(Debug, Clone)]
 enum SpatialFilter {
-    Empty,
     ZoneOfCard(uuid::Uuid),
     ZoneAndDirectionFromCard {
         card_id: CardId,
@@ -183,7 +182,7 @@ enum SpatialFilter {
     AdjacentLocations(Location),
     AdjacentLocationsToAny(Vec<Location>),
     NearbyLocations(Location),
-    NearbyZonesToCard(uuid::Uuid),
+    NearbyToCard(uuid::Uuid),
     NearbyLocationsToCard(uuid::Uuid),
     AffectedZonesOfCard(uuid::Uuid),
     AdjacentSites(Location),
@@ -205,7 +204,6 @@ impl<'a> PreparedCardQuery<'a> {
             .spatial_filters
             .iter()
             .map(|filter| match filter {
-                SpatialFilter::Empty => vec![],
                 SpatialFilter::AdjacentLocations(location) => location
                     .get_adjacent_locations(state)
                     .into_iter()
@@ -221,6 +219,17 @@ impl<'a> PreparedCardQuery<'a> {
                     .into_iter()
                     .map(Zone::from)
                     .collect(),
+                SpatialFilter::NearbyToCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| {
+                        card.get_location()
+                            .get_nearby()
+                            .into_iter()
+                            .map(Zone::from)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 SpatialFilter::ZoneOfCard(card_id) => state
                     .cards
                     .get(card_id)
@@ -249,17 +258,6 @@ impl<'a> PreparedCardQuery<'a> {
                             zones.push(Zone::Location(location));
                         }
                         zones
-                    })
-                    .unwrap_or_default(),
-                SpatialFilter::NearbyZonesToCard(card_id) => state
-                    .cards
-                    .get(card_id)
-                    .map(|card| {
-                        card.get_location()
-                            .get_nearby()
-                            .into_iter()
-                            .map(Zone::from)
-                            .collect()
                     })
                     .unwrap_or_default(),
                 SpatialFilter::NearbyLocationsToCard(card_id) => state
@@ -1022,8 +1020,10 @@ impl CardQuery {
         }
     }
 
-    pub fn adjacent_to_zones(self, zones: &[Zone]) -> Self {
-        self.adjacent_locations_to_any(zones)
+    pub fn adjacent_to_locations(mut self, locations: &[Location]) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentLocationsToAny(locations.to_vec()));
+        self
     }
 
     pub fn can_be_attacked_by(self, attacker_id: &uuid::Uuid) -> Self {
@@ -1040,39 +1040,29 @@ impl CardQuery {
         }
     }
 
-    pub fn adjacent_to(self, zone: &Zone) -> Self {
-        self.adjacent_locations_to(zone)
+    pub fn adjacent_to(self, location: &Location) -> Self {
+        self.adjacent_locations_to(location)
     }
 
-    pub fn near_to(self, zone: &Zone) -> Self {
-        self.nearby_locations_to(zone)
+    pub fn near_to(self, location: &Location) -> Self {
+        self.nearby_locations_to(location)
     }
 
-    pub fn adjacent_locations_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::AdjacentLocations)
-                .unwrap_or(SpatialFilter::Empty),
-        );
-        self
-    }
-
-    pub fn adjacent_locations_to_any(mut self, zones: &[Zone]) -> Self {
+    pub fn adjacent_locations_to(mut self, location: &Location) -> Self {
         self.spatial_filters
-            .push(SpatialFilter::AdjacentLocationsToAny(
-                zones.iter().filter_map(Zone::location).cloned().collect(),
-            ));
+            .push(SpatialFilter::AdjacentLocations(location.clone()));
         self
     }
 
-    pub fn nearby_locations_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::NearbyLocations)
-                .unwrap_or(SpatialFilter::Empty),
-        );
+    pub fn adjacent_locations_to_any(mut self, locations: &[Location]) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentLocationsToAny(locations.to_vec()));
+        self
+    }
+
+    pub fn nearby_locations_to(mut self, location: &Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyLocations(location.clone()));
         self
     }
 
@@ -1082,9 +1072,9 @@ impl CardQuery {
         self
     }
 
-    pub fn nearby_zones_to_card(mut self, card_id: &CardId) -> Self {
+    pub fn nearby_to_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
-            .push(SpatialFilter::NearbyZonesToCard(*card_id));
+            .push(SpatialFilter::NearbyToCard(*card_id));
         self
     }
 
@@ -1094,23 +1084,15 @@ impl CardQuery {
         self
     }
 
-    pub fn adjacent_sites_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::AdjacentSites)
-                .unwrap_or(SpatialFilter::Empty),
-        );
+    pub fn adjacent_sites_to(mut self, location: &Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentSites(location.clone()));
         self
     }
 
-    pub fn nearby_sites_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::NearbySites)
-                .unwrap_or(SpatialFilter::Empty),
-        );
+    pub fn nearby_sites_to(mut self, location: &Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbySites(location.clone()));
         self
     }
 
@@ -1120,23 +1102,15 @@ impl CardQuery {
         self
     }
 
-    pub fn adjacent_voids_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::AdjacentVoids)
-                .unwrap_or(SpatialFilter::Empty),
-        );
+    pub fn adjacent_voids_to(mut self, location: &Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentVoids(location.clone()));
         self
     }
 
-    pub fn nearby_voids_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters.push(
-            zone.location()
-                .cloned()
-                .map(SpatialFilter::NearbyVoids)
-                .unwrap_or(SpatialFilter::Empty),
-        );
+    pub fn nearby_voids_to(mut self, location: &Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyVoids(location.clone()));
         self
     }
 

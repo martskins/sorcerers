@@ -78,7 +78,7 @@ impl Card for VileImp {
 
                 let targets = CardQuery::new()
                     .units()
-                    .adjacent_to(self.get_zone())
+                    .adjacent_to(self.get_location())
                     .id_not_in(vec![imp_id])
                     .all(state);
                 if targets.is_empty() {

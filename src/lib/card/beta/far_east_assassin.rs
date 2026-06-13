@@ -61,7 +61,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
 
         let Some(target_id) = CardQuery::new()
             .minions()
-            .adjacent_to(card.get_zone())
+            .adjacent_to(card.get_location())
             .with_prompt("Pick a target unit in an adjacent zone")
             .with_source_card(*card_id)
             .pick(player_id, state, false)

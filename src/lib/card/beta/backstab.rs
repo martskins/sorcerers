@@ -74,7 +74,7 @@ impl Magic for Backstab {
         let Some(target_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .tapped()
-            .adjacent_locations_to(striker.get_zone())
+            .adjacent_locations_to(striker.get_location())
             .id_not_in(vec![striker_id])
             .with_prompt("Pick a tapped minion to strike")
             .with_source_card(*self.get_id())

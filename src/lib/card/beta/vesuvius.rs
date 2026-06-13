@@ -20,7 +20,7 @@ impl ActivatedAbility for UseAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let site_ids = CardQuery::new().sites().near_to(card.get_zone()).all(state);
+        let site_ids = CardQuery::new().sites().near_to(card.get_location()).all(state);
         let mut effects = vec![];
         for site_id in site_ids {
             let site = state.get_card(&site_id);

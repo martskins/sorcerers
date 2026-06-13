@@ -65,7 +65,7 @@ impl Card for ScentHounds {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
         let effects = CardQuery::new()
             .units()
-            .near_to(self.get_zone())
+            .near_to(self.get_location())
             .controlled_by(&opponent_id)
             .with_abilities(vec![Ability::Stealth])
             .all(state)

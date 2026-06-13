@@ -22,7 +22,7 @@ impl ActivatedAbility for PossessArtifact {
         let card = state.get_card(card_id);
         let nearby_artifacts = CardQuery::new()
             .artifacts()
-            .near_to(card.get_zone())
+            .near_to(card.get_location())
             .all(state);
         Ok(!nearby_artifacts.is_empty())
     }
@@ -36,7 +36,7 @@ impl ActivatedAbility for PossessArtifact {
         let card = state.get_card(card_id);
         let nearby_artifacts = CardQuery::new()
             .artifacts()
-            .near_to(card.get_zone())
+            .near_to(card.get_location())
             .all(state);
         if nearby_artifacts.is_empty() {
             return Ok(vec![]);

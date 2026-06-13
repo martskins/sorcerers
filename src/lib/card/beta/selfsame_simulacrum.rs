@@ -84,7 +84,7 @@ impl Card for SelfsameSimulacrum {
                 let controller_id = self.get_controller_id(state);
                 let targets = CardQuery::new()
                     .minions()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .id_not(*self.get_id())
                     .all(state);
                 if targets.is_empty() {

@@ -69,7 +69,7 @@ impl Card for StoneGazeGorgons {
 
         let resting_minions = CardQuery::new()
             .minions()
-            .adjacent_to(self.get_zone())
+            .adjacent_to(self.get_location())
             .untapped()
             .all(state);
 

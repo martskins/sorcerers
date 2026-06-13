@@ -60,11 +60,11 @@ impl Magic for Telekinesis {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
+        let caster_location = caster.get_location().clone();
 
         let carryable_artifacts: Vec<CardId> = CardQuery::new()
             .artifacts()
-            .near_to(&caster_zone)
+            .near_to(&caster_location)
             .all(state)
             .into_iter()
             .filter(|artifact_id| {

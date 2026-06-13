@@ -61,12 +61,12 @@ impl Magic for Pollimorph {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let caster_zone = state.get_card(caster_id).get_zone().clone();
+        let caster_location = state.get_card(caster_id).get_location().clone();
 
         let prompt = "Pick a minion to transform into a Frog";
         let Some(target_id) = CardQuery::new()
             .minions()
-            .near_to(&caster_zone)
+            .near_to(&caster_location)
             .with_prompt(prompt)
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

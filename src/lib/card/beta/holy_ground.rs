@@ -82,7 +82,7 @@ impl Card for HolyGround {
         match hook {
             GENESIS_HOOK_ID => {
                 let effects = CardQuery::new()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .card_types(vec![CardType::Avatar])
                     .all(state)
                     .iter()

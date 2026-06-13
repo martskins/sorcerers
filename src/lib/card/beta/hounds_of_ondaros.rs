@@ -75,7 +75,7 @@ impl Card for HoundsOfOndaros {
 
         let effects = CardQuery::new()
             .minions()
-            .near_to(self.get_zone())
+            .near_to(self.get_location())
             .with_abilities(vec![Ability::Stealth])
             .all(state)
             .into_iter()

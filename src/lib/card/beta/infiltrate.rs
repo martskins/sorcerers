@@ -59,11 +59,11 @@ impl Magic for Infiltrate {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
+        let caster_location = caster.get_location().clone();
 
         let enemy_minions: Vec<CardId> = CardQuery::new()
             .minions()
-            .near_to(&caster_zone)
+            .near_to(&caster_location)
             .all(state)
             .into_iter()
             .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)

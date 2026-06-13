@@ -87,12 +87,14 @@ impl Card for CourtJester {
                     return Ok(vec![]);
                 }
 
-                let zone = self.get_zone();
-                if !zone.is_in_play() {
+                if !self.get_zone().is_in_play() {
                     return Ok(vec![]);
                 }
 
-                let nearby_avatars = CardQuery::new().avatars().near_to(zone).all(state);
+                let nearby_avatars = CardQuery::new()
+                    .avatars()
+                    .near_to(self.get_location())
+                    .all(state);
                 let mut effects = vec![];
                 for avatar_id in nearby_avatars {
                     let avatar = state.get_card(&avatar_id);

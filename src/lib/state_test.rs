@@ -1251,7 +1251,7 @@ fn test_zone_query_adjacent_to_uses_state_aware_locations() {
 fn test_card_query_adjacent_to_uses_state_aware_locations() {
     let mut state = State::new_mock_state(vec![8, 9]);
     let player_id = state.players[0].id;
-    let source = Zone::Location(Location::Square(8, Region::Surface));
+    let source = Location::Square(8, Region::Surface);
 
     let mut foot_soldier = FootSoldier::new(player_id);
     foot_soldier.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
@@ -1288,7 +1288,7 @@ fn test_adjacent_sites_cross_region_boundaries() {
 fn test_card_query_spatial_filters_resolve_with_current_state() {
     let mut state = State::new_mock_state(vec![]);
     let player_id = state.players[0].id;
-    let source = Zone::Location(Location::Square(13, Region::Void));
+    let source = Location::Square(13, Region::Void);
     let query = CardQuery::new().sites().adjacent_sites_to(&source);
 
     let mut site = AridDesert::new(player_id);

@@ -72,7 +72,7 @@ impl Card for AtlasWanderers {
                 let controller_id = self.get_controller_id(state);
                 let Some(picked_site_id) = CardQuery::new()
                     .sites()
-                    .adjacent_to(self.get_zone())
+                    .adjacent_to(self.get_location())
                     .with_prompt("Pick an adjacent site to swap with")
                     .with_source_card(*self.get_id())
                     .pick(&controller_id, state, false)

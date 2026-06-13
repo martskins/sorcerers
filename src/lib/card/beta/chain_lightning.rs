@@ -59,14 +59,14 @@ impl Magic for ChainLightning {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let mut effects = vec![];
-        let mut last_hit_zone = caster.get_zone().clone();
+        let mut last_hit_location = caster.get_location().clone();
         let mut first_pick = true;
         let mut local_state = state.clone();
         let controller_id = self.get_controller_id(state);
         loop {
             let Some(picked_card_id) = CardQuery::new()
                 .units()
-                .near_to(&last_hit_zone)
+                .near_to(&last_hit_location)
                 .with_prompt("Pick a unit to deal 2 damage to")
                 .with_source_card(*self.get_id())
                 .pick(&controller_id, &local_state, false)
@@ -119,7 +119,7 @@ impl Magic for ChainLightning {
                 break;
             }
 
-            last_hit_zone = state.get_card(&picked_card_id).get_zone().clone();
+            last_hit_location = state.get_card(&picked_card_id).get_location().clone();
             first_pick = false;
         }
 

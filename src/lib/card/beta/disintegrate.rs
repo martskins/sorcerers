@@ -60,11 +60,11 @@ impl Magic for Disintegrate {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let caster_zone = state.get_card(caster_id).get_zone().clone();
+        let caster_location = state.get_card(caster_id).get_location().clone();
         let controller_id = self.get_controller_id(state);
         let Some(target_id) = CardQuery::new()
             .minions()
-            .near_to(&caster_zone)
+            .near_to(&caster_location)
             .with_prompt("Choose a minion to banish")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

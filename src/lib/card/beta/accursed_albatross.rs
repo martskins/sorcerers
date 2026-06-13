@@ -95,7 +95,7 @@ impl Card for AccursedAlbatross {
                 let allies = CardQuery::new()
                     .minions()
                     .controlled_by(&killer.get_controller_id(state))
-                    .near_to(killer.get_zone())
+                    .near_to(killer.get_location())
                     .all(state);
                 for ally in allies {
                     if &ally == self.get_id() {

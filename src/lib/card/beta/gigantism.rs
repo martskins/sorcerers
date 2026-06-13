@@ -61,7 +61,7 @@ impl Magic for Gigantism {
         let opponent_id = state.get_opponent_id(&controller_id)?;
         let nearby_enemies = CardQuery::new()
             .minions()
-            .near_to(self.get_zone())
+            .near_to(self.get_location())
             .controlled_by(&opponent_id)
             .all(state);
         Ok(nearby_enemies

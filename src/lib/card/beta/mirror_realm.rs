@@ -87,7 +87,7 @@ impl Card for MirrorRealm {
             GENESIS_HOOK_ID => {
                 let nearby_sites = CardQuery::new()
                     .sites()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .id_not(*self.get_id())
                     .all(state);
                 if nearby_sites.is_empty() {

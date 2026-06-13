@@ -8,12 +8,12 @@ impl RamStrike {
         let card = state.get_card(card_id);
         let walls = CardQuery::new()
             .auras()
-            .adjacent_to(card.get_zone())
+            .adjacent_to(card.get_location())
             .name_contains("Wall ".to_string())
             .all(state);
         let monuments = CardQuery::new()
             .artifacts()
-            .adjacent_to(card.get_zone())
+            .adjacent_to(card.get_location())
             .artifact_type(ArtifactType::Monument)
             .all(state);
 

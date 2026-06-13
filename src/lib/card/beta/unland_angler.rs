@@ -93,7 +93,7 @@ impl Card for UnlandAngler {
                 let effects = CardQuery::new()
                     .minions()
                     .controlled_by(&opponent_id)
-                    .adjacent_to(self.get_zone())
+                    .adjacent_to(self.get_location())
                     .all(state)
                     .into_iter()
                     .map(|minion_id| {

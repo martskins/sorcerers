@@ -73,7 +73,7 @@ impl Card for RemoteDesert {
                 let controller_id = self.get_controller_id(state);
                 let Some(picked_site_id) = CardQuery::new()
                     .sites()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .with_prompt("Pick a site to deal 1 damage to all atop units")
                     .with_source_card(*self.get_id())
                     .pick(&controller_id, state, false)

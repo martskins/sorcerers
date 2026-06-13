@@ -1782,7 +1782,7 @@ impl State {
         let controller_id = defender.get_controller_id(self);
         let mut defenders = CardQuery::new()
             .units()
-            .near_to(defender.get_zone())
+            .near_to(defender.get_location())
             // TODO: Should CannotDefend be an ability? Sounds more like a status.
             .without_ability(Ability::CannotDefend)
             .without_status(CardStatus::Disabled)

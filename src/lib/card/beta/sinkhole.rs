@@ -19,7 +19,7 @@ impl ActivatedAbility for DestroyNearbySite {
         let controller_id = card.get_controller_id(state);
         let Some(picked_card_id) = CardQuery::new()
             .sites()
-            .near_to(card.get_zone())
+            .near_to(card.get_location())
             .with_prompt("Pick a site to destroy")
             .with_source_card(*card_id)
             .pick(&controller_id, state, false)

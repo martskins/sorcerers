@@ -86,7 +86,7 @@ impl Card for FenvaleMuse {
                 let controller_id = self.get_controller_id(state);
                 let nearby_rivers = CardQuery::new()
                     .sites()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .site_types(vec![SiteType::River])
                     .all(state);
 

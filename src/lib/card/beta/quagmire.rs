@@ -84,7 +84,7 @@ impl Card for Quagmire {
             GENESIS_HOOK_ID => {
                 let effects = CardQuery::new()
                     .units()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .all(state)
                     .into_iter()
                     .map(|card_id| Effect::AddAbilityCounter {

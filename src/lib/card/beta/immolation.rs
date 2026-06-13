@@ -59,11 +59,11 @@ impl Magic for Immolation {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
+        let caster_location = caster.get_location().clone();
 
         let Some(target_id) = CardQuery::new()
             .minions()
-            .near_to(&caster_zone)
+            .near_to(&caster_location)
             .with_prompt("Pick target minion")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

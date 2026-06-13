@@ -72,7 +72,7 @@ impl Magic for Riptide {
         let site = state.get_card(&picked_site_id);
         let Some(picked_unit_id) = CardQuery::new()
             .minions()
-            .adjacent_to(site.get_zone())
+            .adjacent_to(site.get_location())
             .with_prompt("Pick a unit to pull")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

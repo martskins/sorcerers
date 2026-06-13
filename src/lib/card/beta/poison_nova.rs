@@ -61,10 +61,13 @@ impl Magic for PoisonNova {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let caster_zone = state.get_card(caster_id).get_zone().clone();
+        let caster_location = state.get_card(caster_id).get_location().clone();
 
         // Deal 1 lethal damage to all minions nearby (adjacent sites).
-        let nearby_minions = CardQuery::new().minions().near_to(&caster_zone).all(state);
+        let nearby_minions = CardQuery::new()
+            .minions()
+            .near_to(&caster_location)
+            .all(state);
 
         Ok(nearby_minions
             .into_iter()

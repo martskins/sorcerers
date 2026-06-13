@@ -89,7 +89,7 @@ impl Card for MagneticMuzzle {
 
                 let nearby_minions = CardQuery::new()
                     .minions()
-                    .near_to(self.get_zone())
+                    .near_to(self.get_location())
                     .all(state);
                 if nearby_minions.is_empty() {
                     return Ok(vec![]);

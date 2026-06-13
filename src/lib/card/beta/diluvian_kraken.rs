@@ -18,7 +18,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         let kraken = state.get_card(card_id);
         let mut effects = CardQuery::new()
             .units()
-            .near_to(kraken.get_zone())
+            .near_to(kraken.get_location())
             .id_not_in(vec![*kraken.get_id()])
             .all(state)
             .into_iter()
