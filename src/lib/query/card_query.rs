@@ -745,24 +745,11 @@ impl CardQuery {
     }
 
     pub fn any(&self, state: &State) -> bool {
-        if let Some(carrier_id) = self.only_carried_by_filter() {
-            return state
-                .cards_in_play()
-                .any(|card| card.get_base().bearer == carrier_id);
-        }
-
         let prepared = PreparedCardQuery::new(self, state);
         state.all_cards().any(|c| prepared.matches_card(c))
     }
 
     pub fn first(&self, state: &State) -> Option<CardId> {
-        if let Some(carrier_id) = self.only_carried_by_filter() {
-            return state
-                .cards_in_play()
-                .find(|card| card.get_base().bearer == carrier_id)
-                .map(|card| *card.get_id());
-        }
-
         let prepared = PreparedCardQuery::new(self, state);
         state
             .all_cards()
@@ -771,56 +758,12 @@ impl CardQuery {
     }
 
     pub fn all(&self, state: &State) -> Vec<CardId> {
-        if let Some(carrier_id) = self.only_carried_by_filter() {
-            return state
-                .cards_in_play()
-                .filter(|card| card.get_base().bearer == carrier_id)
-                .map(|card| *card.get_id())
-                .collect();
-        }
-
         let prepared = PreparedCardQuery::new(self, state);
         state
             .all_cards()
             .filter(|c| prepared.matches_card(*c))
             .map(|c| *c.get_id())
             .collect()
-    }
-
-    fn only_carried_by_filter(&self) -> Option<Option<CardId>> {
-        if self.carried_by.is_some()
-            && self.randomise.is_none()
-            && self.count.is_none()
-            && self.card_id.is_none()
-            && self.card_name.is_none()
-            && self.controlled_by.is_none()
-            && self.abilities.is_none()
-            && self.statuses.is_none()
-            && self.card_types.is_none()
-            && self.minion_types.is_none()
-            && self.artifact_types.is_none()
-            && self.rarity.is_none()
-            && self.mana_cost.is_none()
-            && self.site_types.is_none()
-            && self.site_is_water.is_none()
-            && self.with_affinity.is_none()
-            && self.with_affinity_in.is_none()
-            && self.in_zones.is_none()
-            && self.regions.is_none()
-            && self.within_range_of.is_none()
-            && self.can_be_attacked_by.is_none()
-            && self.tapped.is_none()
-            && self.oversized.is_none()
-            && self.include_not_in_play.is_none()
-            && self.can_be_targeted_by_player.is_none()
-            && self.elements.is_none()
-            && self.spatial_filters.is_empty()
-            && self.bearer_of.is_none()
-        {
-            self.carried_by
-        } else {
-            None
-        }
     }
 
     pub fn with_prompt(self, prompt: &str) -> Self {
