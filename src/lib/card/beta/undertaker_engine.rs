@@ -79,19 +79,13 @@ impl Card for UndertakerEngine {
                     return Ok(vec![]);
                 }
 
-                let cards_here: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|card| card.get_zone() == self.get_zone())
-                    .filter(|card| card.is_minion() || card.is_artifact())
-                    .filter(|card| {
-                        matches!(
-                            card.get_region(state),
-                            Region::Surface | Region::Underground
-                        )
-                    })
-                    .map(|card| *card.get_id())
-                    .collect();
+                let cards_here = CardQuery::new()
+                    .in_locations(&[
+                        self.get_location().with_region(Region::Surface),
+                        self.get_location().with_region(Region::Underground),
+                    ])
+                    .card_types(vec![CardType::Minion, CardType::Artifact])
+                    .all(state);
                 if cards_here.is_empty() {
                     return Ok(vec![]);
                 }

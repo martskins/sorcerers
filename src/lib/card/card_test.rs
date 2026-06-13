@@ -28,7 +28,7 @@ fn test_additional_cost_tap() {
     let mut unit = ApprenticeWizard::new(player_id);
     let unit_id = *unit.get_id();
     unit.set_zone(Zone::Location(Location::Square(10, Region::Surface)));
-    state.cards.insert(*unit.get_id(), Box::new(unit));
+    state.add_card(Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
         .expect("should not error");
@@ -71,15 +71,11 @@ fn test_card_query_mana_cost_filter_uses_printed_mana_value() {
 
     let cauldron_crones = CauldronCrones::new(player_id);
     let cauldron_crones_id = *cauldron_crones.get_id();
-    state
-        .cards
-        .insert(cauldron_crones_id, Box::new(cauldron_crones));
+    state.add_card(Box::new(cauldron_crones));
 
     let assorted_animals = AssortedAnimals::new(player_id);
     let assorted_animals_id = *assorted_animals.get_id();
-    state
-        .cards
-        .insert(assorted_animals_id, Box::new(assorted_animals));
+    state.add_card(Box::new(assorted_animals));
 
     let matching_cards = CardQuery::new()
         .including_not_in_play()
@@ -115,7 +111,7 @@ fn test_additional_cost_two_taps() {
     let mut unit = ApprenticeWizard::new(player_id);
     let unit_id = *unit.get_id();
     unit.set_zone(Zone::Location(Location::Square(10, Region::Surface)));
-    state.cards.insert(*unit.get_id(), Box::new(unit));
+    state.add_card(Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
         .expect("should not error");
@@ -123,7 +119,7 @@ fn test_additional_cost_two_taps() {
 
     let mut unit = ApprenticeWizard::new(player_id);
     unit.set_zone(Zone::Location(Location::Square(10, Region::Surface)));
-    state.cards.insert(*unit.get_id(), Box::new(unit));
+    state.add_card(Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
         .expect("should not error");
@@ -143,7 +139,7 @@ async fn test_get_valid_move_paths_movement_plus_1() {
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let paths = card
         .get_valid_move_paths(&state, &Location::Square(14, Region::Surface))
@@ -169,7 +165,7 @@ async fn test_get_valid_move_paths_movement_plus_1_airborne() {
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Airborne);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let paths = card
         .get_valid_move_paths(&state, &Location::Square(14, Region::Surface))
@@ -199,7 +195,7 @@ async fn test_get_valid_move_paths_movement_plus_2() {
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Movement(2));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let paths = card
         .get_valid_move_paths(&state, &Location::Square(15, Region::Surface))
@@ -232,7 +228,7 @@ async fn test_get_valid_move_zones_basic_movement() {
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -257,7 +253,7 @@ async fn test_get_valid_move_zones_movement_plus_1() {
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Movement(1));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -288,7 +284,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voids() {
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -312,7 +308,7 @@ async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Movement(1));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -340,7 +336,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Voidwalk);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -365,7 +361,7 @@ async fn test_get_valid_move_zones_airborne() {
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Airborne);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -395,7 +391,7 @@ async fn test_get_valid_move_zones_airborne_with_voids() {
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Airborne);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -425,7 +421,7 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     card.add_ability(Ability::Airborne);
     card.add_ability(Ability::Voidwalk);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut zones = card
         .get_valid_move_locations(&state)
@@ -454,7 +450,7 @@ fn test_get_valid_play_locations_site_second_site() {
     let player_id = state.players[0].id;
     let mut card = AridDesert::new(player_id);
     card.set_zone(Zone::Hand);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -480,11 +476,11 @@ fn test_burrowing_minion_can_be_played_surface_or_underground() {
 
     let mut site = SimpleVillage::new(player_id);
     site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(*site.get_id(), Box::new(site));
+    state.add_card(Box::new(site));
 
     let mut card = RootSpider::new(player_id);
     card.set_zone(Zone::Hand);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -505,7 +501,7 @@ fn test_auras_can_be_played_at_any_surface_intersection() {
 
     let mut card = Drought::new(player_id);
     card.set_zone(Zone::Hand);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -527,7 +523,7 @@ fn test_auras_can_only_be_played_surface_or_void() {
     let mut card = Drought::new(player_id);
     card.set_zone(Zone::Hand);
     let card_id = *card.get_id();
-    state.cards.insert(card_id, Box::new(card));
+    state.add_card(Box::new(card));
 
     assert!(
         Location::Intersection(vec![1, 2, 6, 7], Region::Surface)
@@ -559,7 +555,7 @@ fn test_can_afford_cost() {
 
     let mut card = OgreGoons::new(player_id);
     card.set_zone(Zone::Hand);
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let can_afford = card
         .get_costs(&state)
@@ -578,9 +574,7 @@ fn test_can_afford_cost() {
 
     let mut arid_desert = AridDesert::new(player_id);
     arid_desert.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
-    state
-        .cards
-        .insert(*arid_desert.get_id(), Box::new(arid_desert));
+    state.add_card(Box::new(arid_desert));
 
     // The player now has 3 mana and a fire affinity of 1, so they should be able to afford the
     // Ogre Goons in their hand, which costs 3F.

@@ -59,9 +59,8 @@ impl Magic for OccultRitual {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
 
-        let spellcaster_abilities = [
+        let spellcaster_abilities = vec![
             Ability::Spellcaster(None),
             Ability::Spellcaster(Some(Element::Fire)),
             Ability::Spellcaster(Some(Element::Air)),
@@ -69,18 +68,11 @@ impl Magic for OccultRitual {
             Ability::Spellcaster(Some(Element::Water)),
         ];
 
-        let count = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone() == &caster_zone)
-            .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| {
-                spellcaster_abilities
-                    .iter()
-                    .any(|a| c.has_ability(state, a))
-            })
-            .count() as i8;
-
+        let count = CardQuery::new()
+            .in_location(caster.get_location().clone())
+            .with_any_ability(spellcaster_abilities)
+            .all(state)
+            .len() as i8;
         if count == 0 {
             return Ok(vec![]);
         }

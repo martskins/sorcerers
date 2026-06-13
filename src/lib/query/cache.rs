@@ -125,10 +125,8 @@ impl QueryCache {
             )
         } else if qry.sites_only {
             let mut sites: Vec<Location> = state
-                .cards
-                .values()
+                .cards_in_play()
                 .filter(|c| c.is_site())
-                .filter(|c| c.get_zone().is_in_play())
                 .filter(|c| {
                     qry.controlled_by
                         .as_ref()

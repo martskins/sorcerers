@@ -57,14 +57,9 @@ impl Magic for Bury {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_targets = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion() || c.is_artifact())
-            .filter(|c| c.get_region(state) >= &Region::Surface)
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
+        let valid_targets = CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .all(state);
         let picked_card_id = pick_card(
             &self.get_controller_id(state),
             &valid_targets,
@@ -80,7 +75,8 @@ impl Magic for Bury {
             from: picked_card
                 .get_zone()
                 .clone()
-                .location().cloned()
+                .location()
+                .cloned()
                 .expect("Bury target must be in a location"),
             to: LocationQuery::from_location(
                 picked_card.get_location().with_region(Region::Underground),

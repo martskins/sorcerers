@@ -64,26 +64,20 @@ impl Card for SwivenScout {
 
         let controller_id = self.get_controller_id(state);
         let range = self.get_steps_per_movement(state).unwrap_or(0);
-        let zones = self.get_locations_within_steps(state, range);
-
-        for avatar_id in
-            CardQuery::from_ids(state.cards.values().map(|card| *card.get_id()).collect())
-                .in_locations(&zones)
-                .all(state)
-                .into_iter()
-                .filter(|card_id| {
-                    let card = state.get_card(card_id);
-                    card.is_avatar() && card.get_controller_id(state) != controller_id
-                })
-        {
+        let locations = self.get_locations_within_steps(state, range);
+        let avatars = CardQuery::new()
+            .avatars()
+            .in_locations(&locations)
+            // TODO: Use new not_controlled_by
+            // .controlled_by_different_controller_than_card(card_id)
+            .all(state);
+        for avatar_id in avatars {
             let avatar = state.get_card(&avatar_id);
-            let hand: Vec<CardId> = state
-                .cards
-                .values()
-                .filter(|card| card.get_zone() == &Zone::Hand)
-                .filter(|card| card.get_owner_id() == avatar.get_owner_id())
-                .map(|card| *card.get_id())
-                .collect();
+            let hand = CardQuery::new()
+                .in_zone(Zone::Hand)
+                // TODO: Should be owned by
+                .controlled_by(&avatar.get_controller_id(state))
+                .all(state);
             if hand.is_empty() {
                 continue;
             }

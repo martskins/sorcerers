@@ -208,7 +208,7 @@ mod tests {
 
         let wild_boars = WildBoars::new(player_id);
         let wild_boars_id = *wild_boars.get_id();
-        state.cards.insert(wild_boars_id, Box::new(wild_boars));
+        state.add_card(Box::new(wild_boars));
 
         let beasts = CardQuery::new()
             .including_not_in_play()

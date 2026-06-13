@@ -78,10 +78,7 @@ impl Card for DarkTower {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let count = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_zone().is_in_play())
+                let count = state.cards_in_play()
                     .filter(|c| c.get_id() != self.get_id())
                     .filter(|c| &c.get_controller_id(state) == self.get_owner_id())
                     .filter(|c| c.get_name() == Self::NAME)

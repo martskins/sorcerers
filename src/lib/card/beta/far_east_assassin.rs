@@ -19,12 +19,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
-        let carried = state
-            .cards
-            .values()
-            .filter(|c| c.is_artifact())
-            .filter(|c| c.get_bearer_id().ok().flatten().as_ref() == Some(card_id))
-            .count();
+        let carried = CardQuery::new().artifacts().carried_by(card_id).all(state);
         Ok(carried > 0)
     }
 
@@ -36,14 +31,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
 
-        let carried: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_artifact())
-            .filter(|c| c.get_bearer_id().ok().flatten().as_ref() == Some(card_id))
-            .map(|c| *c.get_id())
-            .collect();
-
+        let carried = CardQuery::new().artifacts().carried_by(card_id).all(state);
         let artifact_id = pick_card(
             player_id,
             &carried,
@@ -81,7 +69,8 @@ impl ActivatedAbility for ThrowArtifactAbility {
                 player_id: *player_id,
                 card_id: artifact_id,
                 from: (artifact.get_zone().clone())
-                    .location().cloned()
+                    .location()
+                    .cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
                     target

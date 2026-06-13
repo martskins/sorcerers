@@ -36,8 +36,7 @@ impl BlastedOak {
         };
 
         state
-            .cards
-            .get(&source_card_id)
+            .try_get_card(&source_card_id)
             .is_some_and(|source| source.is_magic() || source_card_id != oak_id)
     }
 }

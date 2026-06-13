@@ -213,7 +213,7 @@ impl EffectLifecycle {
                     *v -= 1
                 }
 
-                let Some(card) = state.cards.get(&de.card_id) else {
+                let Some(card) = state.try_get_card(&de.card_id) else {
                     return Err(anyhow::anyhow!("failed to get card by id"));
                 };
 

@@ -74,7 +74,7 @@ impl Card for MageSlayer {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
 
-                let spellcaster_abilities = [
+                let spellcaster_abilities = vec![
                     Ability::Spellcaster(None),
                     Ability::Spellcaster(Some(Element::Fire)),
                     Ability::Spellcaster(Some(Element::Air)),
@@ -82,28 +82,18 @@ impl Card for MageSlayer {
                     Ability::Spellcaster(Some(Element::Water)),
                 ];
 
-                let enemy_spellcasters: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_minion())
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| c.get_controller_id(state) != controller_id)
-                    .filter(|c| c.get_location().is_nearby(self.get_location()))
-                    .filter(|c| {
-                        spellcaster_abilities
-                            .iter()
-                            .any(|a| c.has_ability(state, a))
-                    })
-                    .map(|c| *c.get_id())
-                    .collect();
-
-                if enemy_spellcasters.is_empty() {
+                let spellcasters = CardQuery::new()
+                    .minions()
+                    .with_any_ability(spellcaster_abilities)
+                    .nearby_to_card(self.get_id())
+                    .all(state);
+                if spellcasters.is_empty() {
                     return Ok(vec![]);
                 }
 
                 let chosen = pick_card(
                     &controller_id,
-                    &enemy_spellcasters,
+                    &spellcasters,
                     state,
                     "Mage Slayer: Pick a nearby enemy Spellcaster to kill",
                 )

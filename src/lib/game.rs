@@ -1149,14 +1149,11 @@ impl ActivatedAbility for AvatarAction {
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             AvatarAction::PlaySite => {
-                let cards: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone() == &Zone::Hand)
-                    .filter(|c| c.get_owner_id() == player_id)
-                    .map(|c| *c.get_id())
-                    .collect();
+                let cards = CardQuery::new()
+                    .sites()
+                    .in_zone(Zone::Hand)
+                    .controlled_by(&player_id)
+                    .all(state);
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
@@ -1444,19 +1441,8 @@ impl ActivatedAbility for UnitAction {
                     .collect())
             }
             UnitAction::DropMinion => {
-                let minions = state
-                    .cards
-                    .values()
-                    .filter(|minion| minion.is_minion())
-                    .filter(|minion| minion.get_bearer_id().unwrap_or_default() == Some(*card_id))
-                    .collect::<Vec<_>>();
-                let picked = pick_cards(
-                    player_id,
-                    &minions.iter().map(|c| *c.get_id()).collect::<Vec<_>>(),
-                    state,
-                    "Drop carried minions",
-                )
-                .await?;
+                let minions = CardQuery::new().minions().carried_by(card_id).all(state);
+                let picked = pick_cards(player_id, &minions, state, "Drop carried minions").await?;
                 Ok(picked
                     .into_iter()
                     .map(|minion_id| Effect::SetBearer {
@@ -1876,7 +1862,8 @@ impl Game {
                             from: caster
                                 .get_zone()
                                 .clone()
-                                .location().cloned()
+                                .location()
+                                .cloned()
                                 .expect("spell caster must be in a location"),
                         });
                     }
@@ -1997,10 +1984,21 @@ impl Game {
         self.process_effects().await?;
 
         // Move attached artifacts to the same zone as the unit they are attached to
+        let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = CardQuery::new()
+            .artifacts()
+            .all(&self.state)
+            .into_iter()
+            .filter_map(|artifact_id| {
+                let artifact = self.state.get_card(&artifact_id);
+                match artifact.get_bearer_id() {
+                    Ok(Some(bearer_id)) => Some((artifact_id, bearer_id)),
+                    _ => None,
+                }
+            })
+            .collect();
         let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self
             .state
-            .cards
-            .values()
+            .all_cards()
             .filter(|c| c.is_artifact())
             .filter_map(|c| {
                 c.get_base()
@@ -2102,7 +2100,7 @@ impl Game {
     }
 
     pub(crate) async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
-        let auras: Vec<&dyn Aura> = state.cards.values().filter_map(|c| c.get_aura()).collect();
+        let auras: Vec<&dyn Aura> = state.cards_in_play().filter_map(|c| c.get_aura()).collect();
         let mut auras_to_dispell = vec![];
         for aura in auras {
             if aura.should_dispell(state)? {

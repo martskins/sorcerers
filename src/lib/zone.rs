@@ -226,8 +226,7 @@ impl Location {
     pub fn get_site_at_square<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
         let square = self.square()?;
         state
-            .cards
-            .values()
+            .cards_in_play()
             .find(|card| {
                 card.is_site()
                     && card.get_zone().is_in_play()
@@ -736,7 +735,7 @@ impl Zone {
     pub fn location(&self) -> Option<&Location> {
         match self {
             Zone::Location(location) => Some(location),
-            n => panic!("expected location, got {}", n),
+            _ => None,
         }
     }
 

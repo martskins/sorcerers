@@ -4,7 +4,7 @@
 //! player's perspective so that AI agents (and debug displays) can tell who is
 //! ahead and by how much.
 
-use crate::{card::CardType, game::PlayerId, state::State, zone::Zone};
+use crate::{card::CardType, game::PlayerId, query::CardQuery, state::State, zone::Zone};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -113,9 +113,8 @@ pub fn evaluate(state: &State) -> Evaluation {
 
         // --- Sites in play ---
         let sites_in_play = state
-            .cards
-            .values()
-            .filter(|c| c.get_owner_id() == &pid && c.is_site() && c.get_zone().is_in_play())
+            .cards_in_play()
+            .filter(|c| c.get_owner_id() == &pid && c.is_site())
             .count() as f32
             * SITE_WEIGHT;
 
@@ -124,11 +123,10 @@ pub fn evaluate(state: &State) -> Evaluation {
         let mut minion_toughness = 0.0f32;
         let mut board_advancement = 0.0f32;
 
-        for card in state.cards.values().filter(|c| {
-            c.get_owner_id() == &pid
-                && c.get_card_type() == CardType::Minion
-                && c.get_zone().is_in_play()
-        }) {
+        for card in state
+            .cards_in_play()
+            .filter(|c| c.get_owner_id() == &pid && c.get_card_type() == CardType::Minion)
+        {
             if let Some(ub) = card.get_unit_base() {
                 // Use the stored power field for a cheap estimate; counter
                 // effects are complex to resolve without full game context.
@@ -147,11 +145,12 @@ pub fn evaluate(state: &State) -> Evaluation {
         }
 
         // --- Hand size ---
-        let hand_size = state
-            .cards
-            .values()
-            .filter(|c| c.get_owner_id() == &pid && c.get_zone() == &Zone::Hand)
-            .count() as f32
+        let hand_size = CardQuery::new()
+            .in_zone(Zone::Hand)
+            // TODO: Should be owned_by
+            .controlled_by(pid)
+            .all(state)
+            .len()
             * HAND_CARD_WEIGHT;
 
         let comp = EvalComponents {

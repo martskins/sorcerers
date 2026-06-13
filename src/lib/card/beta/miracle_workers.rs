@@ -77,19 +77,18 @@ impl Card for MiracleWorkers {
                 let current_turn = state.turns;
 
                 // Find allied minions that died this turn (BuryCard in the current turn's effect log).
-                let died_this_turn: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion() && c.get_zone() == &Zone::Cemetery)
-            .filter(|c| c.get_owner_id() == &controller_id)
-            .filter(|c| {
-                state.effect_log().iter().any(|le| {
+                let died_this_turn: Vec<CardId> = CardQuery::new()
+                    .minions()
+                    .in_zone(Zone::Cemetery)
+                    .all(state)
+                    .into_iter()
+                    .filter(|cid| {
+                        state.effect_log().iter().any(|le| {
                     le.turn == current_turn
-                        && matches!(le.effect, Effect::BuryCard { card_id } if card_id == *c.get_id())
+                        && matches!(le.effect, Effect::BuryCard { card_id } if card_id == *cid)
                 })
-            })
-            .map(|c| *c.get_id())
-            .collect();
+                    })
+                    .collect();
 
                 if died_this_turn.is_empty() {
                     return Ok(vec![]);

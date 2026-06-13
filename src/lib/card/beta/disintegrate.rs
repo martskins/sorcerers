@@ -75,15 +75,7 @@ impl Magic for Disintegrate {
 
         // Banish the target and every artifact it carries.
         let mut effects: Vec<Effect> = vec![Effect::BanishCard { card_id: target_id }];
-
-        let carried: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_artifact())
-            .filter(|c| c.get_base().bearer == Some(target_id))
-            .map(|c| *c.get_id())
-            .collect();
-
+        let carried = CardQuery::new().carried_by(&target_id).all(state);
         for artifact_id in carried {
             effects.push(Effect::BanishCard {
                 card_id: artifact_id,

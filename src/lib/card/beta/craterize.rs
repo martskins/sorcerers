@@ -64,14 +64,7 @@ impl Magic for Craterize {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let sites = state
-            .cards
-            .values()
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_zone().is_in_play())
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
+        let sites = CardQuery::new().sites().all(state);
         let picked_site_id = pick_card(
             &self.get_controller_id(state),
             &sites,
@@ -92,7 +85,13 @@ impl Magic for Craterize {
         let square_then = |square: u8, first: &Direction, second: &Direction| {
             Location::square_after_steps_in_direction(square, first, 1, state, Some(caster_id))
                 .and_then(|square| {
-                    Location::square_after_steps_in_direction(square, second, 1, state, Some(caster_id))
+                    Location::square_after_steps_in_direction(
+                        square,
+                        second,
+                        1,
+                        state,
+                        Some(caster_id),
+                    )
                 })
         };
         // Damage Pattern:

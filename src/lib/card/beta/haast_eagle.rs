@@ -20,24 +20,13 @@ impl ActivatedAbility for PickUpWeakerMinion {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let my_power = match card.get_power(state)? {
-            Some(p) => p,
-            None => return Ok(vec![]),
-        };
         let controller_id = card.get_controller_id(state);
-
-        let weaker_minions: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| c.get_zone() == card.get_zone())
-            .filter(|c| c.get_id() != card_id)
-            .filter(|c| c.get_bearer_id().unwrap_or_default().is_none())
-            .filter(|c| matches!(c.get_power(state), Ok(Some(p)) if p < my_power))
-            .map(|c| *c.get_id())
-            .collect();
-
+        let weaker_minions = CardQuery::new()
+            .minions()
+            .controlled_by(&controller_id)
+            .in_location(card.get_location().clone())
+            .power_lt(card.get_power(state)?.unwrap_or_default())
+            .all(state);
         let picked = pick_cards(player_id, &weaker_minions, state, "Pick minion to carry").await?;
         Ok(picked
             .into_iter()
@@ -118,26 +107,16 @@ impl Card for HaastEagle {
             return Ok(vec![]);
         }
 
-        let my_power = match self.get_power(state)? {
-            Some(p) => p,
-            None => return Ok(vec![]),
-        };
         let controller_id = self.get_controller_id(state);
-
-        let can_pick_up = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| c.get_zone() == self.get_zone())
-            .filter(|c| c.get_id() != self.get_id())
-            .filter(|c| c.get_bearer_id().unwrap_or_default().is_none())
-            .any(|c| matches!(c.get_power(state), Ok(Some(p)) if p < my_power));
-
-        let can_drop = state
-            .cards
-            .values()
-            .any(|c| c.get_bearer_id().unwrap_or_default() == Some(*self.get_id()));
+        let can_drop = CardQuery::new().carried_by(self.get_id()).all(state).len() > 0;
+        let can_pick_up = CardQuery::new()
+            .minions()
+            .controlled_by(&controller_id)
+            .in_location(self.get_location().clone())
+            .power_lt(self.get_power(state)?.unwrap_or_default())
+            .all(state)
+            .len()
+            > 0;
 
         let mut abilities: Vec<Box<dyn ActivatedAbility>> = vec![];
         if can_pick_up {

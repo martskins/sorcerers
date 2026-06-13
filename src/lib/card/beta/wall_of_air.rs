@@ -90,9 +90,7 @@ impl Card for WallOfAir {
 }
 
 fn border_locations_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<Location> {
-    let controlled_sites: Vec<u8> = state
-        .cards
-        .values()
+    let controlled_sites: Vec<u8> = state.cards_in_play()
         .filter(|card| card.is_site())
         .filter(|card| card.get_controller_id(state) == *player_id)
         .filter_map(|card| match card.get_zone() {

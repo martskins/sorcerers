@@ -22,7 +22,7 @@ fn setup_state_with_cards(num_cards: usize) -> State {
                 (card.get_id().as_u128() % 25) as u8,
                 Region::Surface,
             )));
-            state.cards.insert(*card.get_id(), card);
+            state.add_card(card);
         });
 
     state
@@ -33,7 +33,7 @@ fn bench_card_query(c: &mut Criterion) {
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut group = c.benchmark_group("CardQuery");
     group.bench_function("Zone + Untapped", |b| {
@@ -69,22 +69,18 @@ fn bench_card_query_manual(c: &mut Criterion) {
     let mut card = ApprenticeWizard::new(player_id);
     let card_id = *card.get_id();
     card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+    state.add_card(Box::new(card.clone()));
 
     let mut dagger = PoisonousDagger::new(player_id);
     dagger.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     dagger.set_bearer_id(Some(*card.get_id()));
-    state
-        .cards
-        .insert(*dagger.get_id(), Box::new(dagger.clone()));
+    state.add_card(Box::new(dagger.clone()));
 
     let mut group = c.benchmark_group("Card Querying");
     group.bench_function("Manual Query", |b| {
         b.iter(|| {
             let borne_cards: Vec<CardId> = state
-                .cards
-                .values()
-                .filter(|c| c.get_zone().is_in_play())
+                .cards_in_play()
                 .filter_map(|c| {
                     c.get_bearer_id()
                         .ok()

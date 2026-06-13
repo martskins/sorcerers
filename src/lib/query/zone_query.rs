@@ -206,13 +206,11 @@ impl ZoneQuery {
                 .map(Zone::from)
                 .collect(),
             ZoneSpatialFilter::ZoneOfCard(card_id) => state
-                .cards
-                .get(card_id)
+                .try_get_card(card_id)
                 .map(|card| vec![card.get_zone().clone()])
                 .unwrap_or_default(),
             ZoneSpatialFilter::AffectedZonesOfCard(card_id) => state
-                .cards
-                .get(card_id)
+                .try_get_card(card_id)
                 .map(|card| {
                     card.get_aura()
                         .map(|aura| {
@@ -234,10 +232,8 @@ impl ZoneQuery {
             (filter_zones(first_filter), &self.spatial_filters[1..])
         } else if self.sites_only {
             let mut sites: Vec<Zone> = state
-                .cards
-                .values()
+                .cards_in_play()
                 .filter(|c| c.is_site())
-                .filter(|c| c.get_zone().is_in_play())
                 .filter(|c| {
                     self.controlled_by
                         .as_ref()

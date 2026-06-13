@@ -20,24 +20,23 @@ impl ActivatedAbility for ArtilleryBarrage {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let zones = card.get_locations_within_steps(state, 3);
-
-        let target_zone = pick_location(
+        let locations = card.get_locations_within_steps(state, 3);
+        let target_location = pick_location(
             player_id,
-            &zones,
+            &locations,
             state,
             false,
             "Midland Army: Pick a location to bombard (up to 3 steps away)",
         )
         .await?;
 
-        let effects = state
-            .cards
-            .values()
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_zone().location() == Some(&target_zone))
-            .map(|c| Effect::TakeDamage {
-                card_id: *c.get_id(),
+        let effects = CardQuery::new()
+            .units()
+            .in_location(target_location)
+            .all(state)
+            .into_iter()
+            .map(|cid| Effect::TakeDamage {
+                card_id: cid,
                 from: *card_id,
                 damage: Damage::basic(4),
             })

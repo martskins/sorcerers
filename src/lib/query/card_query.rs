@@ -133,6 +133,7 @@ impl<T: PartialEq> ValueFilter<T> {
 enum VecFilter<T> {
     WithAll(Vec<T>),
     WithoutAny(Vec<T>),
+    WithAny(Vec<T>),
     With(T),
     Without(T),
 }
@@ -220,8 +221,8 @@ impl<'a> PreparedCardQuery<'a> {
                     .map(Zone::from)
                     .collect(),
                 SpatialFilter::NearbyToCard(card_id) => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
+                    .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
                             .get_nearby()
@@ -231,8 +232,7 @@ impl<'a> PreparedCardQuery<'a> {
                     })
                     .unwrap_or_default(),
                 SpatialFilter::ZoneOfCard(card_id) => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
                     .map(|card| vec![card.get_zone().clone()])
                     .unwrap_or_default(),
                 SpatialFilter::ZoneAndDirectionFromCard {
@@ -241,8 +241,7 @@ impl<'a> PreparedCardQuery<'a> {
                     steps,
                     normalise_for_owner,
                 } => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
                     .map(|card| {
                         let board_flipped = *normalise_for_owner
                             && card.get_controller_id(state) != state.player_one;
@@ -261,8 +260,8 @@ impl<'a> PreparedCardQuery<'a> {
                     })
                     .unwrap_or_default(),
                 SpatialFilter::NearbyLocationsToCard(card_id) => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
+                    .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
                             .get_nearby_locations(state)
@@ -272,8 +271,7 @@ impl<'a> PreparedCardQuery<'a> {
                     })
                     .unwrap_or_default(),
                 SpatialFilter::AffectedZonesOfCard(card_id) => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
                     .map(|card| {
                         card.get_aura()
                             .map(|aura| {
@@ -296,8 +294,8 @@ impl<'a> PreparedCardQuery<'a> {
                     .map(Zone::from)
                     .collect(),
                 SpatialFilter::NearbySitesToCard(card_id) => state
-                    .cards
-                    .get(card_id)
+                    .try_get_card(card_id)
+                    .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
                             .get_nearby_sites(state)
@@ -374,7 +372,7 @@ impl<'a> PreparedCardQuery<'a> {
         }
 
         if let Some(source_id) = &query.same_controller_as {
-            let Some(source) = state.cards.get(source_id) else {
+            let Some(source) = state.try_get_card(source_id) else {
                 return false;
             };
             if card.get_controller_id(state) != source.get_controller_id(state) {
@@ -383,7 +381,7 @@ impl<'a> PreparedCardQuery<'a> {
         }
 
         if let Some(source_id) = &query.different_controller_than {
-            let Some(source) = state.cards.get(source_id) else {
+            let Some(source) = state.try_get_card(source_id) else {
                 return false;
             };
             if card.get_controller_id(state) == source.get_controller_id(state) {
@@ -424,7 +422,7 @@ impl<'a> PreparedCardQuery<'a> {
         }
 
         if let Some(source_id) = &query.bearer_of {
-            let Some(source) = state.cards.get(source_id) else {
+            let Some(source) = state.try_get_card(source_id) else {
                 return false;
             };
             if source.get_base().bearer != Some(*card_id) {
@@ -748,61 +746,50 @@ impl CardQuery {
         Ok(Some(output))
     }
 
-    pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b Box<dyn Card>> {
+    pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b dyn Card> {
         let prepared = PreparedCardQuery::new(self, state);
-        state
-            .cards
-            .values()
-            .filter(move |c| prepared.matches_card(c.as_ref()))
+        state.all_cards().filter(move |c| prepared.matches_card(*c))
     }
 
     pub fn any(&self, state: &State) -> bool {
         if let Some(carrier_id) = self.only_carried_by_filter() {
             return state
-                .cards
-                .values()
-                .any(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id);
+                .cards_in_play()
+                .any(|card| card.get_base().bearer == carrier_id);
         }
 
         let prepared = PreparedCardQuery::new(self, state);
-        state
-            .cards
-            .values()
-            .any(|c| prepared.matches_card(c.as_ref()))
+        state.all_cards().any(|c| prepared.matches_card(c))
     }
 
     pub fn first(&self, state: &State) -> Option<CardId> {
         if let Some(carrier_id) = self.only_carried_by_filter() {
             return state
-                .cards
-                .values()
-                .find(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id)
+                .cards_in_play()
+                .find(|card| card.get_base().bearer == carrier_id)
                 .map(|card| *card.get_id());
         }
 
         let prepared = PreparedCardQuery::new(self, state);
         state
-            .cards
-            .values()
-            .find(|c| prepared.matches_card(c.as_ref()))
+            .all_cards()
+            .find(|c| prepared.matches_card(*c))
             .map(|c| *c.get_id())
     }
 
     pub fn all(&self, state: &State) -> Vec<CardId> {
         if let Some(carrier_id) = self.only_carried_by_filter() {
             return state
-                .cards
-                .values()
-                .filter(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id)
+                .cards_in_play()
+                .filter(|card| card.get_base().bearer == carrier_id)
                 .map(|card| *card.get_id())
                 .collect();
         }
 
         let prepared = PreparedCardQuery::new(self, state);
         state
-            .cards
-            .values()
-            .filter(|c| prepared.matches_card(c.as_ref()))
+            .all_cards()
+            .filter(|c| prepared.matches_card(*c))
             .map(|c| *c.get_id())
             .collect()
     }
@@ -949,8 +936,17 @@ impl CardQuery {
     }
 
     pub fn in_zones(self, zones: &[Zone]) -> Self {
+        let mut include_not_in_play = self.include_not_in_play;
+        for zone in zones {
+            if !zone.is_in_play() {
+                include_not_in_play = Some(true);
+                break;
+            }
+        }
+
         Self {
             in_zones: Some(zones.to_vec()),
+            include_not_in_play,
             ..self
         }
     }
@@ -970,8 +966,15 @@ impl CardQuery {
     }
 
     pub fn in_zone(self, zone: impl Into<Zone>) -> Self {
+        let zone = zone.into();
+        let mut include_not_in_play = self.include_not_in_play;
+        if !zone.is_in_play() {
+            include_not_in_play = Some(true);
+        }
+
         Self {
-            in_zones: Some(vec![zone.into()]),
+            in_zones: Some(vec![zone]),
+            include_not_in_play,
             ..self
         }
     }
@@ -1160,6 +1163,15 @@ impl CardQuery {
         }
     }
 
+    pub fn with_any_ability(self, abilities: Vec<Ability>) -> Self {
+        let mut new_filter = self.abilities.unwrap_or_default();
+        new_filter.push(VecFilter::WithAny(abilities));
+        Self {
+            abilities: Some(new_filter),
+            ..self
+        }
+    }
+
     pub fn with_ability(self, ability: Ability) -> Self {
         let mut new_filter = self.abilities.unwrap_or_default();
         new_filter.push(VecFilter::With(ability));
@@ -1212,6 +1224,7 @@ impl CardQuery {
 
     pub fn controlled_by_different_controller_than_card(self, card_id: &CardId) -> Self {
         Self {
+            // TODO: Use matcher
             different_controller_than: Some(*card_id),
             ..self
         }

@@ -27,7 +27,7 @@ impl EffectEngine {
         timing: HookTiming,
     ) -> anyhow::Result<Vec<PendingHook>> {
         let mut hooks = vec![];
-        for card in state.cards.values() {
+        for card in state.all_cards() {
             if card.get_zone().is_in_play()
                 && state.card_has_special_abilities_removed(card.get_id())
             {
@@ -62,7 +62,7 @@ impl EffectEngine {
         hooks: &[PendingHook],
     ) -> anyhow::Result<()> {
         for hook in hooks {
-            let Some(source) = state.cards.get(&hook.source_id) else {
+            let Some(source) = state.try_get_card(&hook.source_id) else {
                 continue;
             };
             if !hook.source_zones.matches(source.get_zone()) {
@@ -94,7 +94,7 @@ impl EffectEngine {
     ) -> anyhow::Result<Vec<Effect>> {
         let mut replacements = vec![];
         for hook in hooks {
-            let Some(source) = state.cards.get(&hook.source_id) else {
+            let Some(source) = state.try_get_card(&hook.source_id) else {
                 continue;
             };
             if !hook.source_zones.matches(source.get_zone()) {

@@ -59,8 +59,7 @@ impl Magic for BorderMilitia {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let mut sites: Vec<&dyn Card> = state
-            .cards
-            .values()
+            .cards_in_play()
             .filter(|c| c.is_site())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| {
@@ -77,7 +76,6 @@ impl Magic for BorderMilitia {
 
                 false
             })
-            .map(|c| c.as_ref())
             .collect();
         sites.dedup_by(|a, b| a.get_id() == b.get_id());
 

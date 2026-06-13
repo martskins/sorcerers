@@ -166,7 +166,7 @@ async fn drain_effects(state: &mut State) {
 //     let wildfire_id = *wildfire.get_id();
 //     let zone = Zone::Location(Location::Square(8, Region::Surface));
 //
-//     state.cards.insert(wildfire_id, Box::new(wildfire));
+//     state.add_card(Box::new(wildfire));
 //     state.get_card_mut(&wildfire_id).set_zone(zone.clone());
 //
 //     let effect = Effect::PlayCard {
@@ -233,12 +233,12 @@ async fn test_plain_strike_does_not_make_target_strike_back() {
     let mut striker = OgreGoons::new(player_id);
     let striker_id = *striker.get_id();
     striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(striker_id, Box::new(striker));
+    state.add_card(Box::new(striker));
 
     let mut target = ApprenticeWizard::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     state.queue_one(Effect::Strike {
         striker_id,
@@ -268,12 +268,12 @@ async fn test_disabled_unit_cannot_strike() {
     let striker_id = *striker.get_id();
     striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     striker.add_status(CardStatus::Disabled);
-    state.cards.insert(striker_id, Box::new(striker));
+    state.add_card(Box::new(striker));
 
     let mut target = ApprenticeWizard::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     state.queue_one(Effect::Strike {
         striker_id,
@@ -297,19 +297,17 @@ async fn test_ranged_projectile_hits_intervening_unit() {
     let mut striker = YourkeCrossbowmen::new(player_id);
     let striker_id = *striker.get_id();
     striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(striker_id, Box::new(striker));
+    state.add_card(Box::new(striker));
 
     let mut blocker = ApprenticeWizard::new(opponent_id);
     let blocker_id = *blocker.get_id();
     blocker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(blocker_id, Box::new(blocker));
+    state.add_card(Box::new(blocker));
 
     let mut original_target = ApprenticeWizard::new(opponent_id);
     let original_target_id = *original_target.get_id();
     original_target.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
-    state
-        .cards
-        .insert(original_target_id, Box::new(original_target));
+    state.add_card(Box::new(original_target));
 
     state.queue_one(Effect::ShootProjectile {
         id: uuid::Uuid::new_v4(),
@@ -349,12 +347,12 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
     let mut shooter = OgreGoons::new(player_id);
     let shooter_id = *shooter.get_id();
     shooter.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(shooter_id, Box::new(shooter));
+    state.add_card(Box::new(shooter));
 
     let mut target = YourkeCrossbowmen::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     state.queue_one(Effect::ShootProjectile {
         id: uuid::Uuid::new_v4(),
@@ -406,12 +404,12 @@ async fn test_replace_hook_replaces_original_effect() {
     let mut demon = DeadOfNightDemon::new(opponent_id);
     let demon_id = *demon.get_id();
     demon.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(demon_id, Box::new(demon));
+    state.add_card(Box::new(demon));
 
     let mut templar = SirianTemplar::new(player_id);
     let templar_id = *templar.get_id();
     templar.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(templar_id, Box::new(templar));
+    state.add_card(Box::new(templar));
 
     state.queue_one(Effect::TakeDamage {
         card_id: templar_id,
@@ -440,12 +438,12 @@ async fn test_turn_end_projectile_damage_is_cleared_before_next_turn() {
     let mut dragonettes = ColickyDragonettes::new(player_id);
     let dragonettes_id = *dragonettes.get_id();
     dragonettes.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(dragonettes_id, Box::new(dragonettes));
+    state.add_card(Box::new(dragonettes));
 
     let mut target = OgreGoons::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -492,15 +490,15 @@ async fn test_hook_source_zones_control_out_of_play_triggers() {
 
     let in_play_only = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let in_play_only_id = *in_play_only.get_id();
-    state.cards.insert(in_play_only_id, Box::new(in_play_only));
+    state.add_card(Box::new(in_play_only));
 
     let any_zone = TestHookSource::new(player_id, HookSourceZones::Any);
     let any_zone_id = *any_zone.get_id();
-    state.cards.insert(any_zone_id, Box::new(any_zone));
+    state.add_card(Box::new(any_zone));
 
     let hand_zone = TestHookSource::new(player_id, HookSourceZones::Zones(vec![Zone::Hand]));
     let hand_zone_id = *hand_zone.get_id();
-    state.cards.insert(hand_zone_id, Box::new(hand_zone));
+    state.add_card(Box::new(hand_zone));
 
     state.queue_one(Effect::DrawCard {
         player_id,
@@ -527,17 +525,17 @@ async fn test_scourge_zombies_triggers_from_cemetery() {
     let mut source = FootSoldier::new(opponent_id);
     let source_id = *source.get_id();
     source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(source_id, Box::new(source));
+    state.add_card(Box::new(source));
 
     let mut mortal = FootSoldier::new(player_id);
     let mortal_id = *mortal.get_id();
     mortal.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(mortal_id, Box::new(mortal));
+    state.add_card(Box::new(mortal));
 
     let mut scourge = ScourgeZombies::new(player_id);
     let scourge_id = *scourge.get_id();
     scourge.set_zone(Zone::Cemetery);
-    state.cards.insert(scourge_id, Box::new(scourge));
+    state.add_card(Box::new(scourge));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -580,12 +578,12 @@ async fn test_rimland_nomads_replace_desert_damage() {
     let mut desert = AridDesert::new(player_id);
     let desert_id = *desert.get_id();
     desert.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(desert_id, Box::new(desert));
+    state.add_card(Box::new(desert));
 
     let mut nomads = RimlandNomads::new(player_id);
     let nomads_id = *nomads.get_id();
     nomads.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(nomads_id, Box::new(nomads));
+    state.add_card(Box::new(nomads));
 
     state.queue_one(Effect::TakeDamage {
         card_id: nomads_id,
@@ -605,12 +603,12 @@ async fn test_askelon_phoenix_replaces_fire_damage_with_power_counter() {
     let mut desert = AridDesert::new(player_id);
     let desert_id = *desert.get_id();
     desert.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(desert_id, Box::new(desert));
+    state.add_card(Box::new(desert));
 
     let mut phoenix = AskelonPhoenix::new(player_id);
     let phoenix_id = *phoenix.get_id();
     phoenix.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(phoenix_id, Box::new(phoenix));
+    state.add_card(Box::new(phoenix));
 
     state.queue_one(Effect::TakeDamage {
         card_id: phoenix_id,
@@ -633,12 +631,12 @@ async fn test_sling_pixies_replace_damage_from_units_with_four_or_more_power() {
     let mut phoenix = AskelonPhoenix::new(opponent_id);
     let phoenix_id = *phoenix.get_id();
     phoenix.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(phoenix_id, Box::new(phoenix));
+    state.add_card(Box::new(phoenix));
 
     let mut pixies = SlingPixies::new(player_id);
     let pixies_id = *pixies.get_id();
     pixies.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(pixies_id, Box::new(pixies));
+    state.add_card(Box::new(pixies));
 
     state.queue_one(Effect::TakeDamage {
         card_id: pixies_id,
@@ -659,12 +657,12 @@ async fn test_tufted_turtles_replace_first_damage_each_turn() {
     let mut source = FootSoldier::new(opponent_id);
     let source_id = *source.get_id();
     source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(source_id, Box::new(source));
+    state.add_card(Box::new(source));
 
     let mut turtles = TuftedTurtles::new(player_id);
     let turtles_id = *turtles.get_id();
     turtles.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(turtles_id, Box::new(turtles));
+    state.add_card(Box::new(turtles));
 
     state.queue_one(Effect::TakeDamage {
         card_id: turtles_id,
@@ -694,18 +692,18 @@ async fn test_gilded_aegis_replace_bearer_death() {
     let mut source = FootSoldier::new(opponent_id);
     let source_id = *source.get_id();
     source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(source_id, Box::new(source));
+    state.add_card(Box::new(source));
 
     let mut bearer = FootSoldier::new(player_id);
     let bearer_id = *bearer.get_id();
     bearer.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(bearer_id, Box::new(bearer));
+    state.add_card(Box::new(bearer));
 
     let mut aegis = GildedAegis::new(player_id);
     let aegis_id = *aegis.get_id();
     aegis.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     aegis.set_bearer_id(Some(bearer_id));
-    state.cards.insert(aegis_id, Box::new(aegis));
+    state.add_card(Box::new(aegis));
 
     state.queue_one(Effect::KillMinion {
         card_id: bearer_id,
@@ -731,12 +729,12 @@ async fn test_tvinnax_berserker_untaps_after_attack_kill_without_replacing_kill(
     let tvinnax_id = *tvinnax.get_id();
     tvinnax.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     tvinnax.set_tapped(true);
-    state.cards.insert(tvinnax_id, Box::new(tvinnax));
+    state.add_card(Box::new(tvinnax));
 
     let mut target = FootSoldier::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     state.queue_one(Effect::KillMinion {
         card_id: target_id,
@@ -769,26 +767,22 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
     let mut attacker = FootSoldier::new(opponent_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(origin.clone().into());
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut defender = FootSoldier::new(player_id);
     let defender_id = *defender.get_id();
     defender.set_zone(origin.clone().into());
-    state.cards.insert(defender_id, Box::new(defender));
+    state.add_card(Box::new(defender));
 
     let mut first_dodge_roll = DodgeRoll::new(player_id);
     let first_dodge_roll_id = *first_dodge_roll.get_id();
     first_dodge_roll.set_zone(Zone::Hand);
-    state
-        .cards
-        .insert(first_dodge_roll_id, Box::new(first_dodge_roll));
+    state.add_card(Box::new(first_dodge_roll));
 
     let mut second_dodge_roll = DodgeRoll::new(player_id);
     let second_dodge_roll_id = *second_dodge_roll.get_id();
     second_dodge_roll.set_zone(Zone::Hand);
-    state
-        .cards
-        .insert(second_dodge_roll_id, Box::new(second_dodge_roll));
+    state.add_card(Box::new(second_dodge_roll));
 
     let picked_destination = destination.clone();
     tokio::spawn(async move {
@@ -873,12 +867,12 @@ async fn test_royal_bodyguard_replace_nearby_avatar_damage() {
     let mut source = FootSoldier::new(opponent_id);
     let source_id = *source.get_id();
     source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(source_id, Box::new(source));
+    state.add_card(Box::new(source));
 
     let mut bodyguard = RoyalBodyguard::new(player_id);
     let bodyguard_id = *bodyguard.get_id();
     bodyguard.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(bodyguard_id, Box::new(bodyguard));
+    state.add_card(Box::new(bodyguard));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -918,12 +912,12 @@ async fn test_seirawan_hydra_heals_nonlethal_damage_after_taking_it() {
     let mut source = FootSoldier::new(opponent_id);
     let source_id = *source.get_id();
     source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(source_id, Box::new(source));
+    state.add_card(Box::new(source));
 
     let mut hydra = SeirawanHydra::new(player_id);
     let hydra_id = *hydra.get_id();
     hydra.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(hydra_id, Box::new(hydra));
+    state.add_card(Box::new(hydra));
 
     state.queue_one(Effect::TakeDamage {
         card_id: hydra_id,
@@ -943,12 +937,12 @@ async fn test_effect_description_can_use_removed_card_lookup() {
     let mut attacker = ApprenticeWizard::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut token = FootSoldier::new(player_id);
     let token_id = *token.get_id();
     token.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(token_id, Box::new(token));
+    state.add_card(Box::new(token));
 
     state.queue_one(Effect::RemoveCardFromGame { card_id: token_id });
     drain_effects(&mut state).await;
@@ -976,13 +970,13 @@ async fn test_bury_token_removes_token_after_cleanup_effects() {
     let mut token = FootSoldier::new(player_id);
     let token_id = *token.get_id();
     token.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(token_id, Box::new(token));
+    state.add_card(Box::new(token));
 
     state.queue_one(Effect::BuryCard { card_id: token_id });
     drain_effects(&mut state).await;
 
     assert!(
-        !state.cards.contains_key(&token_id),
+        !state.contains_card(&token_id),
         "token should be removed after its cleanup effects have resolved"
     );
 }
@@ -996,13 +990,13 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut defender = ApprenticeWizard::new(opponent_id);
     let defender_id = *defender.get_id();
     defender.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     defender.add_status(CardStatus::Disabled);
-    state.cards.insert(defender_id, Box::new(defender));
+    state.add_card(Box::new(defender));
 
     state.queue_one(Effect::Fight {
         attacker_id,
@@ -1029,17 +1023,17 @@ async fn test_multiple_defenders_split_attack_damage() {
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut defender_one = ApprenticeWizard::new(opponent_id);
     let defender_one_id = *defender_one.get_id();
     defender_one.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(defender_one_id, Box::new(defender_one));
+    state.add_card(Box::new(defender_one));
 
     let mut defender_two = ApprenticeWizard::new(opponent_id);
     let defender_two_id = *defender_two.get_id();
     defender_two.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
-    state.cards.insert(defender_two_id, Box::new(defender_two));
+    state.add_card(Box::new(defender_two));
 
     state.queue_one(Effect::Fight {
         attacker_id,
@@ -1072,17 +1066,17 @@ async fn test_attack_action_declares_attack_only() {
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(attacker_zone.clone());
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut attacked = ApprenticeWizard::new(opponent_id);
     let attacked_id = *attacked.get_id();
     attacked.set_zone(attack_location.clone());
-    state.cards.insert(attacked_id, Box::new(attacked));
+    state.add_card(Box::new(attacked));
 
     let mut defender = OgreGoons::new(opponent_id);
     let defender_id = *defender.get_id();
     defender.set_zone(attack_location.clone());
-    state.cards.insert(defender_id, Box::new(defender));
+    state.add_card(Box::new(defender));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -1163,22 +1157,22 @@ async fn test_multiple_defenders_fight_at_attacked_location() {
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(attacker_zone);
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut attacked = ApprenticeWizard::new(opponent_id);
     let attacked_id = *attacked.get_id();
     attacked.set_zone(attack_location.clone());
-    state.cards.insert(attacked_id, Box::new(attacked));
+    state.add_card(Box::new(attacked));
 
     let mut defender_one = OgreGoons::new(opponent_id);
     let defender_one_id = *defender_one.get_id();
     defender_one.set_zone(defender_one_start);
-    state.cards.insert(defender_one_id, Box::new(defender_one));
+    state.add_card(Box::new(defender_one));
 
     let mut defender_two = OgreGoons::new(opponent_id);
     let defender_two_id = *defender_two.get_id();
     defender_two.set_zone(defender_two_start);
-    state.cards.insert(defender_two_id, Box::new(defender_two));
+    state.add_card(Box::new(defender_two));
 
     state.queue_one(Effect::Fight {
         attacker_id,
@@ -1213,7 +1207,7 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
     let mut attacker = ApprenticeWizard::new(player_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     let mut first_striker = ApprenticeWizard::new(opponent_id);
     let first_striker_id = *first_striker.get_id();
@@ -1223,16 +1217,12 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
         .unwrap()
         .abilities
         .push(Ability::FirstStrike);
-    state
-        .cards
-        .insert(first_striker_id, Box::new(first_striker));
+    state.add_card(Box::new(first_striker));
 
     let mut other_defender = ApprenticeWizard::new(opponent_id);
     let other_defender_id = *other_defender.get_id();
     other_defender.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
-    state
-        .cards
-        .insert(other_defender_id, Box::new(other_defender));
+    state.add_card(Box::new(other_defender));
 
     state.queue_one(Effect::Fight {
         attacker_id,
@@ -1276,16 +1266,12 @@ fn test_disabled_units_cannot_defend_or_intercept() {
     let disabled_defender_id = *disabled_defender.get_id();
     disabled_defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     disabled_defender.add_status(CardStatus::Disabled);
-    state
-        .cards
-        .insert(disabled_defender_id, Box::new(disabled_defender));
+    state.add_card(Box::new(disabled_defender));
 
     let mut able_defender = FootSoldier::new(player_id);
     let able_defender_id = *able_defender.get_id();
     able_defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state
-        .cards
-        .insert(able_defender_id, Box::new(able_defender));
+    state.add_card(Box::new(able_defender));
 
     let defenders = state.get_defenders_for_attack(&attacker_id, &avatar_id);
     assert!(
@@ -1336,12 +1322,12 @@ async fn test_silenced_bridge_troll_hook_does_not_trigger() {
     let bridge_troll_id = *bridge_troll.get_id();
     bridge_troll.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     bridge_troll.add_status(CardStatus::Silenced);
-    state.cards.insert(bridge_troll_id, Box::new(bridge_troll));
+    state.add_card(Box::new(bridge_troll));
 
     let mut attacker = ApprenticeWizard::new(opponent_id);
     let attacker_id = *attacker.get_id();
     attacker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(attacker_id, Box::new(attacker));
+    state.add_card(Box::new(attacker));
 
     *state.get_player_mana_mut(&opponent_id) = 5;
 
@@ -1471,7 +1457,7 @@ async fn test_site_damage_after_deaths_door_is_not_death_blow() {
     let mut site = AridDesert::new(player_id);
     let site_id = *site.get_id();
     site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(site_id, Box::new(site));
+    state.add_card(Box::new(site));
 
     state.queue_one(Effect::TakeDamage {
         card_id: avatar_id,
@@ -1512,13 +1498,15 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     let mut vaults = VaultsOfZul::new(player_id);
     let vaults_id = *vaults.get_id();
     vaults.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(vaults_id, Box::new(vaults));
+    state.add_card(Box::new(vaults));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(3, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: Some(vec![
             Location::Square(2, Region::Surface),
@@ -1558,7 +1546,9 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(3, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: Some(vec![
             Location::Square(2, Region::Surface),
@@ -1581,11 +1571,11 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     let mut pit = BottomlessPit::new(player_id);
     let pit_id = *pit.get_id();
     pit.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(pit_id, Box::new(pit));
+    state.add_card(Box::new(pit));
 
     let ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
-    state.cards.insert(ogre_id, Box::new(ogre));
+    state.add_card(Box::new(ogre));
 
     state.queue_one(Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -1612,7 +1602,7 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
     let mut gate = PlanarGate::new(player_id);
     let gate_id = *gate.get_id();
     gate.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(gate_id, Box::new(gate));
+    state.add_card(Box::new(gate));
     state
         .add_passive_ongoing_effects_for_source(&gate_id)
         .await
@@ -1621,12 +1611,12 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
     let mut destination = AridDesert::new(player_id);
     let destination_id = *destination.get_id();
     destination.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(destination_id, Box::new(destination));
+    state.add_card(Box::new(destination));
 
     let mut foot_soldier = FootSoldier::new(player_id);
     let foot_soldier_id = *foot_soldier.get_id();
     foot_soldier.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
+    state.add_card(Box::new(foot_soldier));
 
     assert!(
         state
@@ -1639,7 +1629,9 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
         player_id,
         card_id: foot_soldier_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(2, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -1667,18 +1659,20 @@ async fn test_wall_of_fire_damages_unit_crossing_its_border() {
         vec![1, 2, 6, 7],
         Region::Surface,
     )));
-    state.cards.insert(wall_id, Box::new(wall));
+    state.add_card(Box::new(wall));
 
     let mut foot_soldier = FootSoldier::new(player_id);
     let foot_soldier_id = *foot_soldier.get_id();
     foot_soldier.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
+    state.add_card(Box::new(foot_soldier));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: foot_soldier_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(2, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -1702,13 +1696,15 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
     let mut assassin = PhaseAssassin::new(player_id);
     let assassin_id = *assassin.get_id();
     assassin.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(assassin_id, Box::new(assassin));
+    state.add_card(Box::new(assassin));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: assassin_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(2, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -1725,7 +1721,9 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
         player_id,
         card_id: assassin_id,
         from: Location::Square(2, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
+        to: LocationQuery::from_location(
+            Location::Square(3, Region::Surface).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -1747,7 +1745,7 @@ async fn test_teleport_triggers_visit_zone_once() {
     let mut assassin = PhaseAssassin::new(player_id);
     let assassin_id = *assassin.get_id();
     assassin.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(assassin_id, Box::new(assassin));
+    state.add_card(Box::new(assassin));
 
     state.queue_one(Effect::TeleportCard {
         player_id,
@@ -1779,15 +1777,15 @@ async fn test_minion_without_burrowing_dies_underground() {
     let mut apprentice_wizard = ApprenticeWizard::new(player_id);
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state
-        .cards
-        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state.add_card(Box::new(apprentice_wizard));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: apprentice_wizard_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_location(Location::Square(1, Region::Surface).with_region(Region::Underground)),
+        to: LocationQuery::from_location(
+            Location::Square(1, Region::Surface).with_region(Region::Underground),
+        ),
         tap: false,
         through_path: None,
     });
@@ -1806,9 +1804,7 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
 
     let apprentice_wizard = ApprenticeWizard::new(player_id);
     let apprentice_wizard_id = *apprentice_wizard.get_id();
-    state
-        .cards
-        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state.add_card(Box::new(apprentice_wizard));
 
     state.queue_one(Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -1835,9 +1831,7 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.add_ability(Ability::Burrowing);
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underground)));
-    state
-        .cards
-        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state.add_card(Box::new(apprentice_wizard));
 
     state.queue_one(Effect::AddTemporaryEffect {
         effect: TemporaryEffect::GrantAbility {
@@ -1862,20 +1856,18 @@ async fn test_submerged_minion_dies_when_water_site_becomes_land() {
     let mut spring_river = SpringRiver::new(player_id);
     let spring_river_id = *spring_river.get_id();
     spring_river.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(spring_river_id, Box::new(spring_river));
+    state.add_card(Box::new(spring_river));
 
     let mut apprentice_wizard = ApprenticeWizard::new(player_id);
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.add_ability(Ability::Submerge);
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underwater)));
-    state
-        .cards
-        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state.add_card(Box::new(apprentice_wizard));
 
     let mut drought = Drought::new(player_id);
     let drought_id = *drought.get_id();
     drought.set_zone(Zone::Hand);
-    state.cards.insert(drought_id, Box::new(drought));
+    state.add_card(Box::new(drought));
 
     state.queue_one(Effect::SetCardZone {
         card_id: drought_id,
@@ -1896,7 +1888,7 @@ async fn test_site_generates_mana_when_set_card_zone_enters_realm() {
 
     let spring_river = SpringRiver::new(player_id);
     let spring_river_id = *spring_river.get_id();
-    state.cards.insert(spring_river_id, Box::new(spring_river));
+    state.add_card(Box::new(spring_river));
 
     state.queue_one(Effect::SetCardZone {
         card_id: spring_river_id,
@@ -1918,7 +1910,7 @@ async fn test_site_entering_realm_outside_controller_turn_does_not_generate_mana
 
     let spring_river = SpringRiver::new(opponent_id);
     let spring_river_id = *spring_river.get_id();
-    state.cards.insert(spring_river_id, Box::new(spring_river));
+    state.add_card(Box::new(spring_river));
 
     state.queue_one(Effect::SetCardZone {
         card_id: spring_river_id,
@@ -1940,7 +1932,7 @@ async fn test_played_site_generates_mana_once() {
 
     let spring_river = SpringRiver::new(player_id);
     let spring_river_id = *spring_river.get_id();
-    state.cards.insert(spring_river_id, Box::new(spring_river));
+    state.add_card(Box::new(spring_river));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -1974,12 +1966,12 @@ async fn test_playing_site_under_flood_does_not_recurse() {
         vec![1, 2, 6, 7],
         Region::Surface,
     )));
-    state.cards.insert(flood_id, Box::new(flood));
+    state.add_card(Box::new(flood));
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let spring_river = SpringRiver::new(player_id);
     let spring_river_id = *spring_river.get_id();
-    state.cards.insert(spring_river_id, Box::new(spring_river));
+    state.add_card(Box::new(spring_river));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -2009,7 +2001,7 @@ async fn test_temporary_effect_grants_ability() {
 
     let unit = FootSoldier::new(player_id);
     let unit_id = *unit.get_id();
-    state.cards.insert(unit_id, Box::new(unit.clone()));
+    state.add_card(Box::new(unit.clone()));
     state
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
@@ -2067,7 +2059,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
     let player_id = state.players[0].id;
     let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
-    state.cards.insert(card_id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
@@ -2094,7 +2086,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
     let player_id = state.players[0].id;
     let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
-    state.cards.insert(card_id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
@@ -2126,7 +2118,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
     let player_id = state.players[0].id;
     let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
-    state.cards.insert(card_id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
@@ -2152,8 +2144,7 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let site_id = *state
-        .cards
-        .values()
+        .cards_in_play()
         .find(|card| card.is_site())
         .expect("test state should have a site")
         .get_id();
@@ -2183,7 +2174,7 @@ async fn test_summon_card_puts_minion_in_target_zone() {
 
     let minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
-    state.cards.insert(id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -2210,7 +2201,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
 
     let minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
-    state.cards.insert(id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -2240,7 +2231,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     let mut minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
     minion.add_ability(Ability::Charge);
-    state.cards.insert(id, Box::new(minion));
+    state.add_card(Box::new(minion));
 
     Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -2271,7 +2262,7 @@ async fn test_summon_card_queues_genesis_effects() {
 
     let wizard = ApprenticeWizard::new(player_id);
     let id = *wizard.get_id();
-    state.cards.insert(id, Box::new(wizard));
+    state.add_card(Box::new(wizard));
 
     Effect::SummonCards {
         summoned_cards: vec![SummonCard {
@@ -2280,7 +2271,8 @@ async fn test_summon_card_queues_genesis_effects() {
             from_zone: Zone::Hand,
             to_location: location
                 .clone()
-                .location().cloned()
+                .location()
+                .cloned()
                 .expect("test zone must be a location"),
         }],
     }
@@ -2302,7 +2294,7 @@ async fn test_summon_card_queues_genesis_effects() {
     );
 
     drain_effects(&mut state).await;
-    assert_eq!(state.cards.get(&id).unwrap().get_zone(), &location);
+    assert_eq!(state.get_card(&id).get_zone(), &location);
 }
 
 // TODO: Genesis does not trigger if the card is disabled by an ongoing effect. Not sure in what
@@ -2317,7 +2309,7 @@ async fn test_summon_card_queues_genesis_effects() {
 //     let wizard_id = *wizard.get_id();
 //     wizard.set_zone(zone);
 //     wizard.add_status(CardStatus::Disabled);
-//     state.cards.insert(wizard_id, Box::new(wizard));
+//     state.add_card(Box::new(wizard));
 //
 //     state.queue_one(Effect::TriggerGenesis { card_id: wizard_id });
 //     drain_effects(&mut state).await;
@@ -2337,7 +2329,7 @@ async fn test_genesis_is_ignored_if_source_left_realm_before_resolution() {
     let mut wizard = ApprenticeWizard::new(player_id);
     let wizard_id = *wizard.get_id();
     wizard.set_zone(location);
-    state.cards.insert(wizard_id, Box::new(wizard));
+    state.add_card(Box::new(wizard));
 
     state.queue(vec![
         Effect::TriggerGenesis { card_id: wizard_id },
@@ -2361,7 +2353,7 @@ async fn test_deathrite_resolves_before_source_enters_cemetery() {
     let mut scarabs = SacredScarabs::new(player_id);
     let scarabs_id = *scarabs.get_id();
     scarabs.set_zone(location);
-    state.cards.insert(scarabs_id, Box::new(scarabs));
+    state.add_card(Box::new(scarabs));
 
     state.queue_one(Effect::BuryCard {
         card_id: scarabs_id,
@@ -2389,7 +2381,7 @@ async fn test_disabled_deathrite_source_does_not_resolve() {
     let scarabs_id = *scarabs.get_id();
     scarabs.set_zone(location);
     scarabs.add_status(CardStatus::Disabled);
-    state.cards.insert(scarabs_id, Box::new(scarabs));
+    state.add_card(Box::new(scarabs));
 
     state.queue_one(Effect::BuryCard {
         card_id: scarabs_id,
@@ -2510,7 +2502,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
     ogre.set_zone(Zone::Hand);
-    state.cards.insert(ogre_id, Box::new(ogre));
+    state.add_card(Box::new(ogre));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -2541,12 +2533,12 @@ async fn test_play_card_burrowing_minion_can_enter_underground() {
 
     let mut site = SimpleVillage::new(player_id);
     site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(*site.get_id(), Box::new(site));
+    state.add_card(Box::new(site));
 
     let mut spider = RootSpider::new(player_id);
     let spider_id = *spider.get_id();
     spider.set_zone(Zone::Hand);
-    state.cards.insert(spider_id, Box::new(spider));
+    state.add_card(Box::new(spider));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -2585,17 +2577,17 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(location.clone().into());
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
 
     let mut caster = ApprenticeWizard::new(player_id);
     let caster_id = *caster.get_id();
     caster.set_zone(location.clone().into());
-    state.cards.insert(caster_id, Box::new(caster));
+    state.add_card(Box::new(caster));
 
     let mut spell = PitVipers::new(player_id);
     let spell_id = *spell.get_id();
     spell.set_zone(Zone::Hand);
-    state.cards.insert(spell_id, Box::new(spell));
+    state.add_card(Box::new(spell));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -2671,7 +2663,7 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(intersection.clone());
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
     assert!(
         CardQuery::new()
             .auras()
@@ -2684,7 +2676,7 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let mut spell = PitVipers::new(player_id);
     let spell_id = *spell.get_id();
     spell.set_zone(Zone::Hand);
-    state.cards.insert(spell_id, Box::new(spell));
+    state.add_card(Box::new(spell));
 
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
@@ -2750,7 +2742,7 @@ async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
     let mut aura = Sandstorm::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(Zone::Hand);
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
 
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
     state.queue_one(Effect::PlayCard {
@@ -2798,12 +2790,12 @@ async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersec
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(intersection.clone());
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
 
     let mut target = FootSoldier::new(opponent_id);
     let target_id = *target.get_id();
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(target_id, Box::new(target));
+    state.add_card(Box::new(target));
 
     Effect::Animate {
         card_id: aura_id,
@@ -2887,7 +2879,7 @@ async fn test_animated_intersection_aura_in_void_is_banished_without_voidwalk() 
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(intersection);
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
 
     Effect::Animate {
         card_id: aura_id,
@@ -2918,7 +2910,7 @@ async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifi
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
     aura.set_zone(intersection);
-    state.cards.insert(aura_id, Box::new(aura));
+    state.add_card(Box::new(aura));
 
     Effect::Animate {
         card_id: aura_id,
@@ -2964,7 +2956,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
     ogre.set_zone(Zone::Hand);
-    state.cards.insert(ogre_id, Box::new(ogre));
+    state.add_card(Box::new(ogre));
 
     let avatar_id = state
         .get_player_avatar_id(&player_id)
@@ -3003,11 +2995,9 @@ async fn test_summon_token_unit_placed_in_target_zone() {
     .unwrap();
     drain_effects(&mut state).await;
 
-    let soldiers: Vec<_> = state
-        .cards
-        .values()
-        .filter(|c| c.get_name() == FootSoldier::NAME)
-        .collect();
+    let soldiers = CardQuery::new()
+        .named(FootSoldier::NAME.to_string())
+        .all(&state);
     assert_eq!(soldiers.len(), 1, "one FootSoldier token should exist");
     assert_eq!(
         soldiers[0].get_zone(),
@@ -3031,11 +3021,9 @@ async fn test_summon_token_unit_has_summoning_sickness() {
     .unwrap();
     drain_effects(&mut state).await;
 
-    let soldier = state
-        .cards
-        .values()
-        .find(|c| c.get_name() == FootSoldier::NAME)
-        .expect("FootSoldier should exist after SummonToken");
+    let soldiers = CardQuery::new()
+        .named(FootSoldier::NAME.to_string())
+        .all(&state);
     assert!(
         soldier.has_status(&state, &CardStatus::SummoningSickness),
         "summoned unit token should have SummoningSickness"

@@ -62,22 +62,15 @@ impl Magic for MadDash {
             count: 1,
             kind: DrawKind::Choice,
         }];
-        let cards = state
-            .cards
-            .values()
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .map(|c| *c.get_id())
-            .collect::<Vec<CardId>>();
+
+        let controller_id = self.get_controller_id(state);
+        let cards = CardQuery::new()
+            .units()
+            .controlled_by(&controller_id)
+            .all(state);
         let prompt = "Pick a unit to gain Movement +1";
-        let picked_card_id = pick_card_source(
-            self.get_controller_id(state),
-            &cards,
-            state,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
+        let picked_card_id =
+            pick_card_source(controller_id, &cards, state, prompt, Some(*self.get_id())).await?;
         effects.push(Effect::AddAbilityCounter {
             card_id: picked_card_id,
             counter: AbilityCounter {

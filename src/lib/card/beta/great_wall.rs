@@ -137,11 +137,11 @@ mod tests {
 
         let mut wall = GreatWall::new(wall_owner);
         wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*wall.get_id(), Box::new(wall));
+        state.add_card(Box::new(wall));
 
         let mut enemy = ApprenticeWizard::new(enemy_id);
         enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
-        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+        state.add_card(Box::new(enemy.clone()));
 
         let zones = enemy
             .get_valid_move_locations(&state)
@@ -158,11 +158,11 @@ mod tests {
 
         let mut wall = GreatWall::new(wall_owner);
         wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*wall.get_id(), Box::new(wall));
+        state.add_card(Box::new(wall));
 
         let mut enemy = ApprenticeWizard::new(enemy_id);
         enemy.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+        state.add_card(Box::new(enemy.clone()));
 
         let zones = enemy
             .get_valid_move_locations(&state)
@@ -179,11 +179,11 @@ mod tests {
 
         let mut wall = GreatWall::new(wall_owner);
         wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*wall.get_id(), Box::new(wall));
+        state.add_card(Box::new(wall));
 
         let mut ally = ApprenticeWizard::new(wall_owner);
         ally.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
-        state.cards.insert(*ally.get_id(), Box::new(ally.clone()));
+        state.add_card(Box::new(ally.clone()));
 
         let ally_zones = ally
             .get_valid_move_locations(&state)
@@ -194,9 +194,7 @@ mod tests {
         let mut airborne_enemy = ApprenticeWizard::new(enemy_id);
         airborne_enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
         airborne_enemy.add_ability(Ability::Airborne);
-        state
-            .cards
-            .insert(*airborne_enemy.get_id(), Box::new(airborne_enemy.clone()));
+        state.add_card(Box::new(airborne_enemy.clone()));
 
         let airborne_enemy_zones = airborne_enemy
             .get_valid_move_locations(&state)
@@ -213,12 +211,12 @@ mod tests {
 
         let mut wall = GreatWall::new(wall_owner);
         wall.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*wall.get_id(), Box::new(wall));
+        state.add_card(Box::new(wall));
 
         let mut enemy = ApprenticeWizard::new(enemy_id);
         enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
         enemy.add_ability(Ability::Movement(1));
-        state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+        state.add_card(Box::new(enemy.clone()));
 
         let paths = enemy
             .get_valid_move_paths(&state, &Location::Square(3, Region::Surface))

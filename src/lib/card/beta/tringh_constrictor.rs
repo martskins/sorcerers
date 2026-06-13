@@ -101,8 +101,7 @@ impl ActivatedAbility for Constrict {
                 on_effect: Arc::new(move |state: &State, effect: &mut Effect| {
                     Box::pin(async move {
                         if state
-                            .cards
-                            .get(&target_id)
+                            .try_get_card(&target_id)
                             .and_then(|card| card.get_bearer_id().ok().flatten())
                             == Some(constrictor_id)
                         {

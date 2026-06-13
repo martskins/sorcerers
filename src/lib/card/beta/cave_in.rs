@@ -59,8 +59,7 @@ impl Magic for CaveIn {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let valid_targets = state
-            .cards
-            .values()
+            .cards_in_play()
             .filter(|c| c.is_site())
             .filter(|c| {
                 c.get_site()
@@ -82,14 +81,10 @@ impl Magic for CaveIn {
         .await?;
 
         let picked_site = state.get_card(&picked_site_id);
-        let minions_and_artifacts: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone() == picked_site.get_zone())
-            .filter(|c| c.is_minion() || c.is_artifact())
-            .map(|c| c.get_id())
-            .cloned()
-            .collect();
+        let minions_and_artifacts = CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .in_zone(picked_site.get_zone())
+            .all(state);
 
         Ok(minions_and_artifacts
             .iter()
@@ -99,7 +94,8 @@ impl Magic for CaveIn {
                 from: picked_site
                     .get_zone()
                     .clone()
-                    .location().cloned()
+                    .location()
+                    .cloned()
                     .expect("Cave In target must be in a location"),
                 to: LocationQuery::from_location(
                     picked_site.get_location().with_region(Region::Underground),

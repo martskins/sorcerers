@@ -75,20 +75,12 @@ impl Card for HighlandPrincess {
                 let controller_id = self.get_controller_id(state);
 
                 let deck = state.decks.get(&controller_id).unwrap();
-                let targets: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_artifact())
-                    .filter(|c| c.get_zone() == &Zone::Spellbook)
-                    .filter(|c| c.get_controller_id(state) == controller_id)
-                    .filter(|c| {
-                        c.get_costs(state)
-                            .map(|costs| costs.printed_mana_value().unwrap_or(u8::MAX))
-                            .unwrap_or(u8::MAX)
-                            <= 1
-                    })
-                    .map(|c| *c.get_id())
-                    .collect();
+                let targets = CardQuery::new()
+                    .artifacts()
+                    .in_zone(Zone::Spellbook)
+                    // TODO: Should be owned_by
+                    .controlled_by(&controller_id)
+                    .all(state);
 
                 if targets.is_empty() {
                     return Ok(vec![Effect::ShuffleDeck {

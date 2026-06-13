@@ -77,13 +77,11 @@ impl Card for SacredScarabs {
                 let Effect::TriggerDeathrite { card_id, from, .. } = effect else {
                     return Ok(vec![]);
                 };
-                let units_here: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_unit())
-                    .filter(|c| c.get_id() == card_id || c.get_zone().location() == Some(from))
-                    .map(|c| *c.get_id())
-                    .collect();
+
+                let units_here = CardQuery::new()
+                    .units()
+                    .in_location(self.get_location().clone())
+                    .all(state);
                 let mut effects = Vec::new();
                 for unit in units_here {
                     effects.push(Effect::TakeDamage {

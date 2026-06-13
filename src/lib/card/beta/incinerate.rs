@@ -59,10 +59,7 @@ impl Magic for Incinerate {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let mut locations: Vec<Location> = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
+        let mut locations: Vec<Location> = state.cards_in_play()
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| c.is_unit())
             .filter(|c| {

@@ -110,18 +110,10 @@ impl Card for ClamorOfHarpies {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let valid_cards: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_unit())
-                    .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| {
-                        c.get_power(state).unwrap_or_default().unwrap_or(0)
-                            < self.get_power(state).unwrap_or_default().unwrap_or(0)
-                    })
-                    .map(|c| *c.get_id())
-                    .collect();
+                let valid_cards = CardQuery::new()
+                    .minions()
+                    .power_lt(self.get_power(state)?.unwrap_or_default())
+                    .all(state);
                 let prompt = "Pick a unit to bring here";
                 let card_id = pick_card_source(
                     self.get_controller_id(state),
@@ -150,10 +142,12 @@ impl Card for ClamorOfHarpies {
                     player_id: self.get_controller_id(state),
                     card_id,
                     from: (card.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(
-                        self.get_location().with_region(self.get_region(state).clone()),
+                        self.get_location()
+                            .with_region(self.get_region(state).clone()),
                     ),
                     tap: false,
                     through_path: None,

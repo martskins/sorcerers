@@ -1464,9 +1464,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
 
         state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
+            .cards_in_play()
             .filter(|target| {
                 // Only enemy units or sites
                 target.get_controller_id(state) != self.get_controller_id(state)
@@ -1577,7 +1575,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
-        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
+        for card in state.cards_in_play() {
             if card.get_bearer_id()? == Some(*self.get_id()) {
                 return Ok(true);
             }
@@ -3079,14 +3077,14 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         } else {
             activated_abilities.push(Box::new(AvatarAction::DrawSite));
         }
-        if state
-            .cards
-            .values()
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .filter(|c| c.is_site())
-            .filter(|c| matches!(c.get_zone(), Zone::Hand))
-            .count()
-            > 0
+
+        let sites_in_hand = CardQuery::new()
+            .sites()
+            // TODO: Should be owned_by
+            .controlled_by(&self.get_controller_id(state))
+            .in_zone(Zone::Hand)
+            .all(state);
+        if sites_in_hand.len() > 0
             && let Some(avatar) = self.get_avatar()
             && let Some(play_site_ability) = avatar.get_play_site_ability()
         {

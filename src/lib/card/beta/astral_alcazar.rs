@@ -105,11 +105,11 @@ mod tests {
 
         let mut alcazar = AstralAlcazar::new(player_id);
         alcazar.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+        state.add_card(Box::new(alcazar));
 
         let mut unit = SpectralStalker::new(player_id);
         unit.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+        state.add_card(Box::new(unit.clone()));
 
         state.reconcile_ongoing_effects_for_test().await.unwrap();
 
@@ -129,11 +129,11 @@ mod tests {
 
         let mut alcazar = AstralAlcazar::new(player_id);
         alcazar.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+        state.add_card(Box::new(alcazar));
 
         let mut unit = SpectralStalker::new(player_id);
         unit.set_zone(Zone::Location(Location::Square(20, Region::Void)));
-        state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+        state.add_card(Box::new(unit.clone()));
 
         state.reconcile_ongoing_effects_for_test().await.unwrap();
 

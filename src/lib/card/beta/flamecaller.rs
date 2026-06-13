@@ -19,27 +19,21 @@ impl ActivatedAbility for ShootProjectile {
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let fire_minions = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone() == &Zone::Cemetery)
-            .filter(|c| {
-                c.get_elements(state)
-                    .unwrap_or_default()
-                    .contains(&Element::Fire)
+        let fire_minions = CardQuery::new()
+            .minions()
+            .with_element(Element::Fire)
+            .in_zone(Zone::Cemetery)
+            .all(state);
+        let damage = fire_minions
+            .iter()
+            .map(|c| {
+                state
+                    .get_card(c)
+                    .get_costs(state)
+                    .unwrap_or(&Costs::ZERO)
+                    .printed_thresholds()
+                    .clone()
             })
-            .map(|c| *c.get_id())
-            .collect::<Vec<_>>();
-        let damage = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone() == &Zone::Cemetery)
-            .filter(|c| {
-                c.get_elements(state)
-                    .unwrap_or_default()
-                    .contains(&Element::Fire)
-            })
-            .map(|c| c.get_costs(state).unwrap().printed_thresholds().clone())
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);

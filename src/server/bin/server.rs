@@ -203,94 +203,94 @@ impl Server {
     fn setup_test_state(&mut self, game: &mut Game) {
         let player_one = game.state.players[0].id;
         let card = card::from_name_and_zone(AramosMercenaries::NAME, &player_one, Zone::Cemetery);
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(ApprenticeWizard::NAME, &player_one, Zone::Cemetery);
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             CaptainBaldassare::NAME,
             &player_one,
             Zone::Location(Location::Square(8, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
 
         let player_two = game.state.players[1].id;
         let card = card::from_name_and_zone(Undertow::NAME, &player_one, Zone::Hand);
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(LightningBolt::NAME, &player_one, Zone::Hand);
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
             Zone::Location(Location::Square(3, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             GothicTower::NAME,
             &player_one,
             Zone::Location(Location::Square(9, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
             Zone::Location(Location::Square(4, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
             Zone::Location(Location::Square(6, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
             Zone::Location(Location::Square(7, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
             Zone::Location(Location::Square(2, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_one,
             Zone::Location(Location::Square(8, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
 
         let kite_archer = card::from_name_and_zone(
             "Kite Archer",
             &player_one,
             Zone::Location(Location::Square(8, Region::Surface)),
         );
-        game.state.cards.insert(*kite_archer.get_id(), kite_archer);
+        game.state.add_card(kite_archer);
         let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
             Zone::Location(Location::Square(13, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
             Zone::Location(Location::Square(18, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             "Ultimate Horror",
             &player_two,
             Zone::Location(Location::Square(3, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             FelbogFrogMen::NAME,
             &player_one,
             Zone::Location(Location::Square(13, Region::Surface)),
         );
-        game.state.cards.insert(*card.get_id(), card);
+        game.state.add_card(card);
         let player_mana = game.state.get_player_mana_mut(&player_one);
         *player_mana = 10;
     }

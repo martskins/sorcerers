@@ -873,7 +873,7 @@ pub struct State {
     pub game_id: uuid::Uuid,
     pub players: Vec<Player>,
     pub turns: usize,
-    pub cards: HashMap<CardId, Box<dyn Card>>,
+    cards: HashMap<CardId, Box<dyn Card>>,
     pub(crate) removed_cards: HashMap<CardId, Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub phase: Phase,
@@ -939,6 +939,64 @@ impl State {
             next_ongoing_effect_timestamp: 1,
             runtime_cache: StateRuntimeCache::default(),
         }
+    }
+
+    pub fn cards_in_play(&self) -> impl Iterator<Item = &dyn Card> {
+        self.cards
+            .values()
+            .map(|card| &**card)
+            .filter(|card| card.get_zone().is_in_play())
+    }
+
+    pub fn cards_in_play_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Card>> {
+        self.invalidate_runtime_caches();
+        self.cards
+            .values_mut()
+            .filter(|card| card.get_zone().is_in_play())
+    }
+
+    pub fn all_cards(&self) -> impl Iterator<Item = &dyn Card> {
+        self.cards.values().map(|card| &**card)
+    }
+
+    pub fn add_card(&mut self, card: Box<dyn Card>) {
+        self.cards.insert(*card.get_id(), card);
+        self.invalidate_runtime_caches();
+    }
+
+    pub fn remove_card(&mut self, card_id: &CardId) -> Option<Box<dyn Card>> {
+        let card = self.cards.remove(card_id);
+        if card.is_some() {
+            self.invalidate_runtime_caches();
+        }
+        card
+    }
+
+    pub fn add_removed_card(&mut self, card: Box<dyn Card>) {
+        self.removed_cards.insert(*card.get_id(), card);
+    }
+
+    pub fn contains_card(&self, card_id: &CardId) -> bool {
+        self.cards.contains_key(card_id)
+    }
+
+    pub fn try_get_card(&self, card_id: &CardId) -> Option<&dyn Card> {
+        self.cards
+            .get(card_id)
+            .or_else(|| self.removed_cards.get(card_id))
+            .map(|card| &**card)
+    }
+
+    pub fn clone_card(&self, card_id: &CardId) -> Option<Box<dyn Card>> {
+        self.cards
+            .get(card_id)
+            .or_else(|| self.removed_cards.get(card_id))
+            .cloned()
+    }
+
+    pub fn try_get_card_mut(&mut self, card_id: &CardId) -> Option<&mut Box<dyn Card>> {
+        self.invalidate_runtime_caches();
+        self.cards.get_mut(card_id)
     }
 
     /// validate_client_message checks that the message contains valid references to game entities

@@ -186,25 +186,22 @@ mod tests {
         *state.get_player_mana_mut(&player_id) = 1;
 
         let water_site_id = state
-            .cards
-            .values()
+            .cards_in_play()
             .find(|card| {
                 card.is_site()
                     && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
             })
             .map(|card| *card.get_id())
             .expect("mock site should exist");
-        state.cards.remove(&water_site_id);
+        state.remove_card(&water_site_id);
 
         let mut water_site = SpringRiver::new(player_id);
         water_site.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-        state
-            .cards
-            .insert(*water_site.get_id(), Box::new(water_site));
+        state.add_card(Box::new(water_site));
 
         let mut card = AwakenedMummies::new(player_id);
         card.set_zone(Zone::Hand);
-        state.cards.insert(*card.get_id(), Box::new(card.clone()));
+        state.add_card(Box::new(card.clone()));
 
         let avatar_id = state
             .get_player_avatar_id(&player_id)
@@ -232,12 +229,12 @@ mod tests {
         let mut mummies = AwakenedMummies::new(player_id);
         let mummies_id = *mummies.get_id();
         mummies.set_zone(underground.clone());
-        state.cards.insert(mummies_id, Box::new(mummies.clone()));
+        state.add_card(Box::new(mummies.clone()));
 
         let mut enemy = FootSoldier::new(opponent_id);
         let enemy_id = *enemy.get_id();
         enemy.set_zone(surface.clone());
-        state.cards.insert(enemy_id, Box::new(enemy));
+        state.add_card(Box::new(enemy));
 
         let effects = mummies
             .resolve_hook(
@@ -287,12 +284,12 @@ mod tests {
         let mut mummies = AwakenedMummies::new(player_id);
         let mummies_id = *mummies.get_id();
         mummies.set_zone(zone.clone());
-        state.cards.insert(mummies_id, Box::new(mummies));
+        state.add_card(Box::new(mummies));
 
         let mut enemy = FootSoldier::new(opponent_id);
         let enemy_id = *enemy.get_id();
         enemy.set_zone(zone.clone());
-        state.cards.insert(enemy_id, Box::new(enemy));
+        state.add_card(Box::new(enemy));
 
         let fight = Effect::Fight {
             attacker_id: mummies_id,

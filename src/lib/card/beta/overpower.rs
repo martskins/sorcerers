@@ -57,10 +57,7 @@ impl Magic for Overpower {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let allies = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
+        let allies = state.cards_in_play()
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| c.is_unit())
             .map(|c| c.get_id())

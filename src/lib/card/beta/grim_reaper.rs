@@ -96,16 +96,21 @@ impl Card for GrimReaper {
                 let mut effects = vec![Effect::BanishCard { card_id: *card_id }];
 
                 // Find all copies of that card (by name) in any zone belonging to its owner.
-                let copies: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_name().eq_ignore_ascii_case(&buried_name))
-                    .filter(|c| c.get_id() != card_id)
-                    .filter(|c| c.get_controller_id(state) == *buried_owner_id)
-                    .map(|c| *c.get_id())
-                    .collect();
+                let copies_in_play = CardQuery::new()
+                    .minions()
+                    .named(buried_name.clone())
+                    .all(state);
+                let copies_owned_by_owner = CardQuery::new()
+                    .minions()
+                    // TODO: This needs to be owned by
+                    .controlled_by(buried_owner_id)
+                    .in_zones(&[Zone::Cemetery, Zone::Hand, Zone::Spellbook])
+                    .named(buried_name)
+                    .all(state);
 
-                for copy_id in copies {
+                let mut all_copies = copies_in_play;
+                all_copies.extend(&copies_owned_by_owner);
+                for copy_id in all_copies {
                     effects.push(Effect::BanishCard { card_id: copy_id });
                 }
 

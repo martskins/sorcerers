@@ -69,52 +69,24 @@ impl Card for MaddeningBells {
             return Ok(vec![]);
         }
 
+        let all_spellcaster_abilities = vec![
+            Ability::Spellcaster(None),
+            Ability::Spellcaster(Some(Element::Fire)),
+            Ability::Spellcaster(Some(Element::Air)),
+            Ability::Spellcaster(Some(Element::Earth)),
+            Ability::Spellcaster(Some(Element::Water)),
+        ];
         // Collect all players who have a Spellcaster nearby.
-        let spellcaster_player_ids: Vec<PlayerId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_location().is_nearby(self.get_location()))
-            .filter(|c| {
-                [
-                    Ability::Spellcaster(None),
-                    Ability::Spellcaster(Some(Element::Fire)),
-                    Ability::Spellcaster(Some(Element::Air)),
-                    Ability::Spellcaster(Some(Element::Earth)),
-                    Ability::Spellcaster(Some(Element::Water)),
-                ]
-                .iter()
-                .any(|a| c.has_ability(state, a))
-            })
-            .map(|c| c.get_controller_id(state))
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
+        let spellcasters = CardQuery::new()
+            .units()
+            .near_to(self.get_location())
+            .with_any_ability(all_spellcaster_abilities)
+            .all(state);
 
-        if spellcaster_player_ids.is_empty() {
-            return Ok(vec![]);
-        }
-
-        // Collect all spell cards (Magic type) for those players in hand or spellbook.
-        let affected_spell_ids: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| {
-                !c.is_site() && !c.is_avatar() && !c.is_unit() && !c.is_artifact() && !c.is_aura()
-            })
-            .filter(|c| matches!(c.get_zone(), Zone::Hand | Zone::Spellbook))
-            .filter(|c| spellcaster_player_ids.contains(&c.get_controller_id(state)))
-            .map(|c| *c.get_id())
-            .collect();
-
-        if affected_spell_ids.is_empty() {
-            return Ok(vec![]);
-        }
-
+        // TODO: Missing spellcaster filter
         Ok(vec![OngoingEffect::ModifyManaCost {
             mana_diff: 2,
-            affected_cards: CardQuery::from_ids(affected_spell_ids),
+            affected_cards: CardQuery::new().magics(),
             zones: None,
         }])
     }

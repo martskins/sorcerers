@@ -75,21 +75,12 @@ impl Card for MonsterHunter {
                 let controller_id = self.get_controller_id(state);
                 let my_location = self.get_location().clone();
 
-                let nearby_monsters: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_minion())
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| c.get_controller_id(state) != controller_id)
-                    .filter(|c| c.get_location().is_nearby(&my_location))
-                    .filter(|c| {
-                        c.get_unit_base()
-                            .map(|ub| ub.types.contains(&MinionType::Monster))
-                            .unwrap_or(false)
-                    })
-                    .map(|c| *c.get_id())
-                    .collect();
-
+                let nearby_monsters = CardQuery::new()
+                    .minions()
+                    .controlled_by(&controller_id)
+                    .nearby_to_card(self.get_id())
+                    .minion_type(&MinionType::Monster)
+                    .all(state);
                 if nearby_monsters.is_empty() {
                     return Ok(vec![]);
                 }

@@ -127,13 +127,10 @@ impl Magic for Blaze {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let units = state
-            .cards
-            .values()
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .map(|c| *c.get_id())
-            .collect::<Vec<CardId>>();
+        let units = CardQuery::new()
+            .units()
+            .controlled_by(&self.get_controller_id(state))
+            .all(state);
         let prompt = "Pick an ally";
         let picked_card = pick_card_source(
             self.get_controller_id(state),

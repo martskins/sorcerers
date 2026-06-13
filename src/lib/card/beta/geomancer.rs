@@ -50,14 +50,11 @@ impl ActivatedAbility for GeomancerAbility {
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             GeomancerAbility::PlaySite => {
-                let cards: Vec<CardId> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone() == &Zone::Hand)
-                    .filter(|c| c.get_owner_id() == player_id)
-                    .map(|c| *c.get_id())
-                    .collect();
+                let cards = CardQuery::new()
+                    .sites()
+                    .in_zone(Zone::Hand)
+                    .controlled_by(player_id)
+                    .all(state);
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
@@ -84,8 +81,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let card = state.get_card(card_id);
                 let adjacent_locations = card.get_location().get_adjacent();
                 let cards = state
-                    .cards
-                    .values()
+                    .cards_in_play()
                     .filter(|c| c.get_name() == Rubble::NAME)
                     .filter(|c| adjacent_locations.contains(c.get_location()))
                     .map(|c| *c.get_id())
@@ -126,14 +122,12 @@ async fn geomancer_play_site_effects(
     site_id: PlayerId,
     square: u8,
 ) -> anyhow::Result<Vec<Effect>> {
-    let mut effects = vec![
-        Effect::PlayCard {
-            player_id: *player_id,
-            card_id: site_id,
-            location: Location::Square(square, Region::Surface),
-            spellcaster: *geomancer_id,
-        },
-    ];
+    let mut effects = vec![Effect::PlayCard {
+        player_id: *player_id,
+        card_id: site_id,
+        location: Location::Square(square, Region::Surface),
+        spellcaster: *geomancer_id,
+    }];
 
     let picked_site = state.get_card(&site_id);
     let is_earth_site = picked_site
@@ -250,7 +244,7 @@ impl Card for Geomancer {
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![
-            Box::new(GeomancerAbility::ReplaceRubble) as Box<dyn ActivatedAbility>,
+            Box::new(GeomancerAbility::ReplaceRubble) as Box<dyn ActivatedAbility>
         ])
     }
 }
@@ -296,27 +290,24 @@ mod tests {
         let mut geomancer = Geomancer::new(player_id);
         let geomancer_id = *geomancer.get_id();
         geomancer.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
-        state.cards.insert(geomancer_id, Box::new(geomancer));
+        state.add_card(Box::new(geomancer));
 
         if site_in_hand {
             let mut site = SimpleVillage::new(player_id);
             site.set_zone(Zone::Hand);
-            state.cards.insert(*site.get_id(), Box::new(site));
+            state.add_card(Box::new(site));
         }
 
         if adjacent_rubble {
             let mut rubble = Rubble::new(player_id);
             rubble.set_zone(Zone::Location(Location::Square(9, Region::Surface)));
-            state.cards.insert(*rubble.get_id(), Box::new(rubble));
+            state.add_card(Box::new(rubble));
         }
 
         (state, player_id, geomancer_id)
     }
 
-    fn ability_names(
-        state: &State,
-        geomancer_id: &CardId,
-    ) -> anyhow::Result<Vec<String>> {
+    fn ability_names(state: &State, geomancer_id: &CardId) -> anyhow::Result<Vec<String>> {
         Ok(state
             .get_card(geomancer_id)
             .get_activated_abilities(state)?
