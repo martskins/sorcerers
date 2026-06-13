@@ -114,7 +114,8 @@ impl Card for Undertow {
                     ),
                     player_id,
                     from: (unit.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     tap: false,
                     through_path: None,

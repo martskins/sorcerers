@@ -63,6 +63,10 @@ impl Card for AnuiUndine {
     }
 
     fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(Some(0));
+        }
+
         Ok(Some(state.get_body_of_water_size(self.get_location())))
     }
 }

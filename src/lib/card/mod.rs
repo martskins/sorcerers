@@ -428,7 +428,9 @@ impl PayableCost {
             let effect = match options.len() {
                 0 => unreachable!(),
                 1 => {
-                    let card_id = options.first().expect("options to have exactly one element");
+                    let card_id = options
+                        .first()
+                        .expect("options to have exactly one element");
                     match ac.action {
                         CostAction::Tap => Effect::SetTapped {
                             card_id: *card_id,
@@ -482,7 +484,11 @@ impl PayableCost {
         Ok(())
     }
 
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<PayableCost> {
+    pub async fn pay(
+        &self,
+        state: &mut State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<PayableCost> {
         let paid_mana = match self.mana {
             ManaCost::Fixed(mana_cost) => {
                 let mana = state.get_player_mana_mut(player_id);
@@ -558,7 +564,9 @@ impl PayableCost {
                 return Ok(false);
             }
 
-            let card_id = options.first().expect("options to have at least one element");
+            let card_id = options
+                .first()
+                .expect("options to have at least one element");
             match ac.action {
                 CostAction::Tap => snapshot.get_card_mut(card_id).set_tapped(true),
                 CostAction::Discard => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
@@ -694,7 +702,11 @@ impl CostOptions {
         }
     }
 
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<PayableCost> {
+    pub async fn pay(
+        &self,
+        state: &mut State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<PayableCost> {
         let payable_options = self.payable_options();
         match payable_options.len() {
             0 => Ok(PayableCost::ZERO.clone()),
@@ -1454,6 +1466,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state
             .cards
             .values()
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|target| {
                 // Only enemy units or sites
                 target.get_controller_id(state) != self.get_controller_id(state)

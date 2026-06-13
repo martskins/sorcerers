@@ -439,7 +439,10 @@ impl Location {
             .filter_map(|location| {
                 let square = location.get_square()?;
                 let site_location = Location::Square(square, Region::Surface);
-                site_location.get_site(state).is_some().then_some(site_location)
+                site_location
+                    .get_site(state)
+                    .is_some()
+                    .then_some(site_location)
             })
             .collect()
     }
@@ -450,7 +453,10 @@ impl Location {
             .filter_map(|location| {
                 let square = location.get_square()?;
                 let site_location = Location::Square(square, Region::Surface);
-                site_location.get_site(state).is_some().then_some(site_location)
+                site_location
+                    .get_site(state)
+                    .is_some()
+                    .then_some(site_location)
             })
             .collect()
     }
@@ -730,7 +736,7 @@ impl Zone {
     pub fn location(&self) -> Option<&Location> {
         match self {
             Zone::Location(location) => Some(location),
-            _ => None,
+            n => panic!("expected location, got {}", n),
         }
     }
 

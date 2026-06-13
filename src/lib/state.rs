@@ -1090,9 +1090,10 @@ impl State {
                         None => true,
                         Some(effect_zones) => target_location
                             .map(|target_location| {
-                                effect_zones.options(self).iter().any(|zone| {
-                                    zone.location() == Some(target_location)
-                                })
+                                effect_zones
+                                    .options(self)
+                                    .iter()
+                                    .any(|zone| zone.location() == Some(target_location))
                             })
                             .unwrap_or_default(),
                     };
@@ -1620,7 +1621,10 @@ impl State {
             let Some(location) = State::site_surface_location(location) else {
                 return;
             };
-            if visited.iter().any(|visited_location| visited_location == &location) {
+            if visited
+                .iter()
+                .any(|visited_location| visited_location == &location)
+            {
                 return;
             }
             visited.push(location.clone());
@@ -1644,13 +1648,10 @@ impl State {
         for card in self
             .cards
             .values()
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_card_type() == CardType::Site)
         {
             let location = card.get_location();
-            if !card.get_zone().is_in_play() {
-                continue;
-            }
-
             if let Some(site) = location.get_site(self) {
                 let is_water = site.provided_affinity(self).unwrap_or_default().water > 0;
                 if is_water
@@ -1683,7 +1684,10 @@ impl State {
             let Some(location) = State::site_surface_location(location) else {
                 return;
             };
-            if visited.iter().any(|visited_location| visited_location == &location) {
+            if visited
+                .iter()
+                .any(|visited_location| visited_location == &location)
+            {
                 return;
             }
             visited.push(location.clone());
@@ -1704,13 +1708,10 @@ impl State {
         for card in self
             .cards
             .values()
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_card_type() == CardType::Site)
         {
             let location = card.get_location();
-            if !card.get_zone().is_in_play() {
-                continue;
-            }
-
             if let Some(site) = location.get_site(self) {
                 let is_land = site.provided_affinity(self).unwrap_or_default().water == 0;
                 if is_land
