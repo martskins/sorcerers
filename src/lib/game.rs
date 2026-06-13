@@ -1996,18 +1996,8 @@ impl Game {
                 }
             })
             .collect();
-        let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self
-            .state
-            .all_cards()
-            .filter(|c| c.is_artifact())
-            .filter_map(|c| {
-                c.get_base()
-                    .bearer
-                    .map(|attached_to| (*c.get_id(), attached_to))
-            })
-            .collect();
-        for (artifact_id, unit_id) in attached_artifacts {
-            let unit = self.state.get_card(&unit_id);
+        for (artifact_id, bearer_id) in attached_artifacts {
+            let unit = self.state.get_card(&bearer_id);
             let zone = unit.get_zone().clone();
             let artifact = self.state.get_card_mut(&artifact_id);
             artifact.set_zone(zone);
