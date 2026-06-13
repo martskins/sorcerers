@@ -143,7 +143,7 @@ impl Card for GuileSirens {
                         from: picked_card
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Guile Sirens target must be in a location"),
                         to: LocationQuery::from_location(
                             picked_location.with_region(picked_card.get_region(state).clone()),

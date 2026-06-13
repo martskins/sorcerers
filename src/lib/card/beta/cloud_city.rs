@@ -39,10 +39,10 @@ impl ActivatedAbility for FlyToVoid {
                 player_id: *player_id,
                 card_id: *card.get_id(),
                 from: (card.get_zone().clone())
-                    .into_location()
+                    .location().cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
-                    (picked_void.clone()).with_region(card.get_region(state).clone()),
+                    picked_void.with_region(card.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,
@@ -59,7 +59,7 @@ impl ActivatedAbility for FlyToVoid {
                 player_id: *player_id,
                 card_id: unit,
                 from: (card.get_zone().clone())
-                    .into_location()
+                    .location().cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
                     (picked_void.clone())

@@ -20,9 +20,9 @@ impl ActivatedAbility for AncientDragonAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let picked_zone = pick_zone_near(
+        let picked_zone = pick_location_near(
             player_id,
-            card.get_zone(),
+            card.get_location(),
             state,
             false,
             "Pick a zone to deal damage in",

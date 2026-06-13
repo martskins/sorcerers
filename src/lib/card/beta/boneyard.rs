@@ -116,7 +116,7 @@ impl Card for Boneyard {
                         card_id: picked_minion_id,
                         from_zone: Zone::Cemetery,
                         to_location: zone
-                            .into_location()
+                            .location().cloned()
                             .expect("Boneyard summon target must be a location"),
                     });
                 }

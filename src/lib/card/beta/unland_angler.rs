@@ -101,12 +101,9 @@ impl Card for UnlandAngler {
                         Effect::MoveCard {
                             player_id: controller_id,
                             card_id: minion_id,
-                            from: (minion.get_zone().clone())
-                                .into_location()
-                                .expect("MoveCard source must be a location"),
-                            to: LocationQuery::from_zone(
-                                (self.get_zone().clone())
-                                    .with_region(minion.get_region(state).clone()),
+                            from: minion.get_location().clone(),
+                            to: LocationQuery::from_location(
+                                self.get_location().with_region(minion.get_region(state).clone()),
                             ),
                             tap: minion.is_tapped(),
                             through_path: None,

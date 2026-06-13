@@ -107,7 +107,7 @@ impl Card for BoneRabble {
                             to_location: site
                                 .get_zone()
                                 .clone()
-                                .into_location()
+                                .location().cloned()
                                 .expect("played site must be a location"),
                         }],
                     }])

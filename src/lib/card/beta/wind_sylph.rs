@@ -167,7 +167,7 @@ impl Card for WindSylph {
                     player_id: controller_id,
                     card_id: unit_id,
                     from: (unit.get_zone().clone())
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(
                         (target_zone).with_region(unit.get_region(state).clone()),

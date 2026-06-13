@@ -129,7 +129,7 @@ impl Card for DodgeRoll {
                         from: attacker
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Dodge Roll attacker must be in a location"),
                         to: LocationQuery::from_location(defender.get_location().clone()),
                         tap: true,
@@ -142,7 +142,7 @@ impl Card for DodgeRoll {
                         from: avatar
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Dodge Roll caster must be in a location"),
                     },
                 ])

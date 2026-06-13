@@ -27,9 +27,9 @@ impl ActivatedAbility for AdeptIllusionistAction {
         };
 
         let card = state.get_card(card_id);
-        let location = pick_zone_near(
+        let location = pick_location_near(
             player_id,
-            card.get_zone(),
+            card.get_location(),
             state,
             false,
             "Pick a zone to summon the Adept Illusionist",

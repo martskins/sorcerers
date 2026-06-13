@@ -81,8 +81,8 @@ impl Magic for Fade {
         }];
 
         let target = state.get_card(&target_id);
-        let target_zone = target.get_zone();
-        let on_enemy_site = target_zone
+        let target_location = target.get_location();
+        let on_enemy_site = target_location
             .get_site(state)
             .is_some_and(|site| site.get_controller_id(state) != controller_id);
 

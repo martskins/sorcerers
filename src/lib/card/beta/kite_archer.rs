@@ -110,7 +110,7 @@ impl Card for KiteArcher {
                     player_id: *self.get_owner_id(),
                     card_id: *self.get_id(),
                     from: (self.get_zone().clone())
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(
                         (picked_zone.clone()).with_region(self.get_region(state).clone()),

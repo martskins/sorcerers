@@ -1043,11 +1043,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 visited.push(current_location.clone());
 
                 if self.has_ability(state, &Ability::Airborne) {
-                    for nearby in Zone::from(&current_location)
-                        .get_nearby()
-                        .into_iter()
-                        .filter_map(|zone| zone.into_location())
-                    {
+                    for nearby in current_location.get_nearby() {
                         if self
                             .can_move_between_locations(state, &current_location, &nearby)
                             .unwrap_or(false)
@@ -1056,11 +1052,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         }
                     }
                 } else {
-                    for adjacent in Zone::from(&current_location)
-                        .get_adjacent()
-                        .into_iter()
-                        .filter_map(|zone| zone.into_location())
-                    {
+                    for adjacent in current_location.get_adjacent() {
                         if self
                             .can_move_between_locations(state, &current_location, &adjacent)
                             .unwrap_or(false)
@@ -1092,10 +1084,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
 
                     if self.has_ability(state, &Ability::Leap) {
-                        for landing in leap_destinations(state, &Zone::from(&current_location))
-                            .into_iter()
-                            .filter_map(|zone| zone.into_location())
-                        {
+                        for landing in leap_destinations(state, &current_location) {
                             if self
                                 .can_move_between_locations(state, &current_location, &landing)
                                 .unwrap_or(false)
@@ -1112,7 +1101,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     &Zone::from(&current_location),
                 )
                 .into_iter()
-                .filter_map(|zone| zone.into_location())
+                .filter_map(|zone| zone.location().cloned())
                 {
                     if self
                         .can_move_between_locations(state, &current_location, &connected)
@@ -1177,16 +1166,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        let from_zone = Zone::from(from);
-        let to_zone = Zone::from(to);
-
-        if let Some(site) = from_zone.get_site(state)
+        if let Some(site) = from.get_site(state)
             && !site.can_be_exited_by(self.get_id(), to, self.get_region(state), state)?
         {
             return Ok(false);
         }
 
-        if let Some(site) = to_zone.get_site(state)
+        if let Some(site) = to.get_site(state)
             && !site.can_be_entered_by(self.get_id(), from, self.get_region(state), state)?
         {
             return Ok(false);
@@ -3243,11 +3229,11 @@ fn is_continuously_connected_zone(state: &State, card_id: &CardId, location: &Lo
         })
 }
 
-fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
-    let Some(square) = zone.get_square() else {
+fn leap_destinations(state: &State, location: &Location) -> Vec<Location> {
+    let Some(square) = location.get_square() else {
         return vec![];
     };
-    let Zone::Location(Location::Square(_, region)) = zone else {
+    let Location::Square(_, region) = location else {
         return vec![];
     };
     let col = ((square - 1) % 5) as i8;
@@ -3268,13 +3254,10 @@ fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
                 return None;
             }
             let middle_square = (middle_row * 5 + middle_col + 1) as u8;
-            let middle = Zone::Location(Location::Square(middle_square, region.clone()));
+            let middle = Location::Square(middle_square, region.clone());
             middle.get_site(state)?;
             let landing_square = (landing_row * 5 + landing_col + 1) as u8;
-            Some(Zone::Location(Location::Square(
-                landing_square,
-                region.clone(),
-            )))
+            Some(Location::Square(landing_square, region.clone()))
         })
         .collect()
 }

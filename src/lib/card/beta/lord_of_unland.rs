@@ -35,14 +35,14 @@ impl LordOfUnland {
         }
     }
 
-    /// Returns all zones connected to `start` through water sites (BFS).
-    fn connected_water_zones(start: &Zone, state: &State) -> Vec<Zone> {
-        let mut visited: Vec<Zone> = vec![start.clone()];
+    /// Returns all locations connected to `start` through water sites (BFS).
+    fn connected_water_locations(start: &Location, state: &State) -> Vec<Location> {
+        let mut visited: Vec<Location> = vec![start.clone()];
         let mut queue = std::collections::VecDeque::new();
         queue.push_back(start.clone());
 
-        while let Some(zone) = queue.pop_front() {
-            for adj in zone.get_adjacent() {
+        while let Some(location) = queue.pop_front() {
+            for adj in location.get_adjacent() {
                 if visited.contains(&adj) {
                     continue;
                 }
@@ -93,7 +93,7 @@ impl Card for LordOfUnland {
         }
 
         let is_at_water = self
-            .get_zone()
+            .get_location()
             .get_site(state)
             .and_then(|s| s.is_water_site(state).ok())
             .unwrap_or(false);
@@ -103,11 +103,11 @@ impl Card for LordOfUnland {
         }
 
         let controller_id = self.get_controller_id(state);
-        let water_zones = Self::connected_water_zones(self.get_zone(), state);
+        let water_locations = Self::connected_water_locations(self.get_location(), state);
 
         let allies: Vec<CardId> = CardQuery::new()
             .minions()
-            .in_zones(&water_zones)
+            .in_locations(&water_locations)
             .controlled_by(&controller_id)
             .id_not(*self.get_id())
             .all(state);

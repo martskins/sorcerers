@@ -82,7 +82,7 @@ impl Magic for Blink {
                 player_id: controller_id,
                 card_id,
                 to_location: zone
-                    .into_location()
+                    .location().cloned()
                     .expect("teleport target must be a location"),
             },
             Effect::DrawCard {

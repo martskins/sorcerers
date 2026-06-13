@@ -87,7 +87,7 @@ impl Card for ScavengingFiend {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Scavenging Fiend must be in a location"),
                     }],
                 }])

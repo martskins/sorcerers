@@ -111,7 +111,7 @@ impl Card for CerberusInChains {
                     from: self
                         .get_zone()
                         .clone()
-                        .into_location()
+                        .location().cloned()
                         .expect("Cerberus must be in a location"),
                     to: LocationQuery::from_zone(new_zone),
                     tap: false,

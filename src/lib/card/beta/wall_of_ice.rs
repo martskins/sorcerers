@@ -66,10 +66,7 @@ impl Card for WallOfIce {
         player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
-        Ok(border_zones_of_controlled_sites(state, player_id)
-            .into_iter()
-            .filter_map(Zone::into_location)
-            .collect())
+        Ok(border_locations_of_controlled_sites(state, player_id))
     }
 
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
@@ -92,7 +89,7 @@ impl Card for WallOfIce {
     }
 }
 
-fn border_zones_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<Zone> {
+fn border_locations_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<Location> {
     let controlled_sites: Vec<u8> = state
         .cards
         .values()
@@ -112,7 +109,6 @@ fn border_zones_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<
                 .any(|square| controlled_sites.contains(square)),
             Location::Square(_, _) => false,
         })
-        .map(Zone::from)
         .collect()
 }
 

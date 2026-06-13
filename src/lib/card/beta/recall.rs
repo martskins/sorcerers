@@ -97,7 +97,7 @@ impl Magic for Recall {
                         card_id,
                         to_location: caster_zone
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("teleport target must be a location"),
                     });
                     remaining.retain(|id| *id != card_id);

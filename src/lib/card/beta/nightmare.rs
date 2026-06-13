@@ -133,7 +133,7 @@ impl Card for Nightmare {
                         player_id: controller_id,
                         card_id: minion_id,
                         from: (minion_zone)
-                            .into_location()
+                            .location().cloned()
                             .expect("MoveCard source must be a location"),
                         to: LocationQuery::from_location(target_zone.with_region(region)),
                         tap: false,

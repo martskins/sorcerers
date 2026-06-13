@@ -63,7 +63,7 @@ impl Card for TideNaiads {
 
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let site_id = self
-            .get_zone()
+            .get_location()
             .get_site(state)
             .map(|site| site.get_id())
             .cloned();

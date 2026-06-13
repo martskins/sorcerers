@@ -74,8 +74,8 @@ impl Card for LandDeed {
         };
 
         let bearer = state.get_card(&bearer_id);
-        let bearer_zone = bearer.get_zone();
-        let site_id = match bearer_zone.get_site(state) {
+        let bearer_location = bearer.get_location();
+        let site_id = match bearer_location.get_site(state) {
             Some(site) => *site.get_id(),
             None => return Ok(vec![]),
         };

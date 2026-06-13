@@ -77,7 +77,7 @@ impl Magic for Teleport {
             player_id: *self.get_owner_id(),
             card_id,
             to_location: zone
-                .into_location()
+                .location().cloned()
                 .expect("teleport target must be a location"),
         }])
     }

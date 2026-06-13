@@ -61,10 +61,10 @@ impl ActivatedAbility for ShootProjectile {
                 card_id: target,
                 player_id: *player_id,
                 from: (state.get_card(&target).get_zone().clone())
-                    .into_location()
+                    .location().cloned()
                     .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
-                    (pudge.get_zone().clone()).with_region(pudge.get_region(state).clone()),
+                to: LocationQuery::from_location(
+                    pudge.get_location().with_region(pudge.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

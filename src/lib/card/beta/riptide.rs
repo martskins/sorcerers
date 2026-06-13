@@ -86,10 +86,10 @@ impl Magic for Riptide {
                 player_id: self.get_controller_id(state),
                 card_id: picked_unit_id,
                 from: (unit.get_zone().clone())
-                    .into_location()
+                    .location().cloned()
                     .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
-                    (site.get_zone().clone()).with_region(unit.get_region(state).clone()),
+                to: LocationQuery::from_location(
+                    site.get_location().with_region(unit.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

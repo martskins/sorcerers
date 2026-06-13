@@ -104,7 +104,7 @@ impl Card for Thunderstorm {
                     player_id: self.get_controller_id(state),
                     card_id: *self.get_id(),
                     from: (self.get_zone().clone())
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_locations(
                         zones,

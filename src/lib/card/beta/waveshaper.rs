@@ -28,8 +28,7 @@ impl ActivatedAbility for WaveshaperFlood {
         };
         let near_body_of_water: Vec<Zone> = body_of_water
             .iter()
-            .map(Zone::from)
-            .flat_map(|zone| zone.get_nearby_sites(state))
+            .flat_map(|location| location.get_nearby_sites(state).into_iter().map(Zone::from))
             .collect();
         let Some(picked_site_id) = CardQuery::new()
             .sites()

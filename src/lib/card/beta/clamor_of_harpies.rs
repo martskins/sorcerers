@@ -150,10 +150,10 @@ impl Card for ClamorOfHarpies {
                     player_id: self.get_controller_id(state),
                     card_id,
                     from: (card.get_zone().clone())
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
-                        (self.get_zone().clone()).with_region(self.get_region(state).clone()),
+                    to: LocationQuery::from_location(
+                        self.get_location().with_region(self.get_region(state).clone()),
                     ),
                     tap: false,
                     through_path: None,

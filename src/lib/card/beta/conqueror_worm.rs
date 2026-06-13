@@ -105,7 +105,7 @@ impl Card for ConquerorWorm {
                 }
 
                 // Get the site card at this zone.
-                let Some(site) = zone.get_site(state) else {
+                let Some(site) = self.get_location().get_site(state) else {
                     return Ok(vec![]);
                 };
 

@@ -84,14 +84,13 @@ impl Card for QuarrelsomeKobolds {
                     return Ok(vec![]);
                 }
 
-                let zone = self.get_zone();
-                let adjacent_zones = zone.get_adjacent();
+                let adjacent_locations = self.get_location().get_adjacent();
                 let mut units = vec![];
                 let player_id = self.get_controller_id(state);
-                for zone in adjacent_zones {
+                for location in adjacent_locations {
                     let units_in_zone = CardQuery::new()
                         .units()
-                        .in_zone(&zone)
+                        .in_location(location)
                         .can_be_targeted_by_player(&player_id)
                         .all(state);
                     units.extend(units_in_zone);

@@ -41,7 +41,7 @@ impl ActivatedAbility for Constrict {
                     player_id: *player_id,
                     card_id: *card_id,
                     from: (constrictor.get_zone().clone())
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_zone(
                         (picked_zone.clone()).with_region(constrictor.get_region(state).clone()),

@@ -61,12 +61,7 @@ impl Card for MazeMinotaur {
             return Ok(vec![]);
         }
 
-        let allowed_locations: Vec<Location> = self
-            .get_zone()
-            .get_nearby()
-            .iter()
-            .map(|z| z.location().cloned().unwrap())
-            .collect();
+        let allowed_locations: Vec<Location> = self.get_location().get_nearby();
         Ok(vec![OngoingEffect::RestrictMoveToZones {
             affected_cards: CardQuery::new()
                 .minions()

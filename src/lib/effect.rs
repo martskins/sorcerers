@@ -2023,7 +2023,7 @@ impl Effect {
                             from: attacker
                                 .get_zone()
                                 .clone()
-                                .into_location()
+                                .location().cloned()
                                 .expect("MoveCard source must be a location"),
                             to: LocationQuery::from_zone(attack_location.clone()),
                             tap: true,
@@ -2048,7 +2048,7 @@ impl Effect {
                                         from: defending_card
                                             .get_zone()
                                             .clone()
-                                            .into_location()
+                                            .location().cloned()
                                             .expect("MoveCard source must be a location"),
                                         to: LocationQuery::from_zone(attack_location.clone()),
                                         tap: true,
@@ -2181,7 +2181,7 @@ impl Effect {
                         from: attacker
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("MoveCard source must be a location"),
                         to: defender.get_zone().into(),
                         tap: true,
@@ -2519,7 +2519,7 @@ impl Effect {
                     from: card
                         .get_zone()
                         .clone()
-                        .into_location()
+                        .location().cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(to_location.clone()),
                     tap: false,

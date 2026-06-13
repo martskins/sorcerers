@@ -112,7 +112,7 @@ impl Card for VaultsOfZul {
                 let stopped_avatar = state.get_card(&stopped_avatar_id);
                 if !stopped_avatar.is_avatar()
                     || stopped_avatar
-                        .get_zone()
+                        .get_location()
                         .get_site_at_square(state)
                         .map(|site| site.get_id())
                         != Some(self.get_id())

@@ -26,10 +26,9 @@ impl ActivatedAbility for PathfinderSitewalk {
         let site = state.get_card(site_id);
         let valid_play_locations = site.get_valid_play_locations(state, player_id, card_id)?;
         Ok(pathfinder
-            .get_zone()
+            .get_location()
             .get_adjacent_locations(state)
             .into_iter()
-            .filter_map(Zone::into_location)
             .any(|location| valid_play_locations.contains(&location)))
     }
 
@@ -80,7 +79,7 @@ impl ActivatedAbility for PathfinderSitewalk {
                 player_id: *player_id,
                 card_id: *card_id,
                 from: (pathfinder.get_zone().clone())
-                    .into_location()
+                    .location().cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
                     (zone).with_region(pathfinder.get_region(state).clone()),

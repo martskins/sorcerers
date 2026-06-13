@@ -103,7 +103,7 @@ impl Card for GhostShip {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Ghost Ship target must be a location"),
                     }],
                 }])

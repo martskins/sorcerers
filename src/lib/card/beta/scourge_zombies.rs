@@ -116,7 +116,7 @@ impl Card for ScourgeZombies {
                             to_location: killed_card
                                 .get_zone()
                                 .clone()
-                                .into_location()
+                                .location().cloned()
                                 .expect("Scourge Zombies trigger must have a location"),
                         }],
                     },

@@ -97,7 +97,7 @@ impl Card for PolarBears {
                 }
 
                 for wrapped in PolarBears::wrapped_neighbours(&current_location.clone().into()) {
-                    to_visit.push((wrapped.into_location().unwrap(), current_step + 1));
+                    to_visit.push((wrapped.location().cloned().unwrap(), current_step + 1));
                 }
             }
         }

@@ -89,7 +89,7 @@ impl Magic for ChaosTwister {
             player_id: controller_id,
             card_id: target_id,
             from: from_zone
-                .into_location()
+                .location().cloned()
                 .expect("Chaos Twister target must be in a location"),
             to: LocationQuery::from_location(landing_zone.with_region(region)),
             tap: false,

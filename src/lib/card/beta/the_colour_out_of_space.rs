@@ -35,14 +35,11 @@ impl TheColourOutOfSpace {
     }
 
     fn adjacent_to_void(&self, state: &State) -> bool {
-        self.get_zone()
+        self.get_location()
             .get_adjacent()
             .into_iter()
-            .filter(|zone| zone != self.get_zone())
-            .any(|zone| {
-                matches!(zone, Zone::Location(Location::Square(_, _)))
-                    && zone.get_site(state).is_none()
-            })
+            .filter(|location| location != self.get_location())
+            .any(|location| location.get_site(state).is_none())
     }
 }
 

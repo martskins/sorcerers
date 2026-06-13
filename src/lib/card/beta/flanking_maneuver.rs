@@ -93,10 +93,7 @@ impl Magic for FlankingManeuver {
             .controlled_by(&controller)
             .all(state);
 
-        let destinations = get_knight_move_zones(&source_zone.clone().into())
-            .into_iter()
-            .filter_map(Zone::into_location)
-            .collect::<Vec<_>>();
+        let destinations = get_knight_move_locations(&source_zone);
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,

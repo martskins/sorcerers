@@ -105,7 +105,7 @@ impl Card for Battlefield {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Battlefield must be in a location"),
                     }],
                 }])

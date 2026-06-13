@@ -632,19 +632,19 @@ pub async fn pick_zone_group_source(
     zone
 }
 
-pub async fn pick_zone_near(
+pub async fn pick_location_near(
     player_id: impl AsRef<PlayerId>,
-    zone: &Zone,
+    location: &Location,
     state: &State,
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Location> {
-    pick_zone_near_source(player_id, zone, state, block_opponent, prompt, None).await
+    pick_location_near_source(player_id, location, state, block_opponent, prompt, None).await
 }
 
-pub async fn pick_zone_near_source(
+pub async fn pick_location_near_source(
     player_id: impl AsRef<PlayerId>,
-    zone: &Zone,
+    location: &Location,
     state: &State,
     block_opponent: bool,
     prompt: &str,
@@ -662,11 +662,7 @@ pub async fn pick_zone_near_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            locations: zone
-                .get_nearby()
-                .into_iter()
-                .map(|z| z.location().cloned().unwrap())
-                .collect(),
+            locations: location.get_nearby(),
         })
         .await?;
 
@@ -969,10 +965,10 @@ pub struct Resources {
     pub thresholds: Thresholds,
 }
 
-/// Returns all zones reachable by a chess knight's move (L-shape) from `zone`.
+/// Returns all locations reachable by a chess knight's move (L-shape) from `location`.
 /// The realm is a 5×4 grid with squares numbered 1–20 (row-major, 5 per row).
-pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
-    let sq = match zone.get_square() {
+pub fn get_knight_move_locations(location: &Location) -> Vec<Location> {
+    let sq = match location.get_square() {
         Some(s) => s as i16,
         None => return vec![],
     };
@@ -988,7 +984,7 @@ pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
         .iter()
         .map(|(dc, dr)| (col + dc, row + dr))
         .filter(|(c, r)| *c >= 1 && *c <= 5 && *r >= 1 && *r <= 4)
-        .map(|(c, r)| Zone::Location(Location::Square(((r - 1) * 5 + c) as u8, Region::Surface)))
+        .map(|(c, r)| Location::Square(((r - 1) * 5 + c) as u8, Region::Surface))
         .collect()
 }
 
@@ -1669,7 +1665,7 @@ impl Game {
                     &self.state,
                     &playable.player_id,
                     &playable.card_id,
-                    zone.get_square().unwrap(),
+                    zone.location().and_then(Location::get_square).unwrap(),
                 )
                 .await?;
             self.state.queue(effects);
@@ -1880,7 +1876,7 @@ impl Game {
                             from: caster
                                 .get_zone()
                                 .clone()
-                                .into_location()
+                                .location().cloned()
                                 .expect("spell caster must be in a location"),
                         });
                     }

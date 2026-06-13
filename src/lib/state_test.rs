@@ -670,7 +670,7 @@ async fn test_free_city_defender_declaration_resolves_before_move_and_attack() {
             card_id: free_city_id,
             from: zone
                 .clone()
-                .into_location()
+                .location().cloned()
                 .expect("test zone must be a location"),
             to: LocationQuery::from_zone(zone),
             tap: true,
@@ -718,10 +718,7 @@ async fn test_carried_minion_follows_carrier() {
         player_id,
         card_id: carrier_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface)))
-                .with_region(crate::card::Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(crate::card::Region::Surface)),
         tap: false,
         through_path: None,
     };
@@ -833,10 +830,7 @@ async fn test_carried_minion_moves_independently_and_clears_bearer() {
         player_id,
         card_id: passenger_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface)))
-                .with_region(crate::card::Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(crate::card::Region::Surface)),
         tap: false,
         through_path: None,
     };
@@ -879,10 +873,7 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
         player_id,
         card_id: passenger_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(3, Region::Surface)))
-                .with_region(crate::card::Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(crate::card::Region::Surface)),
         tap: false,
         through_path: Some(vec![
             Location::Square(1, Region::Surface),
@@ -937,10 +928,7 @@ async fn test_conferred_abilities() {
         player_id,
         card_id: passenger_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface)))
-                .with_region(crate::card::Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(crate::card::Region::Surface)),
         tap: false,
         through_path: None,
     };
@@ -1224,27 +1212,27 @@ async fn test_get_effective_costs_ignoring_thresholds() {
 fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
     let state = State::new_mock_state(vec![8, 9]);
 
-    let source = Zone::Location(Location::Square(8, Region::Surface));
+    let source = Location::Square(8, Region::Surface);
 
     assert!(
         source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Location(Location::Square(9, Region::Surface)))
+            .contains(&Location::Square(9, Region::Surface))
     );
     assert!(
         !source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Location(Location::Square(13, Region::Surface)))
+            .contains(&Location::Square(13, Region::Surface))
     );
     assert!(
         source
             .get_adjacent_voids(&state)
-            .contains(&Zone::Location(Location::Square(13, Region::Void)))
+            .contains(&Location::Square(13, Region::Void))
     );
     assert!(
         !source
             .get_adjacent_voids(&state)
-            .contains(&Zone::Location(Location::Square(9, Region::Void)))
+            .contains(&Location::Square(9, Region::Void))
     );
 }
 
@@ -1282,17 +1270,17 @@ fn test_card_query_adjacent_to_uses_state_aware_locations() {
 fn test_adjacent_sites_cross_region_boundaries() {
     let state = State::new_mock_state(vec![8]);
 
-    let source = Zone::Location(Location::Square(13, Region::Void));
+    let source = Location::Square(13, Region::Void);
 
     assert!(
         !source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Location(Location::Square(8, Region::Surface)))
+            .contains(&Location::Square(8, Region::Surface))
     );
     assert!(
         source
             .get_adjacent_sites(&state)
-            .contains(&Zone::Location(Location::Square(8, Region::Surface)))
+            .contains(&Location::Square(8, Region::Surface))
     );
 }
 
@@ -1760,7 +1748,9 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
     let target_zone = Location::Square(8, Region::Surface);
     let new_source_location = Location::all_in_region(Region::Surface)
         .into_iter()
-        .find(|zone| zone != &target_zone && !zone.get_nearby_sites(&state).contains(&target_zone))
+        .find(|location| {
+            location != &target_zone && !location.get_nearby_sites(&state).contains(&target_zone)
+        })
         .expect("a non-nearby source zone should exist");
     Effect::SetCardZone {
         card_id: source_id,

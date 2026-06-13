@@ -108,8 +108,8 @@ impl Card for GiantShark {
 
                 let mut effects = vec![];
                 for card_id in card_ids {
-                    let shark_zone = self.get_zone().clone();
-                    let target_zone = state.get_card(card_id).get_zone().clone();
+                    let shark_location = self.get_location().clone();
+                    let target_location = state.get_card(card_id).get_location().clone();
                     effects.push(Effect::Fight {
                         attacker_id: *self.get_id(),
                         defender_id: *card_id,
@@ -118,17 +118,15 @@ impl Card for GiantShark {
                         context: FightContext::FightOnly,
                     });
 
-                    if shark_zone != target_zone {
+                    if shark_location != target_location {
                         // TODO: This is likely to move the shark from the cmeetery back to the
                         // realm.
                         effects.push(Effect::MoveCard {
                             player_id: self.get_controller_id(state),
                             card_id: *self.get_id(),
-                            from: (shark_zone)
-                                .into_location()
-                                .expect("MoveCard source must be a location"),
-                            to: LocationQuery::from_zone(
-                                (target_zone).with_region(Region::Underwater),
+                            from: shark_location.clone(),
+                            to: LocationQuery::from_location(
+                                target_location.with_region(Region::Underwater),
                             ),
                             tap: false,
                             through_path: None,

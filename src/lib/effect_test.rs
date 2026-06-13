@@ -1518,9 +1518,7 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: Some(vec![
             Location::Square(2, Region::Surface),
@@ -1560,9 +1558,7 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: Some(vec![
             Location::Square(2, Region::Surface),
@@ -1643,9 +1639,7 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
         player_id,
         card_id: foot_soldier_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: None,
     });
@@ -1684,9 +1678,7 @@ async fn test_wall_of_fire_damages_unit_crossing_its_border() {
         player_id,
         card_id: foot_soldier_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: None,
     });
@@ -1716,9 +1708,7 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
         player_id,
         card_id: assassin_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(2, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: None,
     });
@@ -1735,9 +1725,7 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
         player_id,
         card_id: assassin_id,
         from: Location::Square(2, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
-        ),
+        to: LocationQuery::from_location(Location::Square(3, Region::Surface).with_region(Region::Surface)),
         tap: false,
         through_path: None,
     });
@@ -1799,9 +1787,7 @@ async fn test_minion_without_burrowing_dies_underground() {
         player_id,
         card_id: apprentice_wizard_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(1, Region::Surface))).with_region(Region::Underground),
-        ),
+        to: LocationQuery::from_location(Location::Square(1, Region::Surface).with_region(Region::Underground)),
         tap: false,
         through_path: None,
     });
@@ -2294,7 +2280,7 @@ async fn test_summon_card_queues_genesis_effects() {
             from_zone: Zone::Hand,
             to_location: location
                 .clone()
-                .into_location()
+                .location().cloned()
                 .expect("test zone must be a location"),
         }],
     }

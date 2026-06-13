@@ -80,7 +80,7 @@ impl Magic for Bury {
             from: picked_card
                 .get_zone()
                 .clone()
-                .into_location()
+                .location().cloned()
                 .expect("Bury target must be in a location"),
             to: LocationQuery::from_location(
                 picked_card.get_location().with_region(Region::Underground),

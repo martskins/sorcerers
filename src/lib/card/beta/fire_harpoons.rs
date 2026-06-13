@@ -58,7 +58,8 @@ impl Magic for FireHarpoons {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
+        let caster_location = caster.get_location().clone();
+        let caster_zone = Zone::from(&caster_location);
         let controller_id = caster.get_controller_id(state);
 
         // Find adjacent Water sites and collect the zones above/below them.
@@ -73,7 +74,8 @@ impl Magic for FireHarpoons {
         target_zones.extend(
             adjacent_water_sites
                 .iter()
-                .map(|zone| zone.with_region(Region::Underwater)),
+                .filter_map(Zone::location)
+                .map(|location| Zone::from(location.with_region(Region::Underwater))),
         );
 
         // Find enemy minions at those zones.
@@ -112,10 +114,10 @@ impl Magic for FireHarpoons {
                 from: target
                     .get_zone()
                     .clone()
-                    .into_location()
+                    .location().cloned()
                     .expect("Fire Harpoons target must be in a location"),
-                to: LocationQuery::from_zone(
-                    caster_zone.with_region(target.get_region(state).clone()),
+                to: LocationQuery::from_location(
+                    caster_location.with_region(target.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

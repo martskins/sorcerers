@@ -20,24 +20,29 @@ impl ActivatedAbility for HarpoonPull {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let harpooneers = state.get_card(card_id);
-        let my_zone = harpooneers.get_zone().clone();
 
         // Find minions in adjacent water sites (surface or underwater)
-        let adjacent_water_zones: Vec<Zone> = my_zone
-            .get_adjacent()
+        let adjacent_water_locations: Vec<Location> = harpooneers
+            .get_location()
+            .get_adjacent_sites(state)
             .into_iter()
-            .filter(|z| {
-                z.get_site(state)
+            .filter(|location| {
+                location
+                    .get_site(state)
                     .and_then(|s| s.is_water_site(state).ok())
                     .unwrap_or(false)
             })
             .collect();
-        let mut target_zones = adjacent_water_zones.clone();
-        target_zones.extend(
-            adjacent_water_zones
-                .iter()
-                .map(|zone| zone.with_region(Region::Underwater)),
-        );
+        let target_zones = adjacent_water_locations
+            .iter()
+            .cloned()
+            .chain(
+                adjacent_water_locations
+                    .iter()
+                    .map(|location| location.with_region(Region::Underwater)),
+            )
+            .map(Zone::from)
+            .collect::<Vec<_>>();
 
         let Some(target_id) = CardQuery::new()
             .minions()

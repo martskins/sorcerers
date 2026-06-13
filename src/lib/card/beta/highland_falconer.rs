@@ -103,7 +103,7 @@ impl Card for HighlandFalconer {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .into_location()
+                            .location().cloned()
                             .expect("Highland Falconer must be in a location"),
                     }],
                 }];

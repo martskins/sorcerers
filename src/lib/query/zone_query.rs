@@ -8,8 +8,9 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(super) enum ZoneSpatialFilter {
-    AdjacentLocations(Zone),
-    NearbyLocations(Zone),
+    Empty,
+    AdjacentLocations(Location),
+    NearbyLocations(Location),
     ZoneOfCard(CardId),
     AffectedZonesOfCard(CardId),
 }
@@ -87,14 +88,22 @@ impl ZoneQuery {
     }
 
     pub fn adjacent_to(mut self, zone: &Zone) -> Self {
-        self.spatial_filters
-            .push(ZoneSpatialFilter::AdjacentLocations(zone.clone()));
+        self.spatial_filters.push(
+            zone.location()
+                .cloned()
+                .map(ZoneSpatialFilter::AdjacentLocations)
+                .unwrap_or(ZoneSpatialFilter::Empty),
+        );
         self
     }
 
     pub fn near(mut self, zone: &Zone) -> Self {
-        self.spatial_filters
-            .push(ZoneSpatialFilter::NearbyLocations(zone.clone()));
+        self.spatial_filters.push(
+            zone.location()
+                .cloned()
+                .map(ZoneSpatialFilter::NearbyLocations)
+                .unwrap_or(ZoneSpatialFilter::Empty),
+        );
         self
     }
 
@@ -185,8 +194,17 @@ impl ZoneQuery {
         }
 
         let filter_zones = |filter: &ZoneSpatialFilter| match filter {
-            ZoneSpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
-            ZoneSpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+            ZoneSpatialFilter::Empty => vec![],
+            ZoneSpatialFilter::AdjacentLocations(location) => location
+                .get_adjacent_locations(state)
+                .into_iter()
+                .map(Zone::from)
+                .collect(),
+            ZoneSpatialFilter::NearbyLocations(location) => location
+                .get_nearby_locations(state)
+                .into_iter()
+                .map(Zone::from)
+                .collect(),
             ZoneSpatialFilter::ZoneOfCard(card_id) => state
                 .cards
                 .get(card_id)

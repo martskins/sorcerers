@@ -100,20 +100,20 @@ impl Card for CraveGolem {
                         }]);
                     }
                     None => {
-                        // BFS to find the closest zone with a minion, then move one step toward it.
-                        let self_zone = self.get_zone().clone();
-                        let mut visited: Vec<Zone> = vec![];
-                        let mut queue: std::collections::VecDeque<(Zone, Zone)> =
+                        // BFS to find the closest location with a minion, then move one step toward it.
+                        let self_location = self.get_location().clone();
+                        let mut visited: Vec<Location> = vec![];
+                        let mut queue: std::collections::VecDeque<(Location, Location)> =
                             std::collections::VecDeque::new();
 
-                        for adj in self_zone.get_adjacent() {
-                            if adj.is_in_play() {
+                        for adj in self_location.get_adjacent() {
+                            if adj.is_location(state) {
                                 queue.push_back((adj.clone(), adj.clone()));
                             }
                         }
-                        visited.push(self_zone.clone());
+                        visited.push(self_location.clone());
 
-                        let mut first_step: Option<Zone> = None;
+                        let mut first_step: Option<Location> = None;
 
                         'bfs: while let Some((current, step_from_self)) = queue.pop_front() {
                             if visited.contains(&current) {
@@ -123,7 +123,7 @@ impl Card for CraveGolem {
 
                             let has_minion = CardQuery::new()
                                 .minions()
-                                .in_zone(&current)
+                                .in_location(current.clone())
                                 .id_not_in(vec![*self.get_id()])
                                 .any(state);
 
@@ -133,24 +133,22 @@ impl Card for CraveGolem {
                             }
 
                             for adj in current.get_adjacent() {
-                                if adj.is_in_play() && !visited.contains(&adj) {
+                                if adj.is_location(state) && !visited.contains(&adj) {
                                     queue.push_back((adj.clone(), step_from_self.clone()));
                                 }
                             }
                         }
 
-                        if let Some(target_zone) = first_step
-                            && target_zone.get_site(state).is_some()
+                        if let Some(target_location) = first_step
+                            && target_location.get_site(state).is_some()
                         {
                             return Ok(vec![Effect::MoveCard {
                                 card_id: *self.get_id(),
-                                to: LocationQuery::from_zone(
-                                    (target_zone).with_region(self.get_region(state).clone()),
+                                to: LocationQuery::from_location(
+                                    target_location.with_region(self.get_region(state).clone()),
                                 ),
                                 player_id: self.get_controller_id(state),
-                                from: (self_zone)
-                                    .into_location()
-                                    .expect("MoveCard source must be a location"),
+                                from: self_location,
                                 tap: true,
                                 through_path: None,
                             }]);
