@@ -1,7 +1,7 @@
 use crate::{
     card::Region,
     game::{CardId, PlayerId},
-    query::QueryCache,
+    query::{CardQuery, QueryCache},
     state::State,
     zone::{Location, Zone},
 };
@@ -231,17 +231,11 @@ impl ZoneQuery {
         {
             (filter_zones(first_filter), &self.spatial_filters[1..])
         } else if self.sites_only {
-            let mut sites: Vec<Zone> = state
-                .cards_in_play()
-                .filter(|c| c.is_site())
-                .filter(|c| {
-                    self.controlled_by
-                        .as_ref()
-                        .is_none_or(|p| c.get_controller_id(state) == *p)
-                })
-                .map(|c| c.get_zone().clone())
-                .collect();
-            sites.dedup();
+            let mut query = CardQuery::new().sites();
+            if let Some(player_id) = &self.controlled_by {
+                query = query.controlled_by(player_id);
+            }
+            let sites = query.all_map(state, |card| card.get_zone().clone());
             (sites, self.spatial_filters.as_slice())
         } else if self.voids_only {
             let all_voids = Location::all_in_region(Region::Surface)

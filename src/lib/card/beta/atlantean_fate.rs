@@ -29,13 +29,11 @@ impl AtlanteanFate {
 
     fn flooded_site_ids(&self, state: &State) -> Vec<CardId> {
         let affected_zones = self.get_affected_zones(state);
-        state
-            .cards_in_play()
-            .filter(|c| affected_zones.contains(c.get_location()))
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_base().rarity != Rarity::Ordinary)
-            .map(|c| *c.get_id())
-            .collect()
+        CardQuery::new()
+            .sites()
+            .rarity(&Rarity::Ordinary)
+            .in_locations(&affected_zones)
+            .all(state)
     }
 }
 

@@ -58,20 +58,10 @@ impl Magic for CaveIn {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_targets = state
-            .cards_in_play()
-            .filter(|c| c.is_site())
-            .filter(|c| {
-                c.get_site()
-                    .expect("site card has no site base")
-                    .get_elements(state)
-                    .unwrap_or_default()
-                    .contains(&Element::Earth)
-            })
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
-
+        let valid_targets = CardQuery::new()
+            .sites()
+            .with_element(Element::Earth)
+            .all(state);
         let picked_site_id = pick_card(
             &self.get_controller_id(state),
             &valid_targets,
@@ -83,7 +73,7 @@ impl Magic for CaveIn {
         let picked_site = state.get_card(&picked_site_id);
         let minions_and_artifacts = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_zone(picked_site.get_zone())
+            .occupying_site_at_location(self.get_location().clone())
             .all(state);
 
         Ok(minions_and_artifacts

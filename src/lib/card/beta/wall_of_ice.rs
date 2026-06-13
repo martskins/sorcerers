@@ -89,15 +89,16 @@ impl Card for WallOfIce {
     }
 }
 
+// TODO: Review this
 fn border_locations_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<Location> {
-    let controlled_sites: Vec<u8> = state.cards_in_play()
-        .filter(|card| card.is_site())
-        .filter(|card| card.get_controller_id(state) == *player_id)
-        .filter_map(|card| match card.get_zone() {
-            Zone::Location(Location::Square(square, Region::Surface)) => Some(*square),
-            _ => None,
-        })
-        .collect();
+    let controlled_sites =
+        CardQuery::new()
+            .sites()
+            .controlled_by(&player_id)
+            .all_map(state, |card| match card.get_location().square() {
+                Some(square) => square,
+                None => unreachable!("Site is in play as per query"),
+            });
 
     Location::all_intersections()
         .into_iter()

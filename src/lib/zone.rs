@@ -212,27 +212,21 @@ impl Location {
     }
 
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
-        if matches!(self, Location::Square(_, _)) {
-            return self.get_site_at_square(state);
+        match self {
+            Location::Square(_, _) => self.get_site_at_square(state),
+            _ => None,
         }
-
-        CardQuery::new()
-            .sites()
-            .in_location(self.clone())
-            .first(state)
-            .and_then(|site_id| state.get_card(&site_id).get_site())
     }
 
     pub fn get_site_at_square<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
         let square = self.square()?;
-        state
-            .cards_in_play()
-            .find(|card| {
-                card.is_site()
-                    && card.get_zone().is_in_play()
-                    && card.get_location().square() == Some(square)
-            })
-            .and_then(|card| card.get_site())
+        dbg!(
+            CardQuery::new()
+                .sites()
+                .in_location(Location::Square(square, Region::Surface))
+                .first(state)
+                .and_then(|site_id| state.get_card(&site_id).get_site())
+        )
     }
 
     pub fn is_location(&self, state: &State) -> bool {
@@ -617,22 +611,18 @@ impl Location {
 
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
+                    println!("Is valid play site for");
                     return site.is_valid_play_site_for(state, card_id, player_id);
                 }
 
                 // If there's no site in the zone, only cards with Voidwalk can be played there.
                 match card.get_card_type() {
                     CardType::Site => {
-                        let has_played_site = !CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .controlled_by(player_id)
-                            .all(state)
-                            .is_empty();
-                        if !has_played_site {
-                            let avatar_id = state.get_player_avatar_id(player_id)?;
-                            let avatar = state.get_card(&avatar_id);
-                            return Ok(avatar.get_location() == self);
+                        let avatar_id = state.get_player_avatar_id(player_id)?;
+                        let avatar = state.get_card(&avatar_id);
+                        let avatar_location = avatar.get_location();
+                        if avatar_location.get_site(state).is_none() {
+                            return Ok(avatar_location == self);
                         }
 
                         let empty_adjacent_zones: Vec<Location> = CardQuery::new()

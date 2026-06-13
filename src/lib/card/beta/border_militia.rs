@@ -58,33 +58,22 @@ impl Magic for BorderMilitia {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let mut sites: Vec<&dyn Card> = state
-            .cards_in_play()
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .filter(|c| {
-                for location in c.get_location().get_adjacent() {
-                    match location.get_site(state) {
-                        Some(site)
-                            if site.get_controller_id(state) != self.get_controller_id(state) =>
-                        {
-                            return true;
-                        }
-                        _ => {}
-                    }
-                }
+        let enemy_site_locations = CardQuery::new()
+            .sites()
+            .not_controlled_by(&self.get_controller_id(state))
+            .all_map(state, |card| card.get_location().clone());
+        let locations = CardQuery::new()
+            .sites()
+            .controlled_by(&self.get_controller_id(state))
+            .adjacent_locations_to_any(&enemy_site_locations)
+            .all_map(state, |card| card.get_location().clone());
 
-                false
-            })
-            .collect();
-        sites.dedup_by(|a, b| a.get_id() == b.get_id());
-
-        Ok(sites
-            .iter()
-            .map(|site| Effect::SummonToken {
+        Ok(locations
+            .into_iter()
+            .map(|location| Effect::SummonToken {
                 player_id: self.get_controller_id(state),
                 token_type: TokenType::FootSoldier,
-                location: site.get_location().clone(),
+                location,
             })
             .collect())
     }

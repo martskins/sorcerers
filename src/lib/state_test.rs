@@ -298,28 +298,28 @@ async fn test_blasted_oak_restricts_card_targets_by_precedence() {
     let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
     let player_id = state.players[0].id;
     let game_id = state.game_id;
-    let oak_zone = Zone::Location(Location::Square(1, Region::Surface));
+    let oak_location = Location::Square(1, Region::Surface);
 
     let oak_id = insert_realm_card(
         &mut state,
         Box::new(BlastedOak::new(player_id)),
-        oak_zone.clone(),
+        Zone::Location(oak_location.clone()),
     )
     .await;
     let minion_id = insert_realm_card(
         &mut state,
         Box::new(FootSoldier::new(player_id)),
-        oak_zone.clone(),
+        Zone::Location(oak_location.clone()),
     )
     .await;
     let source = Drought::new(player_id);
     let source_id = *source.get_id();
     state.add_card(Box::new(source));
-    let site_id = state
-        .cards_in_play()
-        .find(|card| card.is_site() && card.get_zone() == &oak_zone)
-        .map(|card| *card.get_id())
-        .unwrap();
+    let site_id = CardQuery::new()
+        .sites()
+        .in_location(oak_location)
+        .first(&state)
+        .expect("failed to find site");
 
     let targets = vec![site_id, minion_id, oak_id];
     let query = CardQuery::from_ids(targets).with_source_card(source_id);

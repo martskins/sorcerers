@@ -4,7 +4,7 @@
 //! player's perspective so that AI agents (and debug displays) can tell who is
 //! ahead and by how much.
 
-use crate::{card::CardType, game::PlayerId, query::CardQuery, state::State, zone::Zone};
+use crate::{game::PlayerId, query::CardQuery, state::State, zone::Zone};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -112,10 +112,7 @@ pub fn evaluate(state: &State) -> Evaluation {
         let avatar_health = score_avatar_health(state, &pid);
 
         // --- Sites in play ---
-        let sites_in_play = state
-            .cards_in_play()
-            .filter(|c| c.get_owner_id() == &pid && c.is_site())
-            .count() as f32
+        let sites_in_play = CardQuery::new().sites().owned_by(&pid).all(state).len() as f32
             * SITE_WEIGHT;
 
         // --- Minion power, toughness, and board advancement ---
@@ -123,10 +120,8 @@ pub fn evaluate(state: &State) -> Evaluation {
         let mut minion_toughness = 0.0f32;
         let mut board_advancement = 0.0f32;
 
-        for card in state
-            .cards_in_play()
-            .filter(|c| c.get_owner_id() == &pid && c.get_card_type() == CardType::Minion)
-        {
+        for card_id in CardQuery::new().minions().owned_by(&pid).all(state) {
+            let card = state.get_card(&card_id);
             if let Some(ub) = card.get_unit_base() {
                 // Use the stored power field for a cheap estimate; counter
                 // effects are complex to resolve without full game context.

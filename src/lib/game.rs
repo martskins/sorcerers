@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::{
-    card::{Ability, AdditionalCost, Aura, CardType, Cost, Region},
+    card::{Ability, AdditionalCost, CardType, Cost, Region},
     effect::{Effect, EffectEngine},
     error::GameError,
     evaluation,
@@ -2090,9 +2090,11 @@ impl Game {
     }
 
     pub(crate) async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
-        let auras: Vec<&dyn Aura> = state.cards_in_play().filter_map(|c| c.get_aura()).collect();
         let mut auras_to_dispell = vec![];
-        for aura in auras {
+        for aura_id in CardQuery::new().auras().all(state) {
+            let Some(aura) = state.get_card(&aura_id).get_aura() else {
+                continue;
+            };
             if aura.should_dispell(state)? {
                 auras_to_dispell.push(*aura.get_id());
             }

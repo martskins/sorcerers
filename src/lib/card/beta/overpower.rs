@@ -57,12 +57,10 @@ impl Magic for Overpower {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let allies = state.cards_in_play()
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .filter(|c| c.is_unit())
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
+        let allies = CardQuery::new()
+            .units()
+            .controlled_by(&self.get_controller_id(state))
+            .all(state);
         let picked_ally_id = pick_card(
             self.get_controller_id(state),
             &allies,

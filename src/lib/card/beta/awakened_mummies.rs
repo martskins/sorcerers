@@ -185,13 +185,10 @@ mod tests {
         let player_id = state.players[0].id;
         *state.get_player_mana_mut(&player_id) = 1;
 
-        let water_site_id = state
-            .cards_in_play()
-            .find(|card| {
-                card.is_site()
-                    && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
-            })
-            .map(|card| *card.get_id())
+        let water_site_id = CardQuery::new()
+            .sites()
+            .in_location(Location::Square(2, Region::Surface))
+            .first(&state)
             .expect("mock site should exist");
         state.remove_card(&water_site_id);
 

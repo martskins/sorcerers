@@ -1463,13 +1463,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let attacker_region = self.get_region(state);
         let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
 
-        state
-            .cards_in_play()
-            .filter(|target| {
-                // Only enemy units or sites
-                target.get_controller_id(state) != self.get_controller_id(state)
-                    && (state.is_unit_card(target.get_id()) || target.is_site())
-            })
+        CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Avatar, CardType::Site])
+            .not_controlled_by(&self.get_controller_id(state))
+            .all(state)
+            .into_iter()
+            .map(|card_id| state.get_card(&card_id))
             .filter(|target| {
                 target
                     .get_zone()
@@ -1575,13 +1574,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
-        for card in state.cards_in_play() {
-            if card.get_bearer_id()? == Some(*self.get_id()) {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
+        Ok(CardQuery::new().carried_by(self.get_id()).any(state))
     }
 
     fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
@@ -3068,6 +3061,19 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         &self,
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        // Avatars in the void MUST play a site if they can.
+        if self.get_location().get_site(state).is_none() {
+            let sites_in_hand = !CardQuery::new()
+                .sites()
+                .in_zone(Zone::Hand)
+                .owned_by(&self.get_controller_id(state))
+                .all(state)
+                .is_empty();
+            if sites_in_hand {
+                return Ok(vec![Box::new(AvatarAction::PlaySite)]);
+            }
+        }
+
         let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
             self.base_unit_activated_abilities(state)?;
         if let Some(avatar) = self.get_avatar() {

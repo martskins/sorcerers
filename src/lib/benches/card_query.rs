@@ -2,7 +2,6 @@ use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use rand::seq::IndexedRandom;
 use sorcerers::{
     card::{ALL_CARDS, ApprenticeWizard, Card, PoisonousDagger, Region},
-    game::CardId,
     query::CardQuery,
     state::State,
     zone::{Location, Zone},
@@ -79,16 +78,7 @@ fn bench_card_query_manual(c: &mut Criterion) {
     let mut group = c.benchmark_group("Card Querying");
     group.bench_function("Manual Query", |b| {
         b.iter(|| {
-            let borne_cards: Vec<CardId> = state
-                .cards_in_play()
-                .filter_map(|c| {
-                    c.get_bearer_id()
-                        .ok()
-                        .flatten()
-                        .filter(|bearer_id| *bearer_id == card_id)
-                        .map(|_| *c.get_id())
-                })
-                .collect();
+            let borne_cards = CardQuery::new().carried_by(&card_id).all(&state);
             assert_eq!(borne_cards.len(), 1);
         });
     });

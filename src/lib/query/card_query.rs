@@ -192,6 +192,12 @@ enum SpatialFilter {
     NearbyVoids(Location),
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CardQueryCandidateScope {
+    InPlayOnly,
+    AnyZone,
+}
+
 struct PreparedCardQuery<'a> {
     query: &'a CardQuery,
     state: &'a State,
@@ -592,6 +598,21 @@ impl<'a> PreparedCardQuery<'a> {
 }
 
 impl CardQuery {
+    fn candidate_scope(&self) -> CardQueryCandidateScope {
+        if self.include_not_in_play.unwrap_or_default() {
+            CardQueryCandidateScope::AnyZone
+        } else {
+            CardQueryCandidateScope::InPlayOnly
+        }
+    }
+
+    fn candidate_cards<'a>(&self, state: &'a State) -> Box<dyn Iterator<Item = &'a dyn Card> + 'a> {
+        match self.candidate_scope() {
+            CardQueryCandidateScope::InPlayOnly => Box::new(state.cards_in_play()),
+            CardQueryCandidateScope::AnyZone => Box::new(state.all_cards()),
+        }
+    }
+
     pub fn from_ids(ids: Vec<CardId>) -> Self {
         Self {
             card_id: Some(vec![ValueFilter::OneOf(ids)]),
@@ -746,43 +767,38 @@ impl CardQuery {
 
     pub fn any(&self, state: &State) -> bool {
         let prepared = PreparedCardQuery::new(self, state);
-        if self.include_not_in_play.is_none_or(|include| !include) {
-            state.cards_in_play().any(|c| prepared.matches_card(c))
-        } else {
-            state.all_cards().any(|c| prepared.matches_card(c))
-        }
+        self.candidate_cards(state)
+            .any(|c| prepared.matches_card(c))
     }
 
     pub fn first(&self, state: &State) -> Option<CardId> {
         let prepared = PreparedCardQuery::new(self, state);
-        if self.include_not_in_play.is_none_or(|include| !include) {
-            state
-                .cards_in_play()
-                .find(|c| prepared.matches_card(*c))
-                .map(|c| *c.get_id())
-        } else {
-            state
-                .all_cards()
-                .find(|c| prepared.matches_card(*c))
-                .map(|c| *c.get_id())
-        }
+        self.candidate_cards(state)
+            .find(|c| prepared.matches_card(*c))
+            .map(|c| *c.get_id())
+    }
+
+    pub fn all_map<T, F>(&self, state: &State, func: F) -> Vec<T>
+    where
+        T: PartialEq,
+        F: FnMut(&dyn Card) -> T,
+    {
+        let prepared = PreparedCardQuery::new(self, state);
+        let mut result: Vec<T> = self
+            .candidate_cards(state)
+            .filter(|c| prepared.matches_card(*c))
+            .map(func)
+            .collect();
+        result.dedup();
+        result
     }
 
     pub fn all(&self, state: &State) -> Vec<CardId> {
         let prepared = PreparedCardQuery::new(self, state);
-        if self.include_not_in_play.is_none_or(|include| !include) {
-            state
-                .cards_in_play()
-                .filter(|c| prepared.matches_card(*c))
-                .map(|c| *c.get_id())
-                .collect()
-        } else {
-            state
-                .all_cards()
-                .filter(|c| prepared.matches_card(*c))
-                .map(|c| *c.get_id())
-                .collect()
-        }
+        self.candidate_cards(state)
+            .filter(|c| prepared.matches_card(*c))
+            .map(|c| *c.get_id())
+            .collect()
     }
 
     pub fn with_prompt(self, prompt: &str) -> Self {
@@ -874,6 +890,24 @@ impl CardQuery {
         }
     }
 
+    pub fn in_squares(self, squares: Vec<u8>) -> Self {
+        let zones = squares
+            .into_iter()
+            .flat_map(|square| {
+                [
+                    Zone::Location(Location::Square(square, Region::Surface)),
+                    Zone::Location(Location::Square(square, Region::Void)),
+                    Zone::Location(Location::Square(square, Region::Underground)),
+                    Zone::Location(Location::Square(square, Region::Underwater)),
+                ]
+            })
+            .collect();
+        Self {
+            in_zones: Some(zones),
+            ..self
+        }
+    }
+
     pub fn in_location(self, loc: Location) -> Self {
         Self {
             in_zones: Some(vec![loc.into()]),
@@ -914,6 +948,18 @@ impl CardQuery {
     pub fn normal_sized(self) -> Self {
         Self {
             oversized: Some(false),
+            ..self
+        }
+    }
+
+    pub fn occupying_site_at_location(self, location: Location) -> Self {
+        let zones = vec![
+            Zone::Location(location.with_region(Region::Surface)),
+            Zone::Location(location.with_region(Region::Underwater)),
+            Zone::Location(location.with_region(Region::Underground)),
+        ];
+        Self {
+            in_zones: Some(zones),
             ..self
         }
     }

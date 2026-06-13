@@ -3,7 +3,7 @@ use rand::seq::IndexedRandom;
 use crate::{
     card::Region,
     game::{CardId, PlayerId, pick_location_source},
-    query::ZoneQuery,
+    query::{CardQuery, ZoneQuery},
     state::State,
     zone::{Location, Zone},
 };
@@ -124,17 +124,11 @@ impl QueryCache {
                 .await?,
             )
         } else if qry.sites_only {
-            let mut sites: Vec<Location> = state
-                .cards_in_play()
-                .filter(|c| c.is_site())
-                .filter(|c| {
-                    qry.controlled_by
-                        .as_ref()
-                        .is_none_or(|p| c.get_controller_id(state) == *p)
-                })
-                .filter_map(|c| c.get_zone().location().cloned())
-                .collect();
-            sites.dedup();
+            let mut query = CardQuery::new().sites();
+            if let Some(player_id) = &qry.controlled_by {
+                query = query.controlled_by(player_id);
+            }
+            let sites = query.all_map(state, |card| card.get_location().clone());
             Zone::Location(
                 pick_location_source(
                     player_id,

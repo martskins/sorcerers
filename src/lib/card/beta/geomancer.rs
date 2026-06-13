@@ -79,13 +79,10 @@ impl ActivatedAbility for GeomancerAbility {
                 .await?),
             GeomancerAbility::ReplaceRubble => {
                 let card = state.get_card(card_id);
-                let adjacent_locations = card.get_location().get_adjacent();
-                let cards = state
-                    .cards_in_play()
-                    .filter(|c| c.get_name() == Rubble::NAME)
-                    .filter(|c| adjacent_locations.contains(c.get_location()))
-                    .map(|c| *c.get_id())
-                    .collect::<Vec<CardId>>();
+                let cards = CardQuery::new()
+                    .named(Rubble::NAME.to_string())
+                    .adjacent_to(card.get_location())
+                    .all(state);
                 let picked_rubble = pick_card(
                     card.get_controller_id(state),
                     &cards,

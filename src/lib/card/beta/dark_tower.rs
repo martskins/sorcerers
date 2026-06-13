@@ -78,12 +78,13 @@ impl Card for DarkTower {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let count = state.cards_in_play()
-                    .filter(|c| c.get_id() != self.get_id())
-                    .filter(|c| &c.get_controller_id(state) == self.get_owner_id())
-                    .filter(|c| c.get_name() == Self::NAME)
-                    .count();
-                if count > 0 {
+                let dark_towers = CardQuery::new()
+                    .sites()
+                    .controlled_by(&self.get_controller_id(state))
+                    .named(Self::NAME.to_string())
+                    .all(state)
+                    .len();
+                if dark_towers > 1 {
                     return Ok(vec![]);
                 }
 

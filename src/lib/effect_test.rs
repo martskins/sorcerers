@@ -2143,12 +2143,10 @@ async fn test_deferred_expiry_removes_without_triggering() {
 async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
-    let site_id = *state
-        .cards_in_play()
-        .find(|card| card.is_site())
-        .expect("test state should have a site")
-        .get_id();
-
+    let site_id = CardQuery::new()
+        .sites()
+        .first(&state)
+        .expect("failed to find site");
     state
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
