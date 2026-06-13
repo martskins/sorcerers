@@ -68,15 +68,13 @@ impl Card for SwivenScout {
         let avatars = CardQuery::new()
             .avatars()
             .in_locations(&locations)
-            // TODO: Use new not_controlled_by
-            // .controlled_by_different_controller_than_card(card_id)
+            .not_controlled_by(&controller_id)
             .all(state);
         for avatar_id in avatars {
             let avatar = state.get_card(&avatar_id);
             let hand = CardQuery::new()
                 .in_zone(Zone::Hand)
-                // TODO: Should be owned by
-                .controlled_by(&avatar.get_controller_id(state))
+                .owned_by(&avatar.get_controller_id(state))
                 .all(state);
             if hand.is_empty() {
                 continue;

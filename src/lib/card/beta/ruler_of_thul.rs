@@ -56,18 +56,18 @@ impl Card for RulerOfThul {
         Some(&mut self.unit_base)
     }
 
-    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
             OngoingEffect::ConnectTopBottomEdges {
                 affected_cards: CardQuery::new()
                     .units()
-                    .controlled_by_same_controller_as_card(self.get_id()),
+                    .controlled_by(&self.get_controller_id(state)),
             },
             OngoingEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: CardQuery::new()
                     .units()
-                    .controlled_by_same_controller_as_card(self.get_id())
+                    .controlled_by(&self.get_controller_id(state))
                     .id_not(*self.get_id())
                     .in_zone_of_card(self.get_id()),
             },

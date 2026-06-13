@@ -1152,7 +1152,7 @@ impl ActivatedAbility for AvatarAction {
                 let cards = CardQuery::new()
                     .sites()
                     .in_zone(Zone::Hand)
-                    .controlled_by(&player_id)
+                    .controlled_by(player_id)
                     .all(state);
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;

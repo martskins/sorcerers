@@ -102,8 +102,7 @@ impl Card for GrimReaper {
                     .all(state);
                 let copies_owned_by_owner = CardQuery::new()
                     .minions()
-                    // TODO: This needs to be owned by
-                    .controlled_by(buried_owner_id)
+                    .owned_by(buried_owner_id)
                     .in_zones(&[Zone::Cemetery, Zone::Hand, Zone::Spellbook])
                     .named(buried_name)
                     .all(state);

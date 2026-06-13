@@ -58,7 +58,7 @@ impl Card for TvinnaxBerserker {
         Some(&mut self.unit_base)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -69,7 +69,7 @@ impl Card for TvinnaxBerserker {
                 trigger: EffectQuery::UnitKilled {
                     unit: CardQuery::new()
                         .minions()
-                        .controlled_by_different_controller_than_card(self.get_id()),
+                        .not_controlled_by(&self.get_controller_id(state)),
                     killer: Some(self.get_id().into()),
                     from_attack: None,
                 },

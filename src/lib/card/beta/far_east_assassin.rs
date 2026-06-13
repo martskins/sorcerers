@@ -20,7 +20,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
         state: &State,
     ) -> anyhow::Result<bool> {
         let carried = CardQuery::new().artifacts().carried_by(card_id).all(state);
-        Ok(carried > 0)
+        Ok(!carried.is_empty())
     }
 
     async fn on_select(

@@ -3080,11 +3080,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
         let sites_in_hand = CardQuery::new()
             .sites()
-            // TODO: Should be owned_by
-            .controlled_by(&self.get_controller_id(state))
+            .owned_by(self.get_owner_id())
             .in_zone(Zone::Hand)
             .all(state);
-        if sites_in_hand.len() > 0
+        if !sites_in_hand.is_empty()
             && let Some(avatar) = self.get_avatar()
             && let Some(play_site_ability) = avatar.get_play_site_ability()
         {

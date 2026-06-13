@@ -78,8 +78,7 @@ impl Card for HighlandPrincess {
                 let targets = CardQuery::new()
                     .artifacts()
                     .in_zone(Zone::Spellbook)
-                    // TODO: Should be owned_by
-                    .controlled_by(&controller_id)
+                    .owned_by(&controller_id)
                     .all(state);
 
                 if targets.is_empty() {

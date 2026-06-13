@@ -108,15 +108,17 @@ impl Card for HaastEagle {
         }
 
         let controller_id = self.get_controller_id(state);
-        let can_drop = CardQuery::new().carried_by(self.get_id()).all(state).len() > 0;
-        let can_pick_up = CardQuery::new()
+        let can_drop = !CardQuery::new()
+            .carried_by(self.get_id())
+            .all(state)
+            .is_empty();
+        let can_pick_up = !CardQuery::new()
             .minions()
             .controlled_by(&controller_id)
             .in_location(self.get_location().clone())
             .power_lt(self.get_power(state)?.unwrap_or_default())
             .all(state)
-            .len()
-            > 0;
+            .is_empty();
 
         let mut abilities: Vec<Box<dyn ActivatedAbility>> = vec![];
         if can_pick_up {

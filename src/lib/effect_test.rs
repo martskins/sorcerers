@@ -3000,7 +3000,7 @@ async fn test_summon_token_unit_placed_in_target_zone() {
         .all(&state);
     assert_eq!(soldiers.len(), 1, "one FootSoldier token should exist");
     assert_eq!(
-        soldiers[0].get_zone(),
+        state.get_card(&soldiers[0]).get_zone(),
         &Zone::Location(Location::Square(1, Region::Surface)),
         "FootSoldier should be in the target zone"
     );
@@ -3025,7 +3025,9 @@ async fn test_summon_token_unit_has_summoning_sickness() {
         .named(FootSoldier::NAME.to_string())
         .all(&state);
     assert!(
-        soldier.has_status(&state, &CardStatus::SummoningSickness),
+        state
+            .get_card(&soldiers[0])
+            .has_status(&state, &CardStatus::SummoningSickness),
         "summoned unit token should have SummoningSickness"
     );
 }

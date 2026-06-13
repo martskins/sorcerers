@@ -148,9 +148,9 @@ pub fn evaluate(state: &State) -> Evaluation {
         let hand_size = CardQuery::new()
             .in_zone(Zone::Hand)
             // TODO: Should be owned_by
-            .controlled_by(pid)
+            .controlled_by(&pid)
             .all(state)
-            .len()
+            .len() as f32
             * HAND_CARD_WEIGHT;
 
         let comp = EvalComponents {

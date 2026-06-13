@@ -83,7 +83,7 @@ impl Card for SecretTunnel {
             affected_cards: CardQuery::new()
                 .units()
                 .in_zone_of_card(self.get_id())
-                .controlled_by_same_controller_as_card(self.get_id())
+                .controlled_by(&self.get_controller_id(state))
                 .in_region(Region::Underground),
         }])
     }

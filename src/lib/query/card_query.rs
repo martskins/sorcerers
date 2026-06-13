@@ -18,9 +18,8 @@ pub struct CardQuery {
     count: Option<usize>,
     card_id: Option<Vec<ValueFilter<CardId>>>,
     card_name: Option<Vec<StringFilter>>,
-    controller_id: Option<PlayerId>,
-    same_controller_as: Option<CardId>,
-    different_controller_than: Option<CardId>,
+    controlled_by: Option<Vec<ValueFilter<PlayerId>>>,
+    owned_by: Option<Vec<ValueFilter<PlayerId>>>,
     abilities: Option<Vec<VecFilter<Ability>>>,
     statuses: Option<Vec<VecFilter<CardStatus>>>,
     card_types: Option<Vec<CardType>>,
@@ -58,9 +57,8 @@ impl Default for CardQuery {
             count: None,
             card_id: None,
             card_name: None,
-            controller_id: None,
-            same_controller_as: None,
-            different_controller_than: None,
+            controlled_by: None,
+            owned_by: None,
             abilities: None,
             statuses: None,
             card_types: None,
@@ -143,6 +141,7 @@ impl<T: PartialEq> VecFilter<T> {
         match self {
             VecFilter::WithAll(items) => items.iter().all(|i| vals.contains(i)),
             VecFilter::WithoutAny(items) => items.iter().all(|i| !vals.contains(i)),
+            VecFilter::WithAny(items) => items.iter().any(|i| !vals.contains(i)),
             VecFilter::With(item) => vals.contains(item),
             VecFilter::Without(item) => !vals.contains(item),
         }
@@ -365,27 +364,21 @@ impl<'a> PreparedCardQuery<'a> {
         }
 
         // Simple property filters
-        if let Some(controller_id) = &query.controller_id
-            && &card.get_controller_id(state) != controller_id
-        {
-            return false;
-        }
-
-        if let Some(source_id) = &query.same_controller_as {
-            let Some(source) = state.try_get_card(source_id) else {
-                return false;
-            };
-            if card.get_controller_id(state) != source.get_controller_id(state) {
-                return false;
+        if let Some(filters) = &query.controlled_by {
+            let controller_id = card.get_controller_id(state);
+            for filter in filters {
+                if !filter.matches(&controller_id) {
+                    return false;
+                }
             }
         }
 
-        if let Some(source_id) = &query.different_controller_than {
-            let Some(source) = state.try_get_card(source_id) else {
-                return false;
-            };
-            if card.get_controller_id(state) == source.get_controller_id(state) {
-                return false;
+        if let Some(filters) = &query.owned_by {
+            let owner_id = card.get_owner_id();
+            for filter in filters {
+                if !filter.matches(owner_id) {
+                    return false;
+                }
             }
         }
 
@@ -800,9 +793,7 @@ impl CardQuery {
             && self.count.is_none()
             && self.card_id.is_none()
             && self.card_name.is_none()
-            && self.controller_id.is_none()
-            && self.same_controller_as.is_none()
-            && self.different_controller_than.is_none()
+            && self.controlled_by.is_none()
             && self.abilities.is_none()
             && self.statuses.is_none()
             && self.card_types.is_none()
@@ -1208,24 +1199,29 @@ impl CardQuery {
         }
     }
 
+    pub fn owned_by(self, owner_id: &PlayerId) -> Self {
+        let mut new_filter = self.owned_by.unwrap_or_default();
+        new_filter.push(ValueFilter::Equals(*owner_id));
+        Self {
+            owned_by: Some(new_filter),
+            ..self
+        }
+    }
+
     pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
+        let mut new_filter = self.controlled_by.unwrap_or_default();
+        new_filter.push(ValueFilter::Equals(*controller_id));
         Self {
-            controller_id: Some(*controller_id),
+            controlled_by: Some(new_filter),
             ..self
         }
     }
 
-    pub fn controlled_by_same_controller_as_card(self, card_id: &CardId) -> Self {
+    pub fn not_controlled_by(self, controller_id: &PlayerId) -> Self {
+        let mut new_filter = self.controlled_by.unwrap_or_default();
+        new_filter.push(ValueFilter::NotEquals(*controller_id));
         Self {
-            same_controller_as: Some(*card_id),
-            ..self
-        }
-    }
-
-    pub fn controlled_by_different_controller_than_card(self, card_id: &CardId) -> Self {
-        Self {
-            // TODO: Use matcher
-            different_controller_than: Some(*card_id),
+            controlled_by: Some(new_filter),
             ..self
         }
     }

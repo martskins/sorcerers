@@ -100,8 +100,7 @@ impl Card for ImperialRoad {
                     let sites_in_atlasbook = CardQuery::new()
                         .sites()
                         .in_zone(Zone::Atlasbook)
-                        // TODO: Should be owned_by
-                        .controlled_by(&player_id)
+                        .owned_by(&player_id)
                         .all(state);
                     if sites_in_atlasbook.is_empty() {
                         continue;

@@ -70,14 +70,10 @@ impl Card for SacredScarabs {
         &self,
         hook: HookId,
         state: &State,
-        effect: &Effect,
+        _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             DEATHRITE_HOOK_ID => {
-                let Effect::TriggerDeathrite { card_id, from, .. } = effect else {
-                    return Ok(vec![]);
-                };
-
                 let units_here = CardQuery::new()
                     .units()
                     .in_location(self.get_location().clone())

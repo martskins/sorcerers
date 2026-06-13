@@ -931,12 +931,12 @@ impl Effect {
     }
 
     async fn expire_counters(&self, state: &mut State) -> anyhow::Result<()> {
-        let modified_cards = CardQuery::new()
+        let modified_cards: Vec<&dyn Card> = CardQuery::new()
             .units()
             .all(state)
             .into_iter()
             .filter_map(|cid| {
-                let card = state.get_card(cid);
+                let card = state.get_card(&cid);
                 let has_counters = !card
                     .get_unit_base()
                     .expect("unit to have a unit base component")
@@ -1643,7 +1643,7 @@ impl Effect {
                 let ctrl_snapshot = state.clone();
                 // Untap cards controlled by the current player (not merely owned — control can
                 // be transferred via steal effects).
-                let controlled_cards = CardQuery::new().controlled_by(&player_id).all(state);
+                let controlled_cards = CardQuery::new().controlled_by(player_id).all(state);
                 for cid in controlled_cards {
                     state.get_card_mut(&cid).set_tapped(false);
                 }

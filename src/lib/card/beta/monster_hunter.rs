@@ -73,8 +73,6 @@ impl Card for MonsterHunter {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let my_location = self.get_location().clone();
-
                 let nearby_monsters = CardQuery::new()
                     .minions()
                     .controlled_by(&controller_id)
