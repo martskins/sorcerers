@@ -2023,7 +2023,8 @@ impl Effect {
                             from: attacker
                                 .get_zone()
                                 .clone()
-                                .location().cloned()
+                                .location()
+                                .cloned()
                                 .expect("MoveCard source must be a location"),
                             to: LocationQuery::from_zone(attack_location.clone()),
                             tap: true,
@@ -2048,7 +2049,8 @@ impl Effect {
                                         from: defending_card
                                             .get_zone()
                                             .clone()
-                                            .location().cloned()
+                                            .location()
+                                            .cloned()
                                             .expect("MoveCard source must be a location"),
                                         to: LocationQuery::from_zone(attack_location.clone()),
                                         tap: true,
@@ -2181,7 +2183,8 @@ impl Effect {
                         from: attacker
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("MoveCard source must be a location"),
                         to: defender.get_zone().into(),
                         tap: true,
@@ -2519,7 +2522,8 @@ impl Effect {
                     from: card
                         .get_zone()
                         .clone()
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(to_location.clone()),
                     tap: false,
@@ -2681,6 +2685,7 @@ impl Effect {
         let area_effects: Vec<Effect> = state
             .cards
             .values()
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| can_use_special_abilities(state, c.get_id()))
             .filter_map(|c| c.area_effects(state).ok())
             .flatten()
