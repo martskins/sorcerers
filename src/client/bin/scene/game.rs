@@ -54,6 +54,7 @@ pub enum Status {
     },
     SelectingCard {
         cards: Vec<CardId>,
+        pickable_cards: Vec<CardId>,
         preview: bool,
         prompt: String,
         source_card_id: Option<CardId>,
@@ -229,7 +230,6 @@ fn sort_cards(cards: &[CardData]) -> Vec<CardData> {
 pub struct Game {
     game_id: uuid::Uuid,
     player_id: PlayerId,
-    opponent_id: PlayerId,
     client: networking::client::Client,
     current_player: PlayerId,
     overlay: Option<GameOverlay>,
@@ -393,7 +393,6 @@ impl Game {
         Self {
             game_id,
             player_id,
-            opponent_id,
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             overlay: None,
@@ -517,35 +516,41 @@ impl Game {
     }
 
     fn open_viewers(&mut self, cards: &[uuid::Uuid]) -> anyhow::Result<()> {
-        let open_opponent_cemetery = self
-            .data
-            .cards
-            .iter()
-            .filter(|c| c.owner_id == self.opponent_id)
-            .any(|c| cards.contains(&c.id) && c.zone == Zone::Cemetery);
-        let open_player_cemetery = self
-            .data
-            .cards
-            .iter()
-            .filter(|c| c.owner_id == self.player_id)
-            .any(|c| cards.contains(&c.id) && c.zone == Zone::Cemetery);
-
-        if open_player_cemetery {
-            let command = ComponentCommand::OpenCardViewer {
-                title: "Your Cemetery".to_string(),
-                zone: Zone::Cemetery,
-                controller_id: Some(self.player_id),
-                open_only: false,
-            };
-            self.broadcast_command_result(&command)?;
+        let mut viewers: Vec<(Zone, PlayerId, Vec<CardId>)> = Vec::new();
+        for card in self.data.cards.iter().filter(|card| cards.contains(&card.id)) {
+            if card.zone.is_in_play() {
+                continue;
+            }
+            if let Some((_zone, _owner_id, card_ids)) = viewers
+                .iter_mut()
+                .find(|(zone, owner_id, _)| zone == &card.zone && owner_id == &card.owner_id)
+            {
+                card_ids.push(card.id);
+            } else {
+                viewers.push((card.zone.clone(), card.owner_id, vec![card.id]));
+            }
         }
 
-        if open_opponent_cemetery {
+        for (zone, owner_id, card_ids) in viewers {
+            let owner_label = if owner_id == self.player_id {
+                "Your"
+            } else {
+                "Opponent's"
+            };
+            let zone_label = match zone {
+                Zone::Hand => "Hand",
+                Zone::Cemetery => "Cemetery",
+                Zone::Spellbook => "Spellbook",
+                Zone::Atlasbook => "Atlas",
+                Zone::Banish => "Banished Cards",
+                _ => "Cards",
+            };
             let command = ComponentCommand::OpenCardViewer {
-                title: "Opponent's Cemetery".to_string(),
-                zone: Zone::Cemetery,
-                controller_id: Some(self.opponent_id),
-                open_only: false,
+                title: format!("{} {}", owner_label, zone_label),
+                zone,
+                controller_id: Some(owner_id),
+                card_ids: Some(card_ids),
+                open_only: true,
             };
             self.broadcast_command_result(&command)?;
         }
@@ -566,6 +571,7 @@ impl Game {
             title: "Controlled Player's Hand".to_string(),
             zone: Zone::Hand,
             controller_id: Some(self.data.turn_player),
+            card_ids: None,
             open_only: true,
         };
         self.broadcast_command(&command);
@@ -608,7 +614,6 @@ impl Game {
             } => Some((prompt.as_str(), *source_card_id)),
             Status::SelectingCard {
                 prompt,
-                preview: false,
                 source_card_id,
                 ..
             } => Some((prompt.as_str(), *source_card_id)),

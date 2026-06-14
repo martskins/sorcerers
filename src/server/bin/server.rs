@@ -218,6 +218,8 @@ impl Server {
         game.state.add_card(card);
         let card = card::from_name_and_zone(FlamingSword::NAME, &player_one, Zone::Cemetery);
         game.state.add_card(card);
+        let card = card::from_name_and_zone(AllTerrainVestments::NAME, &player_two, Zone::Cemetery);
+        game.state.add_card(card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,

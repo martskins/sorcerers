@@ -1135,7 +1135,6 @@ impl RealmComponent {
                 match &data.status {
                     Status::DistributingDamage { .. }
                     | Status::SelectingZoneGroup { .. }
-                    | Status::SelectingCard { preview: true, .. }
                     | Status::GameAborted { .. }
                     | Status::GameOver { .. }
                     | Status::SelectingAction { .. }
@@ -1147,7 +1146,7 @@ impl RealmComponent {
                     | Status::ViewingCards { .. } => {
                         continue;
                     }
-                    Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingCard { .. } | Status::Idle => {}
                     Status::SelectingZone { .. } | Status::PreviewingPlayableLocations { .. } => {}
                 }
             }
@@ -1180,8 +1179,7 @@ impl RealmComponent {
                 }
             } else {
                 match &data.status {
-                    Status::SelectingCard { preview: true, .. }
-                    | Status::SelectingZoneGroup { .. }
+                    Status::SelectingZoneGroup { .. }
                     | Status::DistributingDamage { .. }
                     | Status::Waiting { .. }
                     | Status::SelectingAction { .. }
@@ -1194,7 +1192,7 @@ impl RealmComponent {
                     | Status::ViewingCards { .. } => {
                         continue;
                     }
-                    Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingCard { .. } | Status::Idle => {}
                     Status::SelectingZone { .. } | Status::PreviewingPlayableLocations { .. } => {}
                 }
             }
@@ -1372,10 +1370,10 @@ impl RealmComponent {
                 })?;
             }
             Status::SelectingCard {
-                cards,
+                pickable_cards,
                 multiple: false,
                 ..
-            } if cards.contains(card_id) => {
+            } if pickable_cards.contains(card_id) => {
                 self.client.send(ClientMessage::PickCard {
                     player_id: self.player_id,
                     game_id: self.game_id,
@@ -1500,7 +1498,7 @@ impl Component for RealmComponent {
         let mut moved_card_id = None;
         let card_clicks_enabled = matches!(
             data.status,
-            Status::Idle | Status::SelectingCard { preview: false, .. }
+            Status::Idle | Status::SelectingCard { .. }
         );
         let suppress_preview = matches!(
             data.status,
@@ -1538,7 +1536,6 @@ impl Component for RealmComponent {
                 &data.status,
                 Status::SelectingCard {
                     cards,
-                    preview: false,
                     ..
                 } if cards.contains(&card_rect.card.id)
             );
@@ -1686,7 +1683,6 @@ impl Component for RealmComponent {
 
             if let Status::SelectingCard {
                 cards,
-                preview: false,
                 ..
             } = &data.status
                 && !cards.contains(&card_rect.card.id)

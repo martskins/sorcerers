@@ -203,27 +203,14 @@ impl Game {
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
+                    pickable_cards: cards.clone(),
                     preview: *preview,
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
                     multiple: true,
                 };
-                if *preview {
-                    let renderables = self
-                        .data
-                        .cards
-                        .iter()
-                        .filter(|c| cards.contains(&c.id))
-                        .collect();
-                    self.overlay = Some(GameOverlay::Selection(SelectionOverlay::new(
-                        self.client.clone(),
-                        &self.game_id,
-                        &self.data.player_id,
-                        renderables,
-                        cards.clone(),
-                        prompt,
-                        SelectionOverlayBehaviour::Pick,
-                    )));
+                if let Err(e) = self.open_viewers(cards) {
+                    eprintln!("Failed to compute viewers for card selection: {}", e);
                 }
                 None
             }
@@ -271,6 +258,7 @@ impl Game {
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
+                    pickable_cards: pickable_cards.clone(),
                     preview: *preview,
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
@@ -279,24 +267,6 @@ impl Game {
 
                 if let Err(e) = self.open_viewers(cards) {
                     eprintln!("Failed to compute viewers for card selection: {}", e);
-                }
-
-                if *preview {
-                    let renderables = self
-                        .data
-                        .cards
-                        .iter()
-                        .filter(|c| cards.contains(&c.id))
-                        .collect();
-                    self.overlay = Some(GameOverlay::Selection(SelectionOverlay::new(
-                        self.client.clone(),
-                        &self.game_id,
-                        &self.data.player_id,
-                        renderables,
-                        pickable_cards.clone(),
-                        prompt,
-                        SelectionOverlayBehaviour::Pick,
-                    )));
                 }
                 None
             }

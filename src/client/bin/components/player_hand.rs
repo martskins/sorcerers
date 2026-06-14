@@ -207,10 +207,6 @@ impl PlayerHandComponent {
             return Ok(());
         }
 
-        if let Status::SelectingCard { preview: true, .. } = &data.status {
-            return Ok(());
-        }
-
         let mut reset_status = false;
         match &data.status {
             Status::Idle => {
@@ -221,28 +217,11 @@ impl PlayerHandComponent {
                 })?;
             }
             Status::SelectingCard {
-                cards,
-                preview: true,
-                ..
-            } => {
-                if !cards.contains(card_id) {
-                    return Ok(());
-                }
-
-                self.client.send(ClientMessage::PickCard {
-                    player_id: self.player_id,
-                    game_id: self.game_id,
-                    card_id: *card_id,
-                })?;
-                reset_status = true;
-            }
-            Status::SelectingCard {
-                cards,
+                pickable_cards,
                 multiple: false,
-                preview: false,
                 ..
             } => {
-                if !cards.contains(card_id) {
+                if !pickable_cards.contains(card_id) {
                     return Ok(());
                 }
 
@@ -345,7 +324,7 @@ impl Component for PlayerHandComponent {
         let mut dropped_card: Option<(uuid::Uuid, egui::Pos2)> = None;
         let can_click_cards = matches!(
             data.status,
-            Status::Idle | Status::Mulligan | Status::SelectingCard { preview: false, .. }
+            Status::Idle | Status::Mulligan | Status::SelectingCard { .. }
         );
         let can_drag_cards = matches!(data.status, Status::Idle);
         let suppress_preview = matches!(

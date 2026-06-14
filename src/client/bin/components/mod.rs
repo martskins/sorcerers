@@ -38,6 +38,7 @@ pub enum ComponentCommand {
         title: String,
         zone: Zone,
         controller_id: Option<PlayerId>,
+        card_ids: Option<Vec<CardId>>,
         open_only: bool,
     },
     DropHandCard {

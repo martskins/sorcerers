@@ -18,7 +18,7 @@ fn thumb_size(card: &CardData) -> egui::Vec2 {
 }
 
 fn draw_card_thumb(
-    data: &GameData,
+    data: &mut GameData,
     card: &CardData,
     card_rect: Rect,
     ui: &mut Ui,
@@ -57,6 +57,20 @@ fn draw_card_thumb(
             Stroke::new(1.0, border_color),
             egui::StrokeKind::Outside,
         );
+        if matches!(
+            &data.status,
+            Status::SelectingCard {
+                pickable_cards,
+                multiple: false,
+                ..
+            } if !pickable_cards.contains(&card.id)
+        ) {
+            ui.painter().rect_filled(
+                card_rect,
+                4.0,
+                Color32::from_rgba_unmultiplied(0, 0, 0, 110),
+            );
+        }
     } else {
         let resp = ui.allocate_rect(card_rect, Sense::CLICK | Sense::HOVER);
         if resp.clicked()
@@ -123,6 +137,7 @@ struct ViewerEntry {
     title: String,
     zone: Zone,
     controller_id: Option<PlayerId>,
+    card_ids: Option<Vec<uuid::Uuid>>,
     visible: bool,
 }
 
@@ -146,7 +161,7 @@ impl CardViewerComponent {
 }
 
 fn handle_card_click(
-    data: &GameData,
+    data: &mut GameData,
     card: &CardData,
     client: &Client,
     game_id: &uuid::Uuid,
@@ -163,11 +178,11 @@ fn handle_card_click(
             Ok(())
         }
         Status::SelectingCard {
-            cards,
+            pickable_cards,
             multiple: false,
             ..
         } => {
-            if !cards.contains(&card.id) {
+            if !pickable_cards.contains(&card.id) {
                 return Ok(());
             }
 
@@ -176,6 +191,7 @@ fn handle_card_click(
                 player_id: *player_id,
                 card_id: card.id,
             })?;
+            data.status = Status::Idle;
 
             Ok(())
         }
@@ -195,6 +211,12 @@ fn render_viewer(
         .cards
         .iter()
         .filter(|c| c.zone == entry.zone && entry.controller_id.is_none_or(|id| c.owner_id == id))
+        .filter(|c| {
+            entry
+                .card_ids
+                .as_ref()
+                .is_none_or(|card_ids| card_ids.contains(&c.id))
+        })
         .cloned()
         .collect::<Vec<CardData>>();
 
@@ -316,6 +338,7 @@ impl Component for CardViewerComponent {
             title,
             zone,
             controller_id,
+            card_ids,
             open_only,
         } = command
         {
@@ -328,11 +351,13 @@ impl Component for CardViewerComponent {
                 entry.visible = if *open_only { true } else { !entry.visible };
                 // Update title in case the caller changed it.
                 entry.title = title.clone();
+                entry.card_ids = card_ids.clone();
             } else {
                 self.viewers.push(ViewerEntry {
                     title: title.clone(),
                     zone: zone.clone(),
                     controller_id: *controller_id,
+                    card_ids: card_ids.clone(),
                     visible: true,
                 });
             }

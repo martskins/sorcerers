@@ -384,6 +384,7 @@ impl Component for PlayerStatusComponent {
                 title,
                 zone: Zone::Cemetery,
                 controller_id: Some(self.player_id),
+                card_ids: None,
                 open_only: false,
             }));
         }
@@ -393,6 +394,7 @@ impl Component for PlayerStatusComponent {
                 title: "Controlled Player's Hand".to_string(),
                 zone: Zone::Hand,
                 controller_id: Some(self.player_id),
+                card_ids: None,
                 open_only: true,
             }));
         }
@@ -407,6 +409,7 @@ impl Component for PlayerStatusComponent {
                 title,
                 zone: Zone::Banish,
                 controller_id: Some(self.player_id),
+                card_ids: None,
                 open_only: false,
             }));
         }
