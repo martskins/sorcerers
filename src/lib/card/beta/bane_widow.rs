@@ -75,7 +75,7 @@ impl Card for BaneWidow {
                 let controller_id = self.get_controller_id(state);
                 let targets = CardQuery::new()
                     .minions()
-                    .in_zone(self.get_zone())
+                    .in_location(self.get_location().clone())
                     .id_not_in(vec![*self.get_id()])
                     .all(state);
                 if targets.is_empty() {

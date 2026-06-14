@@ -93,7 +93,7 @@ impl Card for AridDesert {
                 let site = state.get_card(&picked_site_id);
                 let minions = CardQuery::new()
                     .minions()
-                    .in_zone(site.get_zone())
+                    .in_location(site.get_location().with_region(Region::Surface))
                     .all(state);
                 let mut effects = vec![];
                 for minion in minions {

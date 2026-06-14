@@ -82,10 +82,18 @@ impl Card for AtlasWanderers {
                 };
 
                 let picked_site = state.get_card(&picked_site_id);
-                let from_zone = self.get_zone().clone();
-                let to_zone = picked_site.get_zone().clone();
-
-                let mut effects = Vec::new();
+                let from_zone = self.get_location().clone();
+                let to_zone = picked_site.get_location().clone();
+                let mut effects = vec![
+                    Effect::SetCardZone {
+                        card_id: *self.get_id(),
+                        zone: Zone::Location(to_zone.clone()),
+                    },
+                    Effect::SetCardZone {
+                        card_id: picked_site_id,
+                        zone: Zone::Location(from_zone.clone()),
+                    },
+                ];
                 let from_cards = CardQuery::new()
                     .normal_sized()
                     .in_zone(&from_zone)
@@ -93,7 +101,7 @@ impl Card for AtlasWanderers {
                 for card_id in from_cards {
                     effects.push(Effect::SetCardZone {
                         card_id,
-                        zone: to_zone.clone(),
+                        zone: Zone::Location(to_zone.clone()),
                     });
                 }
 
@@ -101,7 +109,7 @@ impl Card for AtlasWanderers {
                 for card_id in to_cards {
                     effects.push(Effect::SetCardZone {
                         card_id,
-                        zone: from_zone.clone(),
+                        zone: Zone::Location(from_zone.clone()),
                     });
                 }
 

@@ -87,8 +87,9 @@ impl Card for Battlefield {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
                 let Some(picked_card_id) = CardQuery::new()
-                    .in_zone(&Zone::Cemetery)
+                    .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
+                    .in_zone(&Zone::Cemetery)
                     .with_prompt("Pick a weapon or armor to conjure")
                     .with_source_card(*self.get_id())
                     .pick(&controller_id, state, true)
@@ -105,7 +106,8 @@ impl Card for Battlefield {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Battlefield must be in a location"),
                     }],
                 }])

@@ -63,12 +63,7 @@ impl Card for AzuridgeCaravan {
     }
 
     fn get_elements(&self, _state: &State) -> anyhow::Result<Vec<Element>> {
-        Ok(vec![
-            Element::Fire,
-            Element::Water,
-            Element::Air,
-            Element::Earth,
-        ])
+        Ok(Element::iter().collect::<Vec<_>>())
     }
 }
 

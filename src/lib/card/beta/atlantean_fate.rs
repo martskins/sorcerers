@@ -106,6 +106,7 @@ impl Card for AtlanteanFate {
                     .get_affected_zones(state)
                     .into_iter()
                     .filter(|z| z.get_site(state).is_some())
+                    .map(|l| l.with_region(Region::Surface))
                     .collect();
                 Ok(CardQuery::new()
                     .card_types(vec![CardType::Minion, CardType::Artifact])

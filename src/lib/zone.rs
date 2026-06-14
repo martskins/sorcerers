@@ -609,7 +609,6 @@ impl Location {
 
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
-                    println!("Is valid play site for");
                     return site.is_valid_play_site_for(state, card_id, player_id);
                 }
 

@@ -8,6 +8,8 @@ pub struct AllTerrainVestments {
 
 impl AllTerrainVestments {
     pub const NAME: &'static str = "All-Terrain Vestments";
+    pub const DESCRIPTION: &'static str =
+        "Bearer has Burrowing, Submerge, and Voidwalk, if it's a minion";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -5,6 +5,7 @@ use crate::{
         Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType,
     },
     game::{CardId, Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
+    query::QueryCache,
     state::State,
     zone::{Location, Zone},
 };
@@ -665,8 +666,6 @@ impl CardQuery {
         state: &State,
         use_preview: bool,
     ) -> anyhow::Result<Option<CardId>> {
-        use crate::query::QueryCache;
-
         let query_id = *self.id.get_or_init(uuid::Uuid::new_v4);
         if let Some(cached) = QueryCache::card_result(&query_id) {
             return Ok(Some(cached));

@@ -15,8 +15,8 @@ impl AlvalinneDryads {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![Ability::Airborne],
-                types: vec![MinionType::Beast],
+                abilities: vec![],
+                types: vec![MinionType::Spirit],
                 tapped: false,
                 ..Default::default()
             },
@@ -24,8 +24,8 @@ impl AlvalinneDryads {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(3, "W"),
-                rarity: Rarity::Exceptional,
+                costs: Costs::basic(2, "E"),
+                rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,

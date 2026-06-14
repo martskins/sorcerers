@@ -14,6 +14,7 @@ use crate::{
 use async_channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
+use strum_macros::EnumIter;
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub type PlayerId = uuid::Uuid;
@@ -814,7 +815,7 @@ pub trait PlayerAction: std::fmt::Debug {
     fn get_name(&self) -> String;
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, EnumIter)]
 pub enum Element {
     Fire,
     Air,

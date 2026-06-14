@@ -20,7 +20,7 @@ impl ActivatedAbility for AncientDragonAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let picked_zone = pick_location_near(
+        let picked_location = pick_location_near(
             player_id,
             card.get_location(),
             state,
@@ -29,8 +29,8 @@ impl ActivatedAbility for AncientDragonAbility {
         )
         .await?;
         let unit_ids = CardQuery::new()
-            .in_zone(&picked_zone)
             .units()
+            .in_location(picked_location)
             .id_not_in(vec![*card_id])
             .all(state);
         let mut effects = vec![];

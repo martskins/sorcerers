@@ -63,6 +63,7 @@ impl Card for Abundance {
         Ok(vec![OngoingEffect::ModifyProvidedMana {
             mana_diff: 1,
             affected_cards: CardQuery::new()
+                .sites()
                 .in_affected_zones_of_card(self.get_id())
                 .sites(),
         }])

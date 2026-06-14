@@ -2,7 +2,7 @@ use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, AssortedAnimals, Card,
         CauldronCrones, Cost, CostOptions, Drought, ManaCost, OgreGoons, PayableCost, Region,
-        RimlandNomads, RootSpider, SimpleVillage,
+        RimlandNomads, RootSpider, SimpleVillage, SpringRiver,
     },
     game::Thresholds,
     query::CardQuery,
@@ -83,6 +83,64 @@ fn test_card_query_mana_cost_filter_uses_printed_mana_value() {
         .all(&state);
     assert!(matching_cards.contains(&cauldron_crones_id));
     assert!(!matching_cards.contains(&assorted_animals_id));
+}
+
+#[test]
+fn test_card_query_near_to_stays_in_origin_region() {
+    let mut land_state = State::new_mock_state(vec![7, 8]);
+    let player_id = land_state.players[0].id;
+
+    let mut surface_unit = ApprenticeWizard::new(player_id);
+    let surface_unit_id = *surface_unit.get_id();
+    surface_unit.set_zone(Zone::Location(Location::Square(7, Region::Surface)));
+    land_state.add_card(Box::new(surface_unit));
+
+    let mut underground_unit = ApprenticeWizard::new(player_id);
+    let underground_unit_id = *underground_unit.get_id();
+    underground_unit.set_zone(Zone::Location(Location::Square(7, Region::Underground)));
+    land_state.add_card(Box::new(underground_unit));
+
+    let surface_matches = CardQuery::new()
+        .minions()
+        .near_to(&Location::Square(8, Region::Surface))
+        .all(&land_state);
+    assert!(surface_matches.contains(&surface_unit_id));
+    assert!(!surface_matches.contains(&underground_unit_id));
+
+    let underground_matches = CardQuery::new()
+        .minions()
+        .near_to(&Location::Square(8, Region::Underground))
+        .all(&land_state);
+    assert!(!underground_matches.contains(&surface_unit_id));
+    assert!(underground_matches.contains(&underground_unit_id));
+
+    let mut water_state = State::new_mock_state(Vec::new());
+    let player_id = water_state.players[0].id;
+
+    let mut origin_site = SpringRiver::new(player_id);
+    origin_site.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    water_state.add_card(Box::new(origin_site));
+
+    let mut nearby_site = SpringRiver::new(player_id);
+    nearby_site.set_zone(Zone::Location(Location::Square(7, Region::Surface)));
+    water_state.add_card(Box::new(nearby_site));
+
+    let mut surface_unit = ApprenticeWizard::new(player_id);
+    let surface_unit_id = *surface_unit.get_id();
+    surface_unit.set_zone(Zone::Location(Location::Square(7, Region::Surface)));
+    water_state.add_card(Box::new(surface_unit));
+
+    let mut underwater_unit = ApprenticeWizard::new(player_id);
+    let underwater_unit_id = *underwater_unit.get_id();
+    underwater_unit.set_zone(Zone::Location(Location::Square(7, Region::Underwater)));
+    water_state.add_card(Box::new(underwater_unit));
+
+    let underwater_matches = CardQuery::new()
+        .minions()
+        .near_to(&Location::Square(8, Region::Underwater))
+        .all(&water_state);
+    assert!(!underwater_matches.contains(&surface_unit_id));
+    assert!(underwater_matches.contains(&underwater_unit_id));
 }
 
 #[test]

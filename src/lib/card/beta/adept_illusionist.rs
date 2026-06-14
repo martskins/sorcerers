@@ -18,7 +18,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&player_id.clone())
             .named(AdeptIllusionist::NAME.to_string())
-            .including_not_in_play()
+            .in_zones(&[Zone::Hand, Zone::Cemetery, Zone::Spellbook])
             .id_not_in(vec![*card_id])
             .pick(player_id, state, true)
             .await?

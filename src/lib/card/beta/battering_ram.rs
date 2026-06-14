@@ -133,7 +133,9 @@ impl Card for BatteringRam {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(RamStrike),
-            affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
+            affected_cards: CardQuery::new()
+                .units()
+                .in_location(self.get_location().clone()),
         }])
     }
 }
