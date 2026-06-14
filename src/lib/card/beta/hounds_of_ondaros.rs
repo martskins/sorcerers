@@ -8,8 +8,9 @@ pub struct HoundsOfOndaros {
 
 impl HoundsOfOndaros {
     pub const NAME: &'static str = "Hounds of Ondaros";
-    pub const DESCRIPTION: &'static str =
-        "Airborne, Burrowing, Submerge, Voidwalk Nearby enemies permanently lose Stealth.";
+    pub const DESCRIPTION: &'static str = "Airborne, Burrowing, Submerge, Voidwalk
+
+        Nearby enemies permanently lose Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -67,26 +68,15 @@ impl Card for HoundsOfOndaros {
         Some(&mut self.unit_base)
     }
 
-    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<crate::effect::Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        let controller_id = self.get_controller_id(state);
-
-        let effects = CardQuery::new()
-            .minions()
-            .near_to(self.get_location())
-            .with_abilities(vec![Ability::Stealth])
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .map(|id| crate::effect::Effect::RemoveAbility {
-                card_id: id,
-                modifier: Ability::Stealth,
-            })
-            .collect();
-
-        Ok(effects)
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::RemoveAbilities {
+            removal: AbilityRemoval::Exact(vec![Ability::Stealth]),
+            affected_cards: CardQuery::new()
+                .minions()
+                .not_controlled_by(&self.get_controller_id(state))
+                .near_to(self.get_location())
+                .with_ability(Ability::Stealth),
+        }])
     }
 }
 

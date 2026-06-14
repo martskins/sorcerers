@@ -93,7 +93,7 @@ impl Card for BottomlessPit {
         _state: &State,
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
-        match dbg!(hook_id) {
+        match hook_id {
             KILL_ENTERING_MINION_HOOK => match effect {
                 Effect::SummonCards { summoned_cards } => {
                     let mut effects = vec![];

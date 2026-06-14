@@ -220,13 +220,11 @@ impl Location {
 
     pub fn get_site_at_square<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
         let square = self.square()?;
-        dbg!(
-            CardQuery::new()
-                .sites()
-                .in_location(Location::Square(square, Region::Surface))
-                .first(state)
-                .and_then(|site_id| state.get_card(&site_id).get_site())
-        )
+        CardQuery::new()
+            .sites()
+            .in_location(Location::Square(square, Region::Surface))
+            .first(state)
+            .and_then(|site_id| state.get_card(&site_id).get_site())
     }
 
     pub fn is_location(&self, state: &State) -> bool {

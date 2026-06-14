@@ -73,31 +73,15 @@ impl Card for Watchtower {
         Some(self)
     }
 
-    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let controller_id = self.get_controller_id(state);
-        let nearby_zones: Vec<Zone> = self
-            .get_location()
-            .get_nearby_sites(state)
-            .into_iter()
-            .map(Zone::from)
-            .collect();
-
-        Ok(CardQuery::new()
-            .units()
-            .in_zones(&nearby_zones)
-            .with_abilities(vec![Ability::Stealth])
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .map(|card_id| Effect::RemoveAbility {
-                card_id,
-                modifier: Ability::Stealth,
-            })
-            .collect())
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::RemoveAbilities {
+            removal: AbilityRemoval::Exact(vec![Ability::Stealth]),
+            affected_cards: CardQuery::new()
+                .units()
+                .not_controlled_by(&self.get_controller_id(state))
+                .near_to(&self.get_location().with_region(Region::Surface))
+                .with_ability(Ability::Stealth),
+        }])
     }
 }
 

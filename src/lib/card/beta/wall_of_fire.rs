@@ -121,9 +121,10 @@ impl Card for WallOfFire {
                     None => path.push(final_location),
                 }
 
-                if !path.windows(2).any(|step| {
-                    locations_cross_border(&step[0], &step[1], self.get_location())
-                }) {
+                if !path
+                    .windows(2)
+                    .any(|step| locations_cross_border(&step[0], &step[1], self.get_location()))
+                {
                     return Ok(vec![]);
                 }
 
@@ -146,7 +147,7 @@ fn border_locations_of_controlled_sites(state: &State, player_id: &PlayerId) -> 
     let controlled_sites =
         CardQuery::new()
             .sites()
-            .controlled_by(&player_id)
+            .controlled_by(player_id)
             .all_map(state, |card| match card.get_location().square() {
                 Some(square) => square,
                 None => unreachable!("Site is in play as per query"),

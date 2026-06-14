@@ -2606,15 +2606,6 @@ impl Effect {
         }
 
         state.invalidate_runtime_caches();
-        let area_effects: Vec<Effect> = CardQuery::new()
-            .all(state)
-            .into_iter()
-            .filter(|card_id| can_use_special_abilities(state, card_id))
-            .filter_map(|card_id| state.get_card(&card_id).area_effects(state).ok())
-            .flatten()
-            .collect();
-        state.queue(area_effects);
-
         self.expire_counters(state).await?;
         EffectLifecycle::after_resolved_effect(state, self).await?;
 
