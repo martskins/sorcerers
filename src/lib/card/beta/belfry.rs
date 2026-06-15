@@ -65,10 +65,12 @@ impl Card for Belfry {
         Some(self)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
-            trigger: EffectQuery::TurnEnd { player_id: None },
+            trigger: EffectQuery::TurnEnd {
+                player_id: Some(self.get_controller_id(state)),
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -81,26 +83,17 @@ impl Card for Belfry {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            TURN_END_HOOK => {
-                if self.get_controller_id(state) != state.current_player() {
-                    return Ok(vec![]);
-                }
-
-                Ok(CardQuery::new()
-                    .units()
-                    .near_to(self.get_location())
-                    .all(state)
-                    .into_iter()
-                    .filter(|card_id| {
-                        state.get_card(card_id).get_controller_id(state)
-                            == self.get_controller_id(state)
-                    })
-                    .map(|card_id| Effect::SetTapped {
-                        card_id,
-                        tapped: false,
-                    })
-                    .collect())
-            }
+            TURN_END_HOOK => Ok(CardQuery::new()
+                .units()
+                .controlled_by(&self.get_controller_id(state))
+                .near_to(self.get_location())
+                .all(state)
+                .into_iter()
+                .map(|card_id| Effect::SetTapped {
+                    card_id,
+                    tapped: false,
+                })
+                .collect()),
             _ => Ok(vec![]),
         }
     }

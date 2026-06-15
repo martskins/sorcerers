@@ -6,6 +6,7 @@ pub struct Bedrock {
     card_base: CardBase,
 }
 
+// TODO: Implement indestructible, unmovable, unmodifiable.
 impl Bedrock {
     pub const NAME: &'static str = "Bedrock";
     pub const DESCRIPTION: &'static str = "Can't be moved, destroyed, or modified.";

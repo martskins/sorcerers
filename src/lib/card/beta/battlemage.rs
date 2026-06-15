@@ -78,12 +78,12 @@ impl Card for Battlemage {
     }
 
     fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let player_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {
             id: KILL_ENEMY_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new().units().controlled_by(&opponent_id),
+                unit: CardQuery::new()
+                    .units()
+                    .not_controlled_by(&self.get_controller_id(state)),
                 killer: Some(self.get_id().into()),
                 from_attack: Some(true),
             },
