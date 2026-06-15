@@ -204,6 +204,25 @@ impl Location {
         ]
     }
 
+    pub fn in_all_regions(&self) -> Vec<Self> {
+        let all_regions = [
+            Region::Surface,
+            Region::Underground,
+            Region::Underwater,
+            Region::Void,
+        ];
+        match self {
+            Location::Square(square, _) => all_regions
+                .into_iter()
+                .map(|region| Location::Square(*square, region))
+                .collect(),
+            Location::Intersection(squares, _) => all_regions
+                .into_iter()
+                .map(|region| Location::Intersection(squares.clone(), region))
+                .collect(),
+        }
+    }
+
     pub fn with_region(&self, region: Region) -> Self {
         match self {
             Location::Square(square, _) => Location::Square(*square, region),
@@ -304,7 +323,14 @@ impl Location {
         }
     }
 
-    pub fn get_nearby(&self) -> Vec<Self> {
+    pub fn get_nearby(&self, state: &State) -> Vec<Self> {
+        self.get_nearby_unchecked()
+            .into_iter()
+            .filter(|l| l.is_location(state))
+            .collect()
+    }
+
+    fn get_nearby_unchecked(&self) -> Vec<Self> {
         let mut nearby = self.get_adjacent();
         let region = self.region().clone();
 
@@ -378,7 +404,7 @@ impl Location {
     }
 
     pub fn is_nearby(&self, other: &Location) -> bool {
-        self.get_nearby().contains(other)
+        self.get_nearby_unchecked().contains(other)
     }
 
     pub fn is_adjacent(&self, other: &Location) -> bool {
@@ -411,7 +437,7 @@ impl Location {
     }
 
     pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
-        self.get_nearby()
+        self.get_nearby(state)
             .into_iter()
             .filter(|location| location.is_location(state))
             .collect()
@@ -425,7 +451,7 @@ impl Location {
     }
 
     pub fn get_nearby_sites(&self, state: &State) -> Vec<Self> {
-        self.get_nearby()
+        self.get_nearby(state)
             .into_iter()
             .filter_map(|location| {
                 let square = location.get_square()?;
@@ -453,7 +479,7 @@ impl Location {
     }
 
     pub fn get_nearby_voids(&self, state: &State) -> Vec<Self> {
-        self.get_nearby()
+        self.get_nearby(state)
             .into_iter()
             .filter_map(|location| {
                 let square = location.get_square()?;

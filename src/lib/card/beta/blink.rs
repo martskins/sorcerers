@@ -70,20 +70,22 @@ impl Magic for Blink {
             .await?;
         let card_id = card_id.expect("value not to be None");
         let card = state.get_card(&card_id);
-        let zone = ZoneQuery::new()
-            .near(card.get_zone())
-            .with_prompt("Pick a zone to teleport to")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state)
-            .await?;
+        // TODO: Should it use ZoneQuery instead?
+        let location = pick_location_near_source(
+            controller_id,
+            card.get_location(),
+            state,
+            false,
+            "Pick a zone to teleport to",
+            Some(*self.get_id()),
+        )
+        .await?;
 
         Ok(vec![
             Effect::TeleportCard {
                 player_id: controller_id,
                 card_id,
-                to_location: zone
-                    .location().cloned()
-                    .expect("teleport target must be a location"),
+                to_location: location,
             },
             Effect::DrawCard {
                 player_id: self.get_controller_id(state),

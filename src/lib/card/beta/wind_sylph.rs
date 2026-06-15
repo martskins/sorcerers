@@ -104,11 +104,11 @@ impl Card for WindSylph {
                 let controller_id = self.get_controller_id(state);
                 let units_here = CardQuery::new().units().in_zone(self.get_zone()).all(state);
                 if units_here.is_empty()
-                    || !yes_or_no_source(
+                    || !yes_or_no(
                         &controller_id,
                         state,
                         "Push a unit here one step?",
-                        Some(*self.get_id()),
+                        *self.get_id(),
                     )
                     .await?
                 {
@@ -167,7 +167,8 @@ impl Card for WindSylph {
                     player_id: controller_id,
                     card_id: unit_id,
                     from: (unit.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(
                         (target_zone).with_region(unit.get_region(state).clone()),

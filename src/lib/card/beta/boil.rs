@@ -62,9 +62,8 @@ impl Magic for Boil {
         let card = state.get_card(caster_id);
         let zones = card.get_locations_within_steps(state, 2);
         let Some(picked_site_id) = CardQuery::new()
-            .with_element(Element::Water)
+            .water_sites()
             .in_locations(&zones)
-            .sites()
             .pick(&controller_id, state, false)
             .await?
         else {
@@ -72,11 +71,15 @@ impl Magic for Boil {
         };
         let site = state.get_card(&picked_site_id);
         Ok(CardQuery::new()
-            .in_zone(site.get_zone())
             .minions()
+            .occupying_site_at_location(site.get_location().clone())
             .all(state)
             .into_iter()
-            .map(|minion_id| Effect::BuryCard { card_id: minion_id })
+            .map(|minion_id| Effect::KillMinion {
+                card_id: minion_id,
+                killer_id: *caster_id,
+                from_attack: false,
+            })
             .collect())
     }
 }

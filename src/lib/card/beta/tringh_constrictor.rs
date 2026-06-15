@@ -24,7 +24,7 @@ impl ActivatedAbility for Constrict {
         let mut effects = vec![];
         let mut constrict_zone = constrictor.get_zone().clone();
 
-        if yes_or_no_source(player_id, state, "Take a step first?", Some(*card_id)).await? {
+        if yes_or_no(player_id, state, "Take a step first?", *card_id).await? {
             let current_location = constrictor.get_location().clone();
             let mut zones = constrictor.get_locations_within_steps_of(state, 1, &current_location);
             zones.retain(|zone| zone != &current_location);
@@ -41,7 +41,8 @@ impl ActivatedAbility for Constrict {
                     player_id: *player_id,
                     card_id: *card_id,
                     from: (constrictor.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_zone(
                         (picked_zone.clone()).with_region(constrictor.get_region(state).clone()),

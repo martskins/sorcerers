@@ -109,11 +109,11 @@ impl Card for RoyalBodyguard {
                     return Ok(vec![]);
                 }
 
-                let redirect = yes_or_no_source(
+                let redirect = yes_or_no(
                     self.get_controller_id(state),
                     state,
                     format!("Take the damage for {}?", target.get_name()),
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !redirect {

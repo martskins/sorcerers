@@ -96,8 +96,7 @@ impl Card for DodgeRoll {
                     defender.get_name()
                 );
                 let use_dodge_roll =
-                    yes_or_no_source(defender_controller, state, prompt, Some(*self.get_id()))
-                        .await?;
+                    yes_or_no(defender_controller, state, prompt, *self.get_id()).await?;
                 if !use_dodge_roll {
                     return Ok(vec![]);
                 }
@@ -129,7 +128,8 @@ impl Card for DodgeRoll {
                         from: attacker
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Dodge Roll attacker must be in a location"),
                         to: LocationQuery::from_location(defender.get_location().clone()),
                         tap: true,
@@ -142,7 +142,8 @@ impl Card for DodgeRoll {
                         from: avatar
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Dodge Roll caster must be in a location"),
                     },
                 ])

@@ -24,10 +24,6 @@ pub use lifecycle::{
 pub use log::{EffectLogEmitter, LoggedEffect};
 pub use runtime::EffectEngine;
 
-fn can_use_special_abilities(state: &State, card_id: &CardId) -> bool {
-    !state.card_has_special_abilities_removed(card_id)
-}
-
 fn location_survival_effects_for_cards(
     state: &State,
     card_ids: impl IntoIterator<Item = CardId>,
@@ -79,7 +75,7 @@ fn mana_effect_for_resource_entering_realm(
 
     Ok(Some(Effect::AdjustMana {
         player_id: controller_id,
-        mana: mana as i8,
+        amount: mana as i8,
     }))
 }
 
@@ -292,7 +288,7 @@ pub enum Effect {
     },
     AdjustMana {
         player_id: PlayerId,
-        mana: i8,
+        amount: i8,
     },
     Strike {
         striker_id: CardId,
@@ -1668,7 +1664,9 @@ impl Effect {
                     .await?;
             }
             Effect::AdjustMana {
-                player_id, mana, ..
+                player_id,
+                amount: mana,
+                ..
             } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = ((*player_mana as i8) + *mana) as u8;
@@ -1821,6 +1819,7 @@ impl Effect {
                         attacker.get_name(),
                         target.get_name()
                     ),
+                    *attacker.get_id(),
                 )
                 .await?;
                 resume(&attacking_player, state).await?;

@@ -89,11 +89,11 @@ impl Card for UnlandEel {
                     return Ok(vec![]);
                 }
 
-                if !yes_or_no_source(
+                if !yes_or_no(
                     &controller_id,
                     state,
                     "Drag another minion down with it?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?
                 {

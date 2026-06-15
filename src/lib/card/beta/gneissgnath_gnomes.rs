@@ -82,8 +82,7 @@ impl Card for GneissgnathGnomes {
         match hook {
             TURN_END_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                let burrow =
-                    yes_or_no_source(controller_id, state, "Burrow?", Some(*self.get_id())).await?;
+                let burrow = yes_or_no(controller_id, state, "Burrow?", *self.get_id()).await?;
                 match burrow {
                     true => Ok(vec![Effect::SetCardRegion {
                         card_id: *self.get_id(),

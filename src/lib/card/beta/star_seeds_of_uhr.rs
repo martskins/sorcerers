@@ -60,11 +60,11 @@ impl Magic for StarSeedsOfUhr {
             .filter(|loc| loc.get_site(state).is_none())
             .collect();
         if locations.is_empty()
-            || !yes_or_no_source(
+            || !yes_or_no(
                 &controller_id,
                 state,
                 "Fill a void with Rubble?",
-                Some(*caster_id),
+                *caster_id,
             )
             .await?
         {
@@ -90,11 +90,11 @@ impl Magic for StarSeedsOfUhr {
 
             if locations.is_empty()
                 || effects.len() >= 13
-                || !yes_or_no_source(
+                || !yes_or_no(
                     &controller_id,
                     state,
                     "Fill another void with Rubble?",
-                    Some(*caster_id),
+                    *caster_id,
                 )
                 .await?
             {

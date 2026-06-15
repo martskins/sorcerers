@@ -231,7 +231,7 @@ impl<'a> PreparedCardQuery<'a> {
                     .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
-                            .get_nearby()
+                            .get_nearby(state)
                             .into_iter()
                             .map(Zone::from)
                             .collect()
@@ -617,6 +617,7 @@ impl CardQuery {
     pub fn from_ids(ids: Vec<CardId>) -> Self {
         Self {
             card_id: Some(vec![ValueFilter::OneOf(ids)]),
+            include_not_in_play: Some(true),
             ..Default::default()
         }
     }
@@ -624,6 +625,7 @@ impl CardQuery {
     pub fn from_id(id: CardId) -> Self {
         Self {
             card_id: Some(vec![ValueFilter::Equals(id)]),
+            include_not_in_play: Some(true),
             ..Default::default()
         }
     }
@@ -674,7 +676,7 @@ impl CardQuery {
         if let Some(count) = &self.count
             && *count != 1
         {
-            return Err(anyhow::anyhow!("resolve_one can only be used with count 1"));
+            return Err(anyhow::anyhow!("pick can only be used with count 1"));
         }
 
         let mut effective_query = self.clone();

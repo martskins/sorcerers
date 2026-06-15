@@ -131,11 +131,11 @@ impl Card for Enchantress {
                     return Ok(vec![]);
                 }
 
-                let want = yes_or_no_source(
+                let want = yes_or_no(
                     &controller_id,
                     state,
                     "Animate target aura until your next turn?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !want {
@@ -150,7 +150,10 @@ impl Card for Enchantress {
                 )
                 .await?;
                 let aura = state.get_card(&aura_id);
-                let power = aura.get_costs(state)?.printed_mana_value().unwrap_or_default() as u16;
+                let power = aura
+                    .get_costs(state)?
+                    .printed_mana_value()
+                    .unwrap_or_default() as u16;
 
                 Ok(vec![Effect::Animate {
                     card_id: aura_id,

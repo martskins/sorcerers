@@ -107,14 +107,9 @@ impl Magic for GrappleShot {
                 through_path: None,
             }];
             // 5. Ask if you want to strike the hit unit
-            let strike = yes_or_no_source(
-                &controller_id,
-                state,
-                "Strike the hit unit?",
-                Some(*caster_id),
-            )
-            .await
-            .unwrap_or(false);
+            let strike = yes_or_no(&controller_id, state, "Strike the hit unit?", *caster_id)
+                .await
+                .unwrap_or(false);
             if strike {
                 effects.push(Effect::Fight {
                     attacker_id: ally_id,

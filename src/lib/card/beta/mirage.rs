@@ -87,11 +87,11 @@ impl Card for Mirage {
             .all(state);
 
         if !other_sites.is_empty()
-            && yes_or_no_source(
+            && yes_or_no(
                 player_id,
                 state,
                 "Return one of your sites in play to your hand and play Mirage in its place?",
-                Some(*self.get_id()),
+                *self.get_id(),
             )
             .await?
         {

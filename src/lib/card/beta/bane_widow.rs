@@ -82,11 +82,11 @@ impl Card for BaneWidow {
                     return Ok(vec![]);
                 }
 
-                let use_genesis = yes_or_no_source(
+                let use_genesis = yes_or_no(
                     &controller_id,
                     state,
                     "Kill a target minion here?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !use_genesis {

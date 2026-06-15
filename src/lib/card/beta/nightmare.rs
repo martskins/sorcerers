@@ -104,14 +104,14 @@ impl Card for Nightmare {
                 let mut effects = vec![];
                 for minion_id in enemy_minions {
                     let minion_zone = state.get_card(&minion_id).get_zone().clone();
-                    let push = yes_or_no_source(
+                    let push = yes_or_no(
                         &controller_id,
                         state,
                         &format!(
                             "Push {} to an adjacent location?",
                             state.get_card(&minion_id).get_name()
                         ),
-                        Some(*self.get_id()),
+                        *self.get_id(),
                     )
                     .await?;
 
@@ -133,7 +133,8 @@ impl Card for Nightmare {
                         player_id: controller_id,
                         card_id: minion_id,
                         from: (minion_zone)
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("MoveCard source must be a location"),
                         to: LocationQuery::from_location(target_zone.with_region(region)),
                         tap: false,

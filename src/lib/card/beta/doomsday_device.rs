@@ -109,12 +109,10 @@ impl Card for DoomsdayDevice {
                     return Ok(vec![]);
                 }
 
-                let self_id = *self.get_id();
-
                 if self.doom_counters == 1 {
                     // Trigger the explosion.
                     let explosion_zones: Vec<Zone> = std::iter::once(self.get_location().clone())
-                        .chain(self.get_location().get_nearby())
+                        .chain(self.get_location().get_nearby(state))
                         .map(Zone::from)
                         .collect();
 
@@ -125,17 +123,19 @@ impl Card for DoomsdayDevice {
                         .into_iter()
                         .map(|id| Effect::TakeDamage {
                             card_id: id,
-                            from: self_id,
+                            from: *self.get_id(),
                             damage: Damage::basic(6),
                         })
                         .collect();
 
-                    effects.push(Effect::BuryCard { card_id: self_id });
+                    effects.push(Effect::BuryCard {
+                        card_id: *self.get_id(),
+                    });
                     return Ok(effects);
                 }
 
                 Ok(vec![Effect::SetCardData {
-                    card_id: self_id,
+                    card_id: *self.get_id(),
                     data: std::sync::Arc::new(self.doom_counters - 1),
                 }])
             }

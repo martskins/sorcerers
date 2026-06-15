@@ -96,11 +96,11 @@ impl Card for ScourgeZombies {
                     return Ok(vec![]);
                 }
 
-                if !yes_or_no_source(
+                if !yes_or_no(
                     &controller_id,
                     state,
                     "Summon Scourge Zombies to the fallen Mortal's location tapped?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?
                 {
@@ -116,7 +116,8 @@ impl Card for ScourgeZombies {
                             to_location: killed_card
                                 .get_zone()
                                 .clone()
-                                .location().cloned()
+                                .location()
+                                .cloned()
                                 .expect("Scourge Zombies trigger must have a location"),
                         }],
                     },

@@ -431,15 +431,7 @@ pub async fn yes_or_no(
     player_id: impl AsRef<PlayerId>,
     state: &State,
     prompt: impl AsRef<str>,
-) -> anyhow::Result<bool> {
-    yes_or_no_source(player_id, state, prompt, None).await
-}
-
-pub async fn yes_or_no_source(
-    player_id: impl AsRef<PlayerId>,
-    state: &State,
-    prompt: impl AsRef<str>,
-    source_card_id: Option<CardId>,
+    source_card_id: CardId,
 ) -> anyhow::Result<bool> {
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -455,7 +447,7 @@ pub async fn yes_or_no_source(
         state,
         prompt,
         false,
-        source_card_id,
+        Some(source_card_id),
     )
     .await?;
 
@@ -663,7 +655,7 @@ pub async fn pick_location_near_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            locations: location.get_nearby(),
+            locations: location.get_nearby(state),
         })
         .await?;
 

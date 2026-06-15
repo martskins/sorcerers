@@ -212,16 +212,24 @@ impl Server {
             Zone::Location(Location::Square(8, Region::Surface)),
         );
         game.state.add_card(card);
+        let kite_archer = card::from_name_and_zone(
+            KiteArcher::NAME,
+            &player_one,
+            Zone::Location(Location::Square(8, Region::Surface)),
+        );
+        game.state.add_card(kite_archer);
 
         let player_two = game.state.players[1].id;
         let card = card::from_name_and_zone(Battlefield::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(FlamingSword::NAME, &player_one, Zone::Cemetery);
+        let card = card::from_name_and_zone(RootSpider::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(AllTerrainVestments::NAME, &player_two, Zone::Cemetery);
+        let card = card::from_name_and_zone(Browse::NAME, &player_one, Zone::Hand);
+        game.state.add_card(card);
+        let card = card::from_name_and_zone(SummerRiver::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            HumbleVillage::NAME,
+            GothicTower::NAME,
             &player_one,
             Zone::Location(Location::Square(3, Region::Surface)),
         );
@@ -233,7 +241,7 @@ impl Server {
         );
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            HumbleVillage::NAME,
+            LoneTower::NAME,
             &player_one,
             Zone::Location(Location::Square(4, Region::Surface)),
         );
@@ -263,12 +271,6 @@ impl Server {
         );
         game.state.add_card(card);
 
-        let kite_archer = card::from_name_and_zone(
-            "Kite Archer",
-            &player_one,
-            Zone::Location(Location::Square(8, Region::Surface)),
-        );
-        game.state.add_card(kite_archer);
         let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
@@ -282,7 +284,7 @@ impl Server {
         );
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            "Ultimate Horror",
+            UltimateHorror::NAME,
             &player_two,
             Zone::Location(Location::Square(3, Region::Surface)),
         );

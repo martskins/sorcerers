@@ -95,11 +95,11 @@ impl Card for DreamQuest {
                 }
 
                 let controller_id = self.get_controller_id(state);
-                let wake_up = yes_or_no_source(
+                let wake_up = yes_or_no(
                     &controller_id,
                     state,
                     "Wake up the dreaming minion?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !wake_up {

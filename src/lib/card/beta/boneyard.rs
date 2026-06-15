@@ -87,37 +87,29 @@ impl Card for Boneyard {
         match hook {
             GENESIS_HOOK_ID => {
                 let mut cards = vec![];
+                // TODO: Parallelise this
                 for player in &state.players {
                     let player_id = player.id;
                     let state = state.clone();
-                    let zone = self.get_zone().clone();
-
-                    let all_cards = &CardQuery::new()
-                        .in_zone(&Zone::Cemetery)
-                        .controlled_by(&player_id)
-                        .all(&state);
-                    let minions = &CardQuery::new()
+                    // TODO: Make this optional.
+                    let minion = CardQuery::new()
                         .in_zone(&Zone::Cemetery)
                         .minions()
                         .controlled_by(&player_id)
-                        .all(&state);
-                    let picked_minion_id = pick_card_with_options(
-                        &player_id,
-                        minions,
-                        all_cards,
-                        true,
-                        &state,
-                        "Pick a minion in your cemetery to summon to Boneyard",
-                    )
-                    .await?;
+                        .with_source_card(*self.get_id())
+                        // TODO: The minion can be summoned in any region on the site, not just atop.
+                        .with_prompt("Pick a minion in your cemetery to summon in Boneyard")
+                        .pick(&player_id, &state, false)
+                        .await?;
+                    let Some(minion) = minion else {
+                        return Ok(vec![]);
+                    };
 
                     cards.push(SummonCard {
                         player_id,
-                        card_id: picked_minion_id,
+                        card_id: minion,
                         from_zone: Zone::Cemetery,
-                        to_location: zone
-                            .location().cloned()
-                            .expect("Boneyard summon target must be a location"),
+                        to_location: self.get_location().clone(),
                     });
                 }
 

@@ -79,7 +79,7 @@ impl Magic for OccultRitual {
 
         Ok(vec![Effect::AdjustMana {
             player_id: controller_id,
-            mana: count * 2,
+            amount: count * 2,
         }])
     }
 }

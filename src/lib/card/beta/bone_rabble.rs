@@ -90,11 +90,11 @@ impl Card for BoneRabble {
                 };
 
                 let owner_id = self.get_owner_id();
-                let summon_bone_rabble = yes_or_no_source(
+                let summon_bone_rabble = yes_or_no(
                     &owner_id,
                     state,
                     "Summon Bone Rabble atop the played site?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if summon_bone_rabble {
@@ -107,7 +107,8 @@ impl Card for BoneRabble {
                             to_location: site
                                 .get_zone()
                                 .clone()
-                                .location().cloned()
+                                .location()
+                                .cloned()
                                 .expect("played site must be a location"),
                         }],
                     }])

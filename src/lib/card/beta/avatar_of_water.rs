@@ -34,13 +34,8 @@ impl ActivatedAbility for FloodSite {
                         affected_cards: picked_site_id.into(),
                     }),
                 }];
-                let teleport = yes_or_no_source(
-                    player_id,
-                    state,
-                    "Teleport to the flooded site?",
-                    Some(*card_id),
-                )
-                .await?;
+                let teleport =
+                    yes_or_no(player_id, state, "Teleport to the flooded site?", *card_id).await?;
                 if teleport {
                     let picked_site = state.get_card(&picked_site_id);
                     effects.push(Effect::SetCardZone {

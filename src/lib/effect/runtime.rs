@@ -2,7 +2,7 @@ use crate::{
     card::{HookId, HookSourceZones, HookTiming},
     effect::{Effect, EffectLogEmitter},
     game::{CardId, Game},
-    state::State,
+    state::{OngoingEffect, State},
 };
 
 pub struct EffectEngine;
@@ -48,6 +48,25 @@ impl EffectEngine {
                         source_id: *card.get_id(),
                         hook_id: hook.id,
                         source_zones: hook.source_zones,
+                    });
+                }
+            }
+
+            for ongoing_effect in &state.ongoing_effects {
+                if let OngoingEffect::GrantHook {
+                    affected_cards: cards,
+                    hook,
+                    hook_resolver,
+                } = &ongoing_effect.effect
+                    && cards.matches(card.get_id(), state)
+                    && hook.trigger.matches(effect, state).await?
+                    && hook.source_zones.matches(card.get_zone())
+                    && hook.timing == timing
+                {
+                    hooks.push(PendingHook {
+                        source_id: *hook_resolver,
+                        hook_id: hook.id,
+                        source_zones: hook.source_zones.clone(),
                     });
                 }
             }

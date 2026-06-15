@@ -73,6 +73,7 @@ impl Card for BlastedOak {
         Some(self)
     }
 
+    // TODO: Review this implementation
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let oak_id = *self.get_id();
 

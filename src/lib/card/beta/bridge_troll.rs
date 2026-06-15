@@ -7,7 +7,7 @@ const GIVE_MANA_HOOK: HookId = 2;
 pub struct BridgeTroll {
     unit_base: UnitBase,
     card_base: CardBase,
-    opponent_mana: u8,
+    opponent_mana: Option<u8>,
 }
 
 impl BridgeTroll {
@@ -35,7 +35,7 @@ impl BridgeTroll {
                 is_token: false,
                 ..Default::default()
             },
-            opponent_mana: 0,
+            opponent_mana: None,
         }
     }
 }
@@ -71,7 +71,7 @@ impl Card for BridgeTroll {
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
         if let Some(data) = data.downcast_ref::<u8>() {
-            self.opponent_mana = *data;
+            self.opponent_mana = Some(*data);
         }
 
         Ok(())
@@ -82,11 +82,11 @@ impl Card for BridgeTroll {
             Hook {
                 id: DRAIN_MANA_HOOK,
                 trigger: EffectQuery::Attack {
-                    attacker: CardQuery::new(),
+                    attacker: CardQuery::new().not_controlled_by(&self.get_controller_id(state)),
                     defender: Some(self.get_id().into()),
                 },
                 timing: HookTiming::After,
-                source_zones: HookSourceZones::InPlay,
+                source_zones: HookSourceZones::Any,
             },
             Hook {
                 id: GIVE_MANA_HOOK,
@@ -106,10 +106,16 @@ impl Card for BridgeTroll {
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GIVE_MANA_HOOK => Ok(vec![Effect::AdjustMana {
-                player_id: self.get_controller_id(state),
-                mana: self.opponent_mana as i8,
-            }]),
+            GIVE_MANA_HOOK => {
+                let Some(amount) = self.opponent_mana else {
+                    return Ok(vec![]);
+                };
+
+                Ok(vec![Effect::AdjustMana {
+                    player_id: self.get_controller_id(state),
+                    amount: amount as i8,
+                }])
+            }
             DRAIN_MANA_HOOK => {
                 let Effect::DeclareAttack { attacker_id, .. } = effect else {
                     return Ok(vec![]);
@@ -124,12 +130,15 @@ impl Card for BridgeTroll {
                 Ok(vec![
                     Effect::AdjustMana {
                         player_id: attacker_controller,
-                        mana: -opponent_mana,
+                        amount: -opponent_mana,
                     },
                     Effect::SetCardData {
                         card_id: *self.get_id(),
                         data: Arc::new(opponent_mana),
                     },
+                    // TODO: This doesn't allow for multiple pending mana transfers to be queued. If two
+                    // attacks to bridge troll happen on the same turn, the second one will override
+                    // the first one.
                     Effect::AddDeferredEffect {
                         effect: DeferredEffect {
                             hook_id: GIVE_MANA_HOOK,

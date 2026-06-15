@@ -85,11 +85,11 @@ impl Card for VileImp {
                     return Ok(vec![]);
                 }
 
-                let use_genesis = yes_or_no_source(
+                let use_genesis = yes_or_no(
                     &controller_id,
                     state,
                     "Deal 2 damage to an adjacent unit?",
-                    Some(imp_id),
+                    imp_id,
                 )
                 .await?;
                 if !use_genesis {

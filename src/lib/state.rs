@@ -1,5 +1,7 @@
 use crate::{
-    card::{Ability, Card, CardData, CardStatus, CardType, Costs, Region, SiteType, UnitBase},
+    card::{
+        Ability, Card, CardData, CardStatus, CardType, Costs, Hook, Region, SiteType, UnitBase,
+    },
     deck::Deck,
     effect::{Counter, Effect, EffectEngine, EffectState},
     game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
@@ -438,6 +440,11 @@ pub enum OngoingEffect {
         description: String,
         restriction: CardTargetRestriction,
     },
+    GrantHook {
+        affected_cards: CardQuery,
+        hook_resolver: CardId,
+        hook: Hook,
+    },
 }
 
 pub type CardQueryModifier =
@@ -583,6 +590,7 @@ impl OngoingEffect {
                 format!("Provided mana {:+}", mana_diff)
             }
             Self::OverrideValidPlayZone { .. } => "Overrides valid play zones".to_string(),
+            Self::GrantHook { .. } => "Grants a hook".to_string(),
             Self::ModifyManaCost { mana_diff, .. } => {
                 format!("Mana cost {:+}", mana_diff)
             }
@@ -613,6 +621,7 @@ impl OngoingEffect {
             | Self::GrantCounter { affected_cards, .. }
             | Self::ModifyProvidedMana { affected_cards, .. }
             | Self::OverrideValidPlayZone { affected_cards, .. }
+            | Self::GrantHook { affected_cards, .. }
             | Self::ModifyManaCost { affected_cards, .. } => affected_cards.all(state),
             Self::ChangeSiteType { affected_sites, .. }
             | Self::ModifyProvidedAffinities { affected_sites, .. } => affected_sites.all(state),
@@ -747,6 +756,8 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("RestrictCardTargets")
                 .field("description", description)
                 .finish(),
+            // TODO: Finish debug impl
+            Self::GrantHook { .. } => f.debug_struct("GrantHook").finish(),
         }
     }
 }

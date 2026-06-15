@@ -517,11 +517,17 @@ impl Game {
 
     fn open_viewers(&mut self, cards: &[uuid::Uuid]) -> anyhow::Result<()> {
         let mut viewers: Vec<(Zone, PlayerId, Vec<CardId>)> = Vec::new();
-        for card in self.data.cards.iter().filter(|card| cards.contains(&card.id)) {
+        for card in self
+            .data
+            .cards
+            .iter()
+            .filter(|card| cards.contains(&card.id))
+        {
             if card.zone.is_in_play() {
                 continue;
             }
-            if let Some((_zone, _owner_id, card_ids)) = viewers
+
+            if let Some((_, _, card_ids)) = viewers
                 .iter_mut()
                 .find(|(zone, owner_id, _)| zone == &card.zone && owner_id == &card.owner_id)
             {

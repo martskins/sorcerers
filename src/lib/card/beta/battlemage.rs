@@ -101,9 +101,7 @@ impl Card for Battlemage {
         match hook_id {
             KILL_ENEMY_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                let draw =
-                    yes_or_no_source(controller_id, state, "Draw a spell?", Some(*self.get_id()))
-                        .await?;
+                let draw = yes_or_no(controller_id, state, "Draw a spell?", *self.get_id()).await?;
                 if !draw {
                     return Ok(vec![]);
                 }

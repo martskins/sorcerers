@@ -90,7 +90,7 @@ impl Card for LoneTower {
 
                 Ok(vec![Effect::AdjustMana {
                     player_id: *self.get_owner_id(),
-                    mana: 1,
+                    amount: 1,
                 }])
             }
             _ => Ok(vec![]),

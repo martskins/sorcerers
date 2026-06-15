@@ -91,11 +91,11 @@ impl Card for WitherwingHero {
                     return Ok(vec![]);
                 };
 
-                let should_return = yes_or_no_source(
+                let should_return = yes_or_no(
                     &self.get_controller_id(state),
                     state,
                     "Return the attacked ally to its owner's hand?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !should_return {

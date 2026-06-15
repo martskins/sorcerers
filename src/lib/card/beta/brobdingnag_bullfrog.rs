@@ -78,30 +78,26 @@ impl Card for BrobdingnagBullfrog {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let minions = CardQuery::new()
+                let player_id = self.get_controller_id(state);
+                let minion = CardQuery::new()
                     .minions()
-                    .in_zone(self.get_zone())
+                    .in_location(self.get_location().clone())
                     .id_not(*self.get_id())
-                    .all(state);
-                if minions.is_empty() {
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick a minon to swallow")
+                    .pick(&player_id, state, false)
+                    .await?;
+                let Some(minion) = minion else {
                     return Ok(vec![]);
-                }
-
-                let picked_card = pick_card(
-                    self.get_controller_id(state),
-                    &minions,
-                    state,
-                    "Brobdingnag Bullfrog: Pick a minon to swallow",
-                )
-                .await?;
+                };
 
                 Ok(vec![
                     Effect::SetCardData {
                         card_id: *self.get_id(),
-                        data: std::sync::Arc::new(picked_card),
+                        data: std::sync::Arc::new(minion),
                     },
                     Effect::SetBearer {
-                        card_id: picked_card,
+                        card_id: minion,
                         bearer_id: Some(*self.get_id()),
                     },
                 ])

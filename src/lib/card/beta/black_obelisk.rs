@@ -67,22 +67,17 @@ impl Card for BlackObelisk {
     }
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![OngoingEffect::ModifyProvidedMana {
-            mana_diff: 2,
-            affected_cards: CardQuery::new().in_zone_of_card(self.get_id()).sites(),
-        }])
-    }
-
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TURN_START_HOOK,
-            trigger: EffectQuery::TurnStart { player_id: None },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
+        Ok(vec![OngoingEffect::GrantHook {
+            affected_cards: CardQuery::new()
+                .sites()
+                .in_location(self.get_location().with_region(Region::Surface)),
+            hook: Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+            hook_resolver: *self.get_id(),
         }])
     }
 
@@ -107,10 +102,16 @@ impl Card for BlackObelisk {
                     return Ok(vec![]);
                 }
 
-                Ok(vec![Effect::AdjustAvatarLife {
-                    player_id: controller_id,
-                    amount: -2,
-                }])
+                Ok(vec![
+                    Effect::AdjustAvatarLife {
+                        player_id: controller_id,
+                        amount: -2,
+                    },
+                    Effect::AdjustMana {
+                        player_id: controller_id,
+                        amount: 2,
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

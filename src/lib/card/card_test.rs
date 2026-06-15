@@ -1,8 +1,8 @@
 use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, AssortedAnimals, Card,
-        CauldronCrones, Cost, CostOptions, Drought, ManaCost, OgreGoons, PayableCost, Region,
-        RimlandNomads, RootSpider, SimpleVillage, SpringRiver,
+        CauldronCrones, Cost, CostOptions, Drought, KiteArcher, ManaCost, OgreGoons, PayableCost,
+        Region, RimlandNomads, RootSpider, SimpleVillage, SpringRiver,
     },
     game::Thresholds,
     query::CardQuery,
@@ -334,6 +334,48 @@ async fn test_get_valid_move_zones_movement_plus_1() {
     ];
     expected.sort();
     assert_eq!(zones, expected);
+}
+
+#[tokio::test]
+async fn test_movement_plus_2_can_move_to_enemy_avatar_location() {
+    let mut state = State::new_mock_state(vec![8, 13, 18]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut kite_archer = KiteArcher::new(player_id);
+    kite_archer.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    kite_archer.add_ability(Ability::Movement(2));
+    let kite_archer_id = *kite_archer.get_id();
+    state.add_card(Box::new(kite_archer));
+
+    let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
+    state
+        .get_card_mut(&opponent_avatar_id)
+        .set_zone(Zone::Location(Location::Square(18, Region::Surface)));
+
+    let move_locations = state
+        .get_card(&kite_archer_id)
+        .get_valid_move_locations(&state)
+        .await
+        .expect("move locations to be computed");
+
+    assert!(
+        state
+            .get_card(&kite_archer_id)
+            .can_move_between_locations(
+                &state,
+                &Location::Square(13, Region::Surface),
+                &Location::Square(18, Region::Surface),
+            )
+            .expect("movement edge check should not error"),
+        "Kite Archer should be able to traverse from 13 to 18"
+    );
+
+    assert!(
+        move_locations.contains(&Location::Square(18, Region::Surface)),
+        "Movement +2 should allow Kite Archer to move to the enemy avatar's location; got {:?}",
+        move_locations
+    );
 }
 
 #[tokio::test]

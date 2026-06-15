@@ -72,7 +72,7 @@ impl Card for TestHookSource {
         match hook_id {
             TEST_HOOK_SOURCE_ID => Ok(vec![Effect::AdjustMana {
                 player_id: self.get_controller_id(state),
-                mana: 1,
+                amount: 1,
             }]),
             _ => Ok(vec![]),
         }
@@ -2025,7 +2025,7 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
             if let Effect::DrawCard { player_id, .. } = effect {
                 *effect = Effect::AdjustMana {
                     player_id: *player_id,
-                    mana: 3,
+                    amount: 3,
                 };
             }
             Ok(())

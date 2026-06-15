@@ -107,11 +107,11 @@ impl Card for LordOfTheVoid {
                     return Ok(vec![]);
                 }
 
-                let do_banish = yes_or_no_source(
+                let do_banish = yes_or_no(
                     &controller_id,
                     state,
                     "Banish an adjacent site?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
 

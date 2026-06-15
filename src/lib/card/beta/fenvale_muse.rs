@@ -94,11 +94,11 @@ impl Card for FenvaleMuse {
                     return Ok(vec![]);
                 }
 
-                let want = yes_or_no_source(
+                let want = yes_or_no(
                     &controller_id,
                     state,
                     "Trigger the Genesis of a nearby River?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?;
                 if !want {

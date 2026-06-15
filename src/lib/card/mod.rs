@@ -23,7 +23,11 @@ use crate::{
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug, sync::LazyLock};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Debug,
+    sync::LazyLock,
+};
 use strum_macros::EnumIter;
 
 pub type CardConstructor = fn(PlayerId) -> Box<dyn Card>;
@@ -1044,9 +1048,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 });
 
         let mut visited = Vec::new();
-        let mut to_visit = vec![(location.clone(), 0)];
+        let mut to_visit = VecDeque::from([(location.clone(), 0)]);
 
-        while let Some((current_location, current_step)) = to_visit.pop() {
+        while let Some((current_location, current_step)) = to_visit.pop_front() {
             if current_step > steps {
                 continue;
             }
@@ -1055,12 +1059,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 visited.push(current_location.clone());
 
                 if self.has_ability(state, &Ability::Airborne) {
-                    for nearby in current_location.get_nearby() {
+                    // TODO: Check if it needs get_nearby or something else
+                    for nearby in current_location.get_nearby(state) {
                         if self
                             .can_move_between_locations(state, &current_location, &nearby)
                             .unwrap_or(false)
                         {
-                            to_visit.push((nearby, current_step + 1));
+                            to_visit.push_back((nearby, current_step + 1));
                         }
                     }
                 } else {
@@ -1069,7 +1074,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                             .can_move_between_locations(state, &current_location, &adjacent)
                             .unwrap_or(false)
                         {
-                            to_visit.push((adjacent, current_step + 1));
+                            to_visit.push_back((adjacent, current_step + 1));
                         }
                     }
 
@@ -1079,7 +1084,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 .can_move_between_locations(state, &current_location, &wrapped)
                                 .unwrap_or(false)
                             {
-                                to_visit.push((wrapped, current_step + 1));
+                                to_visit.push_back((wrapped, current_step + 1));
                             }
                         }
                     }
@@ -1090,7 +1095,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 .can_move_between_locations(state, &current_location, &wrapped)
                                 .unwrap_or(false)
                             {
-                                to_visit.push((wrapped, current_step + 1));
+                                to_visit.push_back((wrapped, current_step + 1));
                             }
                         }
                     }
@@ -1101,7 +1106,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 .can_move_between_locations(state, &current_location, &landing)
                                 .unwrap_or(false)
                             {
-                                to_visit.push((landing, current_step + 1));
+                                to_visit.push_back((landing, current_step + 1));
                             }
                         }
                     }
@@ -1119,7 +1124,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         .can_move_between_locations(state, &current_location, &connected)
                         .unwrap_or(false)
                     {
-                        to_visit.push((connected, current_step + 1));
+                        to_visit.push_back((connected, current_step + 1));
                     }
                 }
 
@@ -1128,7 +1133,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         .can_move_between_locations(state, &current_location, &connected)
                         .unwrap_or(false)
                     {
-                        to_visit.push((connected, current_step + 1));
+                        to_visit.push_back((connected, current_step + 1));
                     }
                 }
             }
@@ -1502,7 +1507,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let in_range = if shares_occupied_square {
                     true
                 } else if attacker_is_airborne {
-                    location.get_nearby().contains(target_location)
+                    location.get_nearby(state).contains(target_location)
                 } else {
                     location.get_adjacent().contains(target_location)
                 };
@@ -1979,6 +1984,7 @@ pub type HookId = u16;
 pub const GENESIS_HOOK_ID: HookId = u16::MAX - 1;
 pub const DEATHRITE_HOOK_ID: HookId = u16::MAX;
 
+#[derive(Clone)]
 pub struct Hook {
     pub id: HookId,
     pub trigger: EffectQuery,

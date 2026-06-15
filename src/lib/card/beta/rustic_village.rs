@@ -99,7 +99,7 @@ impl Card for RusticVillage {
                 Ok(vec![
                     Effect::AdjustMana {
                         player_id: self.get_controller_id(state),
-                        mana: -1,
+                        amount: -1,
                     },
                     Effect::SummonToken {
                         player_id: self.get_controller_id(state),

@@ -73,14 +73,16 @@ impl Magic for Browse {
             return Ok(vec![]);
         }
 
-        // Player picks one card to go to hand.
-        let chosen_id = pick_card_with_preview(
-            &controller_id,
-            &looked_at,
-            state,
-            "Browse: Pick a spell to put into your hand",
-        )
-        .await?;
+        // TODO: Window is not closing after last selection. We need to close it only if it was
+        // automatically opened, not when the player opened it.
+        let chosen_id = CardQuery::from_ids(looked_at.clone())
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a spell to put into your hand")
+            .pick(&controller_id, state, false)
+            .await?;
+        let Some(chosen_id) = chosen_id else {
+            return Ok(vec![]);
+        };
 
         let mut bottom_spells: Vec<CardId> = looked_at
             .iter()

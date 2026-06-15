@@ -105,11 +105,11 @@ impl Magic for AssortedAnimals {
             }
 
             if !chosen.is_empty()
-                && !yes_or_no_source(
+                && !yes_or_no(
                     &controller_id,
                     state,
                     "Search for another Beast?",
-                    Some(*self.get_id()),
+                    *self.get_id(),
                 )
                 .await?
             {
