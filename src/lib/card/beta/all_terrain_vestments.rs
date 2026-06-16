@@ -15,7 +15,7 @@ impl AllTerrainVestments {
         Self {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Armor],
-                tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

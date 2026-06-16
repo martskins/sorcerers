@@ -94,7 +94,7 @@ impl EffectEngine {
                 continue;
             }
 
-            let effects = source.resolve_hook(hook.hook_id, &state, effect).await?;
+            let effects = source.resolve_hook(hook.hook_id, state, effect).await?;
             if Self::queues_resolved_hook_effects(effect) {
                 state.queue(effects);
             } else {

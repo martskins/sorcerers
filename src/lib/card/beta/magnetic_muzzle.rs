@@ -17,6 +17,7 @@ impl MagneticMuzzle {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Relic],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -110,7 +111,9 @@ impl Card for MagneticMuzzle {
                         card_id: *self.get_id(),
                         from: self.get_location().clone(),
                         to: LocationQuery::from_location(
-                            target.get_location().with_region(target.get_region(state).clone()),
+                            target
+                                .get_location()
+                                .with_region(target.get_region(state).clone()),
                         ),
                         tap: false,
                         through_path: None,

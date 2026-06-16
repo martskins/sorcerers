@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct CraveGolem {
-    unit_base: UnitBase,
+    artifact_base: ArtifactBase,
     card_base: CardBase,
 }
 
@@ -12,13 +12,10 @@ impl CraveGolem {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
-                abilities: vec![],
-                // TODO: Automatons are not minions, they are artifacts.
-                types: vec![MinionType::Automaton],
-                tapped: false,
+            artifact_base: ArtifactBase {
+                types: vec![ArtifactType::Automaton],
+                power: Some(3),
+                toughness: Some(3),
                 ..Default::default()
             },
             card_base: CardBase {
@@ -38,6 +35,8 @@ impl CraveGolem {
 
 const TURN_START_HOOK: HookId = 1;
 
+impl Artifact for CraveGolem {}
+
 #[async_trait::async_trait]
 impl Card for CraveGolem {
     fn get_name(&self) -> &str {
@@ -56,12 +55,16 @@ impl Card for CraveGolem {
         &self.card_base
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
     }
 
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
     }
 
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
@@ -143,6 +146,8 @@ impl Card for CraveGolem {
                         if let Some(target_location) = first_step
                             && target_location.get_site(state).is_some()
                         {
+                            // TODO: This movement is not interceptable. Might be worth having a
+                            // TakeStep effect.
                             return Ok(vec![Effect::MoveCard {
                                 card_id: *self.get_id(),
                                 to: LocationQuery::from_location(
@@ -150,7 +155,7 @@ impl Card for CraveGolem {
                                 ),
                                 player_id: self.get_controller_id(state),
                                 from: self_location,
-                                tap: true,
+                                tap: false,
                                 through_path: None,
                             }]);
                         }

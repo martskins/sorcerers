@@ -15,6 +15,7 @@ impl DrumsOfDoom {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Instrument],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

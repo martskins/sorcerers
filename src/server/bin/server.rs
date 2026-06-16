@@ -285,7 +285,7 @@ impl Server {
         );
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            UltimateHorror::NAME,
+            KiteArcher::NAME,
             &player_two,
             Zone::Location(Location::Square(3, Region::Surface)),
         );

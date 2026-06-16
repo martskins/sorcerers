@@ -102,6 +102,7 @@ impl PayloadTrebuchet {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Weapon],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

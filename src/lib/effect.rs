@@ -1965,7 +1965,7 @@ impl Effect {
                             card_id: *attacker_id,
                             from: attacker.get_location().clone(),
                             to: attack_location.clone().into(),
-                            tap: true,
+                            tap: false,
                             through_path: None,
                         });
                     }

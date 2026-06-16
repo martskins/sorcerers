@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct UndertakerEngine {
-    unit_base: UnitBase,
+    artifact_base: ArtifactBase,
     card_base: CardBase,
 }
 
@@ -14,11 +14,10 @@ impl UndertakerEngine {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                types: vec![MinionType::Automaton],
-                tapped: false,
+            artifact_base: ArtifactBase {
+                power: Some(4),
+                toughness: Some(4),
+                types: vec![ArtifactType::Automaton],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -36,6 +35,8 @@ impl UndertakerEngine {
     }
 }
 
+impl Artifact for UndertakerEngine {}
+
 #[async_trait::async_trait]
 impl Card for UndertakerEngine {
     fn get_name(&self) -> &str {
@@ -50,11 +51,14 @@ impl Card for UndertakerEngine {
     fn get_base(&self) -> &CardBase {
         &self.card_base
     }
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
     }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
     }
 
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {

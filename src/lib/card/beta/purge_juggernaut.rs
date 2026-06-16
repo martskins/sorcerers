@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct PurgeJuggernaut {
-    unit_base: UnitBase,
+    artifact_base: ArtifactBase,
     card_base: CardBase,
 }
 
@@ -12,11 +12,10 @@ impl PurgeJuggernaut {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                types: vec![MinionType::Automaton],
-                tapped: false,
+            artifact_base: ArtifactBase {
+                power: Some(4),
+                toughness: Some(4),
+                types: vec![ArtifactType::Automaton],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -36,6 +35,8 @@ impl PurgeJuggernaut {
 
 const TURN_START_HOOK: HookId = 1;
 
+impl Artifact for PurgeJuggernaut {}
+
 #[async_trait::async_trait]
 impl Card for PurgeJuggernaut {
     fn get_name(&self) -> &str {
@@ -50,11 +51,14 @@ impl Card for PurgeJuggernaut {
     fn get_base(&self) -> &CardBase {
         &self.card_base
     }
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
     }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
     }
 
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
@@ -111,7 +115,8 @@ impl Card for PurgeJuggernaut {
                     player_id: controller_id,
                     card_id: self_id,
                     from: (self.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(
                         (target_zone.clone()).with_region(self.get_region(state).clone()),

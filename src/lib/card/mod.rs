@@ -1250,14 +1250,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
     fn get_damage_taken(&self) -> anyhow::Result<u16> {
-        if self.is_unit() {
-            return Ok(self
+        match self.get_card_type() {
+            CardType::Avatar | CardType::Minion => Ok(self
                 .get_unit_base()
                 .ok_or(anyhow::anyhow!("unit card has no unit base"))?
-                .damage);
+                .damage),
+            CardType::Artifact => Ok(self
+                .get_artifact_base()
+                .ok_or(anyhow::anyhow!(
+                    "failed to get artifact base from {}",
+                    self.get_name()
+                ))?
+                .damage
+                .unwrap_or_default()),
+            _ => Ok(0),
         }
-
-        Ok(0)
     }
 
     // Returns the type of the card.
@@ -1807,7 +1814,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Artifact => {
                 let units = self
                     .get_artifact()
-                    .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
+                    .ok_or(anyhow::anyhow!(
+                        "failed to get_artifact on {}",
+                        self.get_name()
+                    ))?
                     .get_valid_attach_targets(state);
                 let valid_play_locations: Vec<CardId> = self
                     .get_valid_play_locations(state, player_id, caster_id)?
@@ -2069,7 +2079,6 @@ pub enum MinionType {
     Merfolk,
     Troll,
     Dwarf,
-    Automaton,
     Gnome,
 }
 
@@ -2421,6 +2430,9 @@ pub enum ArtifactType {
 pub struct ArtifactBase {
     pub types: Vec<ArtifactType>,
     pub tapped: bool,
+    pub power: Option<u16>,
+    pub toughness: Option<u16>,
+    pub damage: Option<u16>,
 }
 
 #[async_trait::async_trait]
@@ -2749,11 +2761,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     }
 
     fn base_get_power(&self, state: &State) -> Option<u16> {
-        match self
-            .get_unit_base()
-            .or_else(|| state.animated_unit_base(self.get_id()))
-        {
-            Some(base) => {
+        match self.get_card_type() {
+            CardType::Avatar | CardType::Minion => {
+                let base = self
+                    .get_unit_base()
+                    .expect("failed to get unit base on avatar or minion");
                 let mut power = base.power;
                 for counter in &base.power_counters {
                     power = power.saturating_add_signed(counter.power);
@@ -2771,7 +2783,32 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
                 Some(power)
             }
-            None => None,
+            CardType::Artifact => {
+                let base = self.get_artifact_base().unwrap_or_else(|| {
+                    panic!("failed to get artifact base from {}", self.get_name())
+                });
+                // TODO: Check if automatons can have counters and add them here if so.
+                Some(base.power?)
+            }
+            _ => {
+                let base = state.animated_unit_base(self.get_id())?;
+                let mut power = base.power;
+                for counter in &base.power_counters {
+                    power = power.saturating_add_signed(counter.power);
+                }
+
+                power = power
+                    .saturating_add_signed(state.power_diff_from_continuous_effects(self.get_id()));
+
+                let power_counters: i16 = state
+                    .counters_from_get_ongoing_effects(self.get_id())
+                    .iter()
+                    .map(|counter| counter.power)
+                    .sum();
+                power = power.saturating_add_signed(power_counters);
+
+                Some(power)
+            }
         }
     }
 

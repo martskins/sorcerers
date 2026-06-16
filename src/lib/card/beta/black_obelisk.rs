@@ -16,6 +16,7 @@ impl BlackObelisk {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Monument],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
