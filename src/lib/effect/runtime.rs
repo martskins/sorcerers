@@ -75,7 +75,8 @@ impl EffectEngine {
         Ok(hooks)
     }
 
-    async fn resolve_hooks(
+    // TODO: Find a way to get rid of this duplication.
+    async fn resolve_hooks_without_log(
         state: &mut State,
         effect: &Effect,
         hooks: &[PendingHook],
@@ -93,12 +94,48 @@ impl EffectEngine {
                 continue;
             }
 
-            let effects = source.resolve_hook(hook.hook_id, state, effect).await?;
+            let effects = source.resolve_hook(hook.hook_id, &state, effect).await?;
             if Self::queues_resolved_hook_effects(effect) {
                 state.queue(effects);
             } else {
                 for effect in effects {
                     Box::pin(effect.apply(state)).await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn resolve_hooks(
+        game: &mut Game,
+        effect: &Effect,
+        hooks: &[PendingHook],
+    ) -> anyhow::Result<()> {
+        for hook in hooks {
+            let Some(source) = game.state.try_get_card(&hook.source_id) else {
+                continue;
+            };
+            if !hook.source_zones.matches(source.get_zone()) {
+                continue;
+            }
+            if source.get_zone().is_in_play()
+                && game
+                    .state
+                    .card_has_special_abilities_removed(&hook.source_id)
+            {
+                continue;
+            }
+
+            let effects = source
+                .resolve_hook(hook.hook_id, &game.state, effect)
+                .await?;
+            if Self::queues_resolved_hook_effects(effect) {
+                game.state.queue(effects);
+            } else {
+                for effect in effects {
+                    Box::pin(effect.apply(&mut game.state)).await?;
+                    EffectLogEmitter::emit(game, effect.clone()).await?;
                 }
             }
         }
@@ -153,7 +190,7 @@ impl EffectEngine {
 
             let before_hooks =
                 Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
-            Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
+            Self::resolve_hooks(game, &effect, &before_hooks).await?;
 
             match effect.apply(&mut game.state).await {
                 Ok(_) => {}
@@ -168,7 +205,7 @@ impl EffectEngine {
             // any state query done on the hooks function reflects the correct state of all
             // cards.
             let after_hooks = Self::collect_hooks(&game.state, &effect, HookTiming::After).await?;
-            Self::resolve_hooks(&mut game.state, &effect, &after_hooks).await?;
+            Self::resolve_hooks(game, &effect, &after_hooks).await?;
 
             Game::dispell_auras(&mut game.state).await?;
             game.broadcast(&game.make_sync()?).await?;
@@ -203,12 +240,12 @@ impl EffectEngine {
             }
 
             let before_hooks = Self::collect_hooks(state, &effect, HookTiming::Before).await?;
-            Self::resolve_hooks(state, &effect, &before_hooks).await?;
+            Self::resolve_hooks_without_log(state, &effect, &before_hooks).await?;
 
             effect.apply(state).await?;
 
             let after_hooks = Self::collect_hooks(state, &effect, HookTiming::After).await?;
-            Self::resolve_hooks(state, &effect, &after_hooks).await?;
+            Self::resolve_hooks_without_log(state, &effect, &after_hooks).await?;
         }
 
         Ok(())

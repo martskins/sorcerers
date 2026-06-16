@@ -59,12 +59,12 @@ impl Magic for Windblast {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             &controller_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Windblast: Pick a direction",
-            Some(*self.get_id()),
+            *self.get_id(),
         )
         .await?;
 
@@ -79,7 +79,9 @@ impl Magic for Windblast {
             }
 
             let from_location = unit.get_location();
-            let Some(to_location) = from_location.step_in_direction(&direction, state, Some(&unit_id)) else {
+            let Some(to_location) =
+                from_location.step_in_direction(&direction, state, Some(&unit_id))
+            else {
                 continue;
             };
             if to_location.get_site(state).is_none()

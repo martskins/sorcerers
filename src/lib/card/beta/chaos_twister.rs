@@ -78,20 +78,15 @@ impl Magic for ChaosTwister {
         let power = target
             .get_power(state)?
             .ok_or_else(|| anyhow::anyhow!("target has no power"))?;
-        let from_location = target.get_location().clone();
         let region = target.get_region(state).clone();
-
         let all_surfaces = Location::all_in_region(Region::Surface);
         let landing_zone = all_surfaces
             .choose(&mut rand::rng())
             .expect("choose to yield one result");
-        let mut effects = vec![Effect::MoveCard {
+        let mut effects = vec![Effect::TeleportCard {
             player_id: controller_id,
             card_id: target_id,
-            from: from_location,
-            to: landing_zone.with_region(region).into(),
-            tap: false,
-            through_path: None,
+            to_location: landing_zone.with_region(region),
         }];
 
         let units = CardQuery::new()

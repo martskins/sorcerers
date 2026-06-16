@@ -58,30 +58,18 @@ impl Magic for CommonSense {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let deck = state.decks.get(&controller_id).unwrap();
-
-        let targets: Vec<CardId> = deck
-            .spells
-            .iter()
-            .filter(|id| state.get_card(id).get_base().rarity == Rarity::Ordinary)
-            .cloned()
-            .collect();
-
-        if targets.is_empty() {
-            return Ok(vec![Effect::ShuffleDeck {
-                player_id: controller_id,
-            }]);
-        }
-
-        let chosen = pick_card_with_options(
-            &controller_id,
-            &targets,
-            &deck.spells,
-            false,
-            state,
-            "Common Sense: Choose an Ordinary card to put into your hand",
-        )
-        .await?;
+        let Some(chosen) = CardQuery::new()
+            .owned_by(&controller_id)
+            .in_zone(Zone::Spellbook)
+            // TODO: This should show the rest of the cards in the spellbook, not just the eligbile
+            // ones.
+            .with_source_card(*self.get_id())
+            .with_prompt("Choose an Ordinary card to put into your hand")
+            .pick(&controller_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
         Ok(vec![
             Effect::SetCardZone {

@@ -38,12 +38,12 @@ impl ActivatedAbility for ShootProjectile {
             .fire as u16;
         let avatar = state.get_card(card_id);
         let prompt = "Pick a direction to shoot the projectile";
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             avatar.get_owner_id(),
             &CARDINAL_DIRECTIONS,
             state,
             prompt,
-            Some(*card_id),
+            *card_id,
         )
         .await?;
         let mut effects = vec![Effect::ShootProjectile {

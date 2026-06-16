@@ -16,6 +16,7 @@ impl CraveGolem {
                 power: 3,
                 toughness: 3,
                 abilities: vec![],
+                // TODO: Automatons are not minions, they are artifacts.
                 types: vec![MinionType::Automaton],
                 tapped: false,
                 ..Default::default()

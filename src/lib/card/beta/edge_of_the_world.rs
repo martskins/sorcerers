@@ -81,7 +81,12 @@ impl Card for EdgeOfTheWorld {
         Ok(self
             .base_get_valid_play_locations(state, player_id, caster_id)?
             .into_iter()
-            .filter(|location| !location.get_adjacent_voids(state).is_empty())
+            .filter(|location| {
+                !location
+                    .with_region(Region::Void)
+                    .get_adjacent(state)
+                    .is_empty()
+            })
             .collect())
     }
 }

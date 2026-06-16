@@ -88,7 +88,10 @@ impl Card for ImperialRoad {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
                 let opponent_id = state.get_opponent_id(&controller_id)?;
-                let adjacent_locations = self.get_location().get_adjacent_voids(state);
+                let adjacent_locations = self
+                    .get_location()
+                    .with_region(Region::Void)
+                    .get_adjacent(state);
 
                 if adjacent_locations.is_empty() {
                     return Ok(vec![]);

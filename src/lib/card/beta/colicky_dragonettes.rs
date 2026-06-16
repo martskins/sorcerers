@@ -64,10 +64,12 @@ impl Card for ColickyDragonettes {
         Some(&mut self.unit_base)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
-            trigger: EffectQuery::TurnEnd { player_id: None },
+            trigger: EffectQuery::TurnEnd {
+                player_id: Some(self.get_controller_id(state)),
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -81,18 +83,12 @@ impl Card for ColickyDragonettes {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-                let is_current_player = &state.current_player() == self.get_owner_id();
-                if !is_current_player {
-                    return Ok(vec![]);
-                }
-
-                let prompt = "Choose a direction to shoot a projectile";
-                let direction = pick_direction_source(
+                let direction = pick_direction(
                     self.get_owner_id(),
                     &CARDINAL_DIRECTIONS,
                     state,
-                    prompt,
-                    Some(*self.get_id()),
+                    "Choose a direction to shoot a projectile",
+                    *self.get_id(),
                 )
                 .await?;
                 Ok(vec![Effect::ShootProjectile {

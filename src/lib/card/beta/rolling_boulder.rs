@@ -25,12 +25,12 @@ impl ActivatedAbility for RollBoulder {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let boulder = state.get_card(&self.0);
-        let picked_direction = pick_direction_source(
+        let picked_direction = pick_direction(
             player_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Pick a direction to roll the Boulder",
-            Some(self.0),
+            self.0,
         )
         .await?;
 
@@ -56,7 +56,9 @@ impl ActivatedAbility for RollBoulder {
                 card_id: *boulder.get_id(),
                 from: last_location.clone(),
                 to: LocationQuery::from_location(
-                    location.clone().with_region(boulder.get_region(state).clone()),
+                    location
+                        .clone()
+                        .with_region(boulder.get_region(state).clone()),
                 ),
                 player_id: *player_id,
                 tap: false,

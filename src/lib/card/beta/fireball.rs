@@ -59,12 +59,12 @@ impl Magic for Fireball {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let prompt = "Pick a direction to cast the spell";
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             self.get_owner_id(),
             &CARDINAL_DIRECTIONS,
             state,
             prompt,
-            Some(*caster_id),
+            *caster_id,
         )
         .await?;
         Ok(vec![Effect::ShootProjectile {

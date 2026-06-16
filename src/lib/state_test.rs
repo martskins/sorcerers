@@ -1185,34 +1185,6 @@ async fn test_get_effective_costs_ignoring_thresholds() {
 }
 
 #[test]
-fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
-    let state = State::new_mock_state(vec![8, 9]);
-
-    let source = Location::Square(8, Region::Surface);
-
-    assert!(
-        source
-            .get_adjacent_locations(&state)
-            .contains(&Location::Square(9, Region::Surface))
-    );
-    assert!(
-        !source
-            .get_adjacent_locations(&state)
-            .contains(&Location::Square(13, Region::Surface))
-    );
-    assert!(
-        source
-            .get_adjacent_voids(&state)
-            .contains(&Location::Square(13, Region::Void))
-    );
-    assert!(
-        !source
-            .get_adjacent_voids(&state)
-            .contains(&Location::Square(9, Region::Void))
-    );
-}
-
-#[test]
 fn test_zone_query_adjacent_to_uses_state_aware_locations() {
     let state = State::new_mock_state(vec![8, 9]);
     let source = Zone::Location(Location::Square(13, Region::Void));

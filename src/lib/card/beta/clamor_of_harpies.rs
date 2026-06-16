@@ -1,43 +1,5 @@
 use crate::prelude::*;
 
-#[derive(Debug, Clone, PartialEq)]
-enum ClamorOfHarpiesAction {
-    Strike,
-    DoNotStrike,
-}
-
-#[async_trait::async_trait]
-impl ActivatedAbility for ClamorOfHarpiesAction {
-    fn get_name(&self) -> String {
-        match self {
-            ClamorOfHarpiesAction::Strike => "Strike".to_string(),
-            ClamorOfHarpiesAction::DoNotStrike => "Do Not Strike".to_string(),
-        }
-    }
-
-    async fn on_select(
-        &self,
-        card_id: &CardId,
-        _player_id: &PlayerId,
-        state: &State,
-    ) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            ClamorOfHarpiesAction::Strike => {
-                let target_card = state.get_card(card_id);
-                Ok(vec![Effect::TakeDamage {
-                    card_id: *target_card.get_id(),
-                    from: *card_id,
-                    damage: Damage::strike(
-                        state.get_card(card_id).get_power(state)?.unwrap_or(0),
-                        false,
-                    ),
-                }])
-            }
-            ClamorOfHarpiesAction::DoNotStrike => Ok(vec![]),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ClamorOfHarpies {
     unit_base: UnitBase,
@@ -110,53 +72,39 @@ impl Card for ClamorOfHarpies {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let valid_cards = CardQuery::new()
+                let Some(card_id) = CardQuery::new()
                     .minions()
                     .power_lt(self.get_power(state)?.unwrap_or_default())
-                    .all(state);
-                let prompt = "Pick a unit to bring here";
-                let card_id = pick_card_source(
-                    self.get_controller_id(state),
-                    &valid_cards,
-                    state,
-                    prompt,
-                    Some(*self.get_id()),
-                )
-                .await?;
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick a unit to bring here")
+                    .pick(&self.get_controller_id(state), state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 let card = state.get_card(&card_id);
-                let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
-                    Box::new(ClamorOfHarpiesAction::Strike),
-                    Box::new(ClamorOfHarpiesAction::DoNotStrike),
-                ];
-                let prompt = "Strike selected unit?";
-                let action = pick_action_source(
+                let strike = yes_or_no(
                     self.get_controller_id(state),
-                    &activated_abilities,
                     state,
-                    prompt,
-                    false,
-                    Some(*self.get_id()),
+                    "Strike selected unit?",
+                    *self.get_id(),
                 )
                 .await?;
                 let mut effects = vec![Effect::MoveCard {
                     player_id: self.get_controller_id(state),
                     card_id,
-                    from: (card.get_zone().clone())
-                        .location()
-                        .cloned()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_location(
-                        self.get_location()
-                            .with_region(self.get_region(state).clone()),
-                    ),
+                    from: card.get_location().clone(),
+                    to: self.get_location().clone().into(),
                     tap: false,
                     through_path: None,
                 }];
-                effects.extend(
-                    action
-                        .on_select(card.get_id(), &self.get_controller_id(state), state)
-                        .await?,
-                );
+
+                if strike {
+                    effects.push(Effect::Strike {
+                        striker_id: *self.get_id(),
+                        target_id: card_id,
+                    });
+                }
                 Ok(effects)
             }
             _ => Ok(vec![]),

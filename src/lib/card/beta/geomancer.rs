@@ -137,7 +137,8 @@ async fn geomancer_play_site_effects(
         let geomancer = state.get_card(geomancer_id);
         let locations = geomancer
             .get_location()
-            .get_adjacent_voids(state)
+            .with_region(Region::Void)
+            .get_adjacent(state)
             .into_iter()
             .filter(|location| location.get_square().unwrap_or_default() != square)
             .collect::<Vec<Location>>();

@@ -71,12 +71,12 @@ impl Magic for GrappleShot {
 
         let ally_card = state.get_card(&ally_id);
         let ally_location = ally_card.get_location();
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             &controller_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Grapple Shot: Pick a direction",
-            Some(ally_id),
+            ally_id,
         )
         .await?;
         let mut cur_location = ally_location.clone();

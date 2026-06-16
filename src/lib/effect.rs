@@ -1963,13 +1963,8 @@ impl Effect {
                         effects.push(Effect::MoveCard {
                             player_id: attacker.get_controller_id(state),
                             card_id: *attacker_id,
-                            from: attacker
-                                .get_zone()
-                                .clone()
-                                .location()
-                                .cloned()
-                                .expect("MoveCard source must be a location"),
-                            to: LocationQuery::from_zone(attack_location.clone()),
+                            from: attacker.get_location().clone(),
+                            to: attack_location.clone().into(),
                             tap: true,
                             through_path: None,
                         });

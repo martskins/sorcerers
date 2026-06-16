@@ -15,12 +15,12 @@ impl ActivatedAbility for ShootProjectile {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             player_id,
             &CARDINAL_DIRECTIONS,
             state,
-            "Pudge Butcher: Choose a direction to shoot the projectile in",
-            Some(*card_id),
+            "Choose a direction to shoot the projectile in",
+            *card_id,
         )
         .await?;
 
@@ -61,10 +61,13 @@ impl ActivatedAbility for ShootProjectile {
                 card_id: target,
                 player_id: *player_id,
                 from: (state.get_card(&target).get_zone().clone())
-                    .location().cloned()
+                    .location()
+                    .cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
-                    pudge.get_location().with_region(pudge.get_region(state).clone()),
+                    pudge
+                        .get_location()
+                        .with_region(pudge.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

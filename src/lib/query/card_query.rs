@@ -311,12 +311,14 @@ impl<'a> PreparedCardQuery<'a> {
                     })
                     .unwrap_or_default(),
                 SpatialFilter::AdjacentVoids(location) => location
-                    .get_adjacent_voids(state)
+                    .with_region(Region::Void)
+                    .get_adjacent(state)
                     .into_iter()
                     .map(Zone::from)
                     .collect(),
                 SpatialFilter::NearbyVoids(location) => location
-                    .get_nearby_voids(state)
+                    .with_region(Region::Void)
+                    .get_nearby(state)
                     .into_iter()
                     .map(Zone::from)
                     .collect(),

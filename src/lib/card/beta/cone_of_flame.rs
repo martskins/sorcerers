@@ -58,17 +58,18 @@ impl Magic for ConeOfFlame {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let prompt = "Pick a direction to cast the spell";
-        let dir = pick_direction_source(
+        let dir = pick_direction(
             self.get_owner_id(),
             &CARDINAL_DIRECTIONS,
             state,
             prompt,
-            Some(*caster_id),
+            *caster_id,
         )
         .await?;
         let caster = state.get_card(caster_id);
         let location = caster.get_location();
         let region = location.region().clone();
+        #[rustfmt::skip]
         let square_dmg = vec![
             (location.square_in_direction(&dir, 1, state, Some(caster_id)), 5),
             (location.square_in_direction(&dir, 2, state, Some(caster_id)), 3),

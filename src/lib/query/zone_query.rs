@@ -328,12 +328,32 @@ impl LocationQuery {
         }
     }
 
-    pub fn from_locations(options: Vec<Location>, prompt: Option<String>) -> Self {
+    pub fn from_locations(options: Vec<Location>) -> Self {
         Self {
             zone_query: ZoneQuery::from_options(
                 options.into_iter().map(Zone::from).collect(),
-                prompt,
+                None,
             ),
+        }
+    }
+
+    pub fn with_prompt(self, prompt: impl Into<String>) -> Self {
+        let zone_query = self.zone_query;
+        Self {
+            zone_query: ZoneQuery {
+                prompt: Some(prompt.into()),
+                ..zone_query
+            },
+        }
+    }
+
+    pub fn with_source_card(self, card_id: CardId) -> Self {
+        let zone_query = self.zone_query;
+        Self {
+            zone_query: ZoneQuery {
+                source_card_id: Some(card_id),
+                ..zone_query
+            },
         }
     }
 

@@ -364,23 +364,12 @@ pub async fn pick_action<'a>(
     prompt: &str,
     anchor_on_cursor: bool,
 ) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
-    pick_action_source(player_id, actions, state, prompt, anchor_on_cursor, None).await
-}
-
-pub async fn pick_action_source<'a>(
-    player_id: impl AsRef<PlayerId>,
-    actions: &'a [Box<dyn ActivatedAbility>],
-    state: &State,
-    prompt: &str,
-    anchor_on_cursor: bool,
-    source_card_id: Option<CardId>,
-) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            source_card_id,
+            source_card_id: None,
             player_id: decision_player,
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
             anchor_on_cursor,
@@ -769,23 +758,14 @@ pub async fn pick_direction(
     directions: &[Direction],
     state: &State,
     prompt: &str,
-) -> anyhow::Result<Direction> {
-    pick_direction_source(player_id, directions, state, prompt, None).await
-}
-
-pub async fn pick_direction_source(
-    player_id: impl AsRef<PlayerId>,
-    directions: &[Direction],
-    state: &State,
-    prompt: &str,
-    source_card_id: Option<CardId>,
+    source_card_id: CardId,
 ) -> anyhow::Result<Direction> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickDirection {
             prompt: prompt.to_string(),
-            source_card_id,
+            source_card_id: Some(source_card_id),
             player_id: decision_player,
             directions: directions.to_vec(),
         })
@@ -1238,14 +1218,9 @@ impl ActivatedAbility for UnitAction {
             UnitAction::RangedAttack => {
                 let card = state.get_card(card_id);
                 let prompt = "Pick a direction for ranged strike";
-                let direction = pick_direction_source(
-                    player_id,
-                    &CARDINAL_DIRECTIONS,
-                    state,
-                    prompt,
-                    Some(*card_id),
-                )
-                .await?;
+                let direction =
+                    pick_direction(player_id, &CARDINAL_DIRECTIONS, state, prompt, *card_id)
+                        .await?;
                 Ok(vec![Effect::ShootProjectile {
                     id: uuid::Uuid::new_v4(),
                     range: Some(card.ranged_range(state)?.unwrap_or(1)),

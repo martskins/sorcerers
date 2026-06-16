@@ -20,30 +20,27 @@ impl ActivatedAbility for FlyToVoid {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let nearby_voids = card.get_location().get_nearby_voids(state);
+        let nearby_voids = card
+            .get_location()
+            .with_region(Region::Void)
+            .get_nearby(state);
         if nearby_voids.is_empty() {
             return Ok(vec![]);
         }
 
-        let picked_void = pick_location(
-            card.get_controller_id(state),
-            &nearby_voids,
-            state,
-            false,
-            "Pick a nearby void to fly to",
-        )
-        .await?;
-
+        let picked_void = LocationQuery::from_locations(nearby_voids)
+            .with_prompt("Pick a nearby void to fly to")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
         let mut effects = vec![
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card.get_id(),
-                from: (card.get_zone().clone())
-                    .location().cloned()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_location(
-                    picked_void.with_region(card.get_region(state).clone()),
-                ),
+                from: card.get_location().clone(),
+                to: picked_void
+                    .with_region(card.get_region(state).clone())
+                    .into(),
                 tap: false,
                 through_path: None,
             },
@@ -58,13 +55,10 @@ impl ActivatedAbility for FlyToVoid {
             effects.push(Effect::MoveCard {
                 player_id: *player_id,
                 card_id: unit,
-                from: (card.get_zone().clone())
-                    .location().cloned()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_location(
-                    (picked_void.clone())
-                        .with_region(state.get_card(&unit).get_region(state).clone()),
-                ),
+                from: card.get_location().clone(),
+                to: picked_void
+                    .with_region(state.get_card(&unit).get_region(state).clone())
+                    .into(),
                 tap: false,
                 through_path: None,
             });

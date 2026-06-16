@@ -16,7 +16,7 @@ impl CloudSpirit {
                 power: 2,
                 toughness: 2,
                 abilities: vec![Ability::Airborne, Ability::Movement(2)],
-                types: vec![MinionType::Fairy],
+                types: vec![MinionType::Spirit],
                 tapped: false,
                 ..Default::default()
             },

@@ -70,7 +70,7 @@ impl Card for RestInPeace {
                 card: CardQuery::new()
                     .minions()
                     .minion_types(vec![MinionType::Undead, MinionType::Spirit]),
-                location: LocationQuery::from_locations(affected_land_sites, None),
+                location: LocationQuery::from_locations(affected_land_sites),
                 from: None,
             },
             timing: HookTiming::After,

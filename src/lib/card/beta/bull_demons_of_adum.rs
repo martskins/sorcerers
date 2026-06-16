@@ -27,12 +27,12 @@ impl ActivatedAbility for TapMoveAndStrike {
         let bull_demons = state.get_card(card_id);
         let start_zone = bull_demons.get_location().clone();
 
-        let direction = pick_direction_source(
+        let direction = pick_direction(
             player_id,
             CARDINAL_DIRECTIONS,
             state,
             "Bull Demons of Adum: Choose a cardinal direction to charge",
-            Some(*card_id),
+            *card_id,
         )
         .await?;
 

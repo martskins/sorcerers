@@ -482,28 +482,6 @@ impl Location {
             .collect()
     }
 
-    pub fn get_nearby_voids(&self, state: &State) -> Vec<Self> {
-        self.get_nearby(state)
-            .into_iter()
-            .filter_map(|location| {
-                let square = location.get_square()?;
-                let void = Location::Square(square, Region::Void);
-                void.is_location(state).then_some(void)
-            })
-            .collect()
-    }
-
-    pub fn get_adjacent_voids(&self, state: &State) -> Vec<Self> {
-        self.get_adjacent(state)
-            .into_iter()
-            .filter_map(|location| {
-                let square = location.get_square()?;
-                let void = Location::Square(square, Region::Void);
-                void.is_location(state).then_some(void)
-            })
-            .collect()
-    }
-
     pub fn steps_in_direction(
         &self,
         direction: &Direction,
@@ -765,7 +743,7 @@ impl Zone {
 
 #[cfg(test)]
 mod test {
-    use crate::{card::Region, zone::Location};
+    use crate::{card::Region, state::State, zone::Location};
 
     #[test]
     fn test_get_adjacent_squares() {
@@ -813,6 +791,35 @@ mod test {
         );
         assert!(
             Location::Square(3, Region::Surface).is_nearby(&Location::Square(9, Region::Surface))
+        );
+    }
+
+    #[test]
+    fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
+        let state = State::new_mock_state(vec![8, 9]);
+        let source = Location::Square(8, Region::Surface);
+
+        assert!(
+            source
+                .get_adjacent_locations(&state)
+                .contains(&Location::Square(9, Region::Surface))
+        );
+        assert!(
+            !source
+                .get_adjacent_locations(&state)
+                .contains(&Location::Square(13, Region::Surface))
+        );
+        assert!(
+            source
+                .with_region(Region::Void)
+                .get_adjacent(&state)
+                .contains(&Location::Square(13, Region::Void))
+        );
+        assert!(
+            !source
+                .with_region(Region::Void)
+                .get_adjacent(&state)
+                .contains(&Location::Square(9, Region::Void))
         );
     }
 }

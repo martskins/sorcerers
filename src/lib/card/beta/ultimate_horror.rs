@@ -70,7 +70,11 @@ impl Card for UltimateHorror {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
                 let mut nearby_locations = self.get_location().get_nearby_sites(state);
-                nearby_locations.extend(self.get_location().get_nearby_voids(state));
+                nearby_locations.extend(
+                    self.get_location()
+                        .with_region(Region::Void)
+                        .get_nearby(state),
+                );
                 let dead_voidwalkers = CardQuery::new()
                     .minions()
                     .dead()
