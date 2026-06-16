@@ -19,23 +19,19 @@ pub struct Server {
     pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
-    /// When `true` every `Sync` message sent to clients carries a board
-    /// evaluation.  Enable with the `--eval` flag or `SORCERERS_DEBUG_EVAL=1`.
-    pub debug_eval: bool,
     /// When `true`, seed newly-created games with the local development test board.
     /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
     pub test_state: bool,
 }
 
 impl Server {
-    pub fn new(debug_eval: bool, test_state: bool) -> Self {
+    pub fn new(test_state: bool) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
             games: HashMap::new(),
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
-            debug_eval,
             test_state,
         }
     }
@@ -185,7 +181,6 @@ impl Server {
             ),
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
-        game.debug_eval = self.debug_eval;
         self.games.insert(game.id, client_tx);
         self.game_players
             .insert(game.id, vec![player1.clone(), player2.clone()]);
@@ -222,9 +217,15 @@ impl Server {
         let player_two = game.state.players[1].id;
         let card = card::from_name_and_zone(Battlefield::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(RootSpider::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(ChaosTwister::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(Browse::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(AdeptIllusionist::NAME, &player_one, Zone::Hand);
+        game.state.add_card(card);
+        let card = card::from_name_and_zone(AdeptIllusionist::NAME, &player_one, Zone::Cemetery);
+        game.state.add_card(card);
+        let card = card::from_name_and_zone(AdeptIllusionist::NAME, &player_one, Zone::Spellbook);
+        game.state.add_card(card);
+        let card = card::from_name_and_zone(CallToWar::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(SummerRiver::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);

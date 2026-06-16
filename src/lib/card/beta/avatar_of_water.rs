@@ -24,7 +24,7 @@ impl ActivatedAbility for FloodSite {
                     .sites()
                     .with_prompt("Pick a site to flood")
                     .with_source_card(*card_id)
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                     .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {

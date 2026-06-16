@@ -73,7 +73,7 @@ impl Card for ScavengingFiend {
                     .in_zone(&Zone::Cemetery)
                     .with_prompt("Pick a broken artifact to conjure")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, true)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);
@@ -87,7 +87,8 @@ impl Card for ScavengingFiend {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Scavenging Fiend must be in a location"),
                     }],
                 }])

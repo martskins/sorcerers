@@ -63,7 +63,7 @@ impl Magic for Drown {
             .in_locations(&Location::all_in_region(Region::Surface))
             .with_prompt("Pick a minion or artifact to submerge")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

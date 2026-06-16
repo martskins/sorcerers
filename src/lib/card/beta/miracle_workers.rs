@@ -99,7 +99,7 @@ impl Card for MiracleWorkers {
                     .controlled_by(&controller_id)
                     .with_prompt("Return a minion that died this turn to your hand?")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

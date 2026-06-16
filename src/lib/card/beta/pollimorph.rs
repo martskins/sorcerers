@@ -69,7 +69,7 @@ impl Magic for Pollimorph {
             .near_to(&caster_location)
             .with_prompt(prompt)
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

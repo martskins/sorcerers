@@ -17,7 +17,7 @@ impl SlumberingGiantess {
                 power: 5,
                 toughness: 5,
                 abilities: vec![],
-                types: vec![MinionType::Mortal],
+                types: vec![MinionType::Giant],
                 tapped: false,
                 ..Default::default()
             },

@@ -58,18 +58,16 @@ impl Magic for CaveIn {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_targets = CardQuery::new()
-            .sites()
-            .with_element(Element::Earth)
-            .all(state);
-        let picked_site_id = pick_card(
-            &self.get_controller_id(state),
-            &valid_targets,
-            state,
-            "Cave-In: Pick a target site",
-        )
-        .await?;
-
+        let player_id = self.get_controller_id(state);
+        let Some(picked_site_id) = CardQuery::new()
+            .land_sites()
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a land site")
+            .pick(&player_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
         let picked_site = state.get_card(&picked_site_id);
         let minions_and_artifacts = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
@@ -81,15 +79,11 @@ impl Magic for CaveIn {
             .map(|card_id| Effect::MoveCard {
                 player_id: self.get_controller_id(state),
                 card_id: *card_id,
-                from: picked_site
-                    .get_zone()
-                    .clone()
-                    .location()
-                    .cloned()
-                    .expect("Cave In target must be in a location"),
-                to: LocationQuery::from_location(
-                    picked_site.get_location().with_region(Region::Underground),
-                ),
+                from: picked_site.get_location().clone(),
+                to: picked_site
+                    .get_location()
+                    .with_region(Region::Underground)
+                    .into(),
                 tap: false,
                 through_path: None,
             })

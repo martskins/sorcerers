@@ -61,7 +61,7 @@ impl Magic for StormySeas {
             .in_play()
             .with_prompt("Choose a water site")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         {
             Some(id) => id,

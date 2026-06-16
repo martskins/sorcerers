@@ -42,7 +42,7 @@ impl LordOfUnland {
         queue.push_back(start.clone());
 
         while let Some(location) = queue.pop_front() {
-            for adj in location.get_adjacent() {
+            for adj in location.get_adjacent(state) {
                 if visited.contains(&adj) {
                     continue;
                 }

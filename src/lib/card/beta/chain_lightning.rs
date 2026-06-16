@@ -69,7 +69,7 @@ impl Magic for ChainLightning {
                 .near_to(&last_hit_location)
                 .with_prompt("Pick a unit to deal 2 damage to")
                 .with_source_card(*self.get_id())
-                .pick(&controller_id, &local_state, false)
+                .pick(&controller_id, &local_state)
                 .await?
             else {
                 break;

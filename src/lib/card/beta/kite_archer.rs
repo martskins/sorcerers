@@ -97,7 +97,7 @@ impl Card for KiteArcher {
                     return Ok(vec![]);
                 }
 
-                let locations = self.get_location().get_adjacent();
+                let locations = self.get_location().get_adjacent(state);
                 let picked_zone = pick_location(
                     self.get_owner_id(),
                     &locations,

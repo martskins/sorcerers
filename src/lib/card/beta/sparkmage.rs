@@ -80,7 +80,7 @@ impl ActivatedAbility for DealDamageAction {
             .units()
             .randomised()
             .in_zone(&zone)
-            .pick(&sparkmage.get_controller_id(state), state, false)
+            .pick(&sparkmage.get_controller_id(state), state)
             .await?
         else {
             return Ok(vec![]);

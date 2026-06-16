@@ -92,7 +92,7 @@ impl Card for PolarBears {
             if !visited.contains(&current_location) {
                 visited.push(current_location.clone());
 
-                for adjacent in current_location.get_adjacent() {
+                for adjacent in current_location.get_adjacent(state) {
                     to_visit.push((adjacent, current_step + 1));
                 }
 

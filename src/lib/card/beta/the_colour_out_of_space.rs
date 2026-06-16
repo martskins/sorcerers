@@ -36,7 +36,7 @@ impl TheColourOutOfSpace {
 
     fn adjacent_to_void(&self, state: &State) -> bool {
         self.get_location()
-            .get_adjacent()
+            .get_adjacent(state)
             .into_iter()
             .filter(|location| location != self.get_location())
             .any(|location| location.get_site(state).is_none())

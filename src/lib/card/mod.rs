@@ -1069,7 +1069,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         }
                     }
                 } else {
-                    for adjacent in current_location.get_adjacent() {
+                    for adjacent in current_location.get_adjacent(state) {
                         if self
                             .can_move_between_locations(state, &current_location, &adjacent)
                             .unwrap_or(false)
@@ -1509,7 +1509,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 } else if attacker_is_airborne {
                     location.get_nearby(state).contains(target_location)
                 } else {
-                    location.get_adjacent().contains(target_location)
+                    location.get_adjacent(state).contains(target_location)
                 };
                 if !in_range {
                     return false;
@@ -2712,7 +2712,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         if self.has_ability(state, &Ability::Submerge) {
             candidates.extend(Location::all_in_region(Region::Underwater));
         }
-        if self.has_ability(state, &Ability::Voidwalk) {
+        if self.has_ability(state, &Ability::Voidwalk) || self.is_site() {
             candidates.extend(Location::all_in_region(Region::Void));
         }
         candidates.sort();

@@ -90,7 +90,7 @@ impl Card for PendulumOfPeril {
                 let current_player = state.current_player();
                 let location = self.get_location();
                 let adjacent_locations: Vec<Location> = location
-                    .get_adjacent()
+                    .get_adjacent(state)
                     .into_iter()
                     .filter(|adjacent| adjacent != location)
                     .collect();

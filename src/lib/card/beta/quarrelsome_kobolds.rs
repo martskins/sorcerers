@@ -84,7 +84,7 @@ impl Card for QuarrelsomeKobolds {
                     return Ok(vec![]);
                 }
 
-                let adjacent_locations = self.get_location().get_adjacent();
+                let adjacent_locations = self.get_location().get_adjacent(state);
                 let mut units = vec![];
                 let player_id = self.get_controller_id(state);
                 for location in adjacent_locations {

@@ -93,7 +93,7 @@ impl Card for GuileSirens {
                     .adjacent_to(self.get_location())
                     .with_prompt("Pick a minion to lure in")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);
@@ -104,7 +104,7 @@ impl Card for GuileSirens {
                     .get_adjacent_locations(state)
                     .into_iter()
                     .map(|location| {
-                        let steps = location.steps_to_location(self.get_location());
+                        let steps = location.steps_to_location(state, self.get_location());
                         (location, steps)
                     })
                     .collect::<Vec<(Location, Option<u8>)>>();
@@ -143,7 +143,8 @@ impl Card for GuileSirens {
                         from: picked_card
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Guile Sirens target must be in a location"),
                         to: LocationQuery::from_location(
                             picked_location.with_region(picked_card.get_region(state).clone()),

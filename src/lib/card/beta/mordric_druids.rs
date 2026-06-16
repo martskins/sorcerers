@@ -120,7 +120,7 @@ impl Card for MordricDruids {
                 // let druids_zone = druids.get_zone().clone();
                 // let defended_zone = defended_card.get_zone().clone();
                 // let is_nearby = druids_zone == defended_zone
-                //     || druids_zone.get_adjacent().contains(&defended_zone);
+                //     || druids_zone.get_adjacent(state).contains(&defended_zone);
                 // if !is_nearby {
                 //     return Ok(vec![]);
                 // }

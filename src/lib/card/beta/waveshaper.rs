@@ -35,7 +35,7 @@ impl ActivatedAbility for WaveshaperFlood {
             .in_zones(&near_body_of_water)
             .with_prompt("Pick a site to flood")
             .with_source_card(*card_id)
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

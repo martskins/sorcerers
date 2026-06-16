@@ -89,7 +89,7 @@ impl Card for GhostShip {
                     .dead()
                     .minions()
                     .minion_type(&MinionType::Spirit)
-                    .pick(&player_id, state, false)
+                    .pick(&player_id, state)
                     .await?
                 else {
                     return Ok(vec![]);
@@ -103,7 +103,8 @@ impl Card for GhostShip {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Ghost Ship target must be a location"),
                     }],
                 }])

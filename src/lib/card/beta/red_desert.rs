@@ -76,7 +76,7 @@ impl Card for RedDesert {
                     .nearby_sites_to(self.get_location())
                     .with_prompt("Pick a site to deal 1 damage to all atop units")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

@@ -56,29 +56,29 @@ impl Magic for ChaosTwister {
     async fn resolve_magic(
         &self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let controller_id = self.get_controller_id(state);
-
-        let all_minions = CardQuery::new().minions().all(state);
-        if all_minions.is_empty() {
+        let Some(target_id) = CardQuery::new()
+            .minions()
+            // TODO: Is there anything we can do here to prevent us from forgetting to filter by
+            // caster region on every single query?
+            .in_region(caster.get_region(state).clone())
+            .with_source_card(*self.get_id())
+            .with_prompt("Choose a minion to fling")
+            .pick(&controller_id, state)
+            .await?
+        else {
             return Ok(vec![]);
-        }
-
-        let target_id = pick_card_with_preview(
-            &controller_id,
-            &all_minions,
-            state,
-            "Chaos Twister: Choose a minion to fling",
-        )
-        .await?;
+        };
 
         let target = state.get_card(&target_id);
         let power = target
             .get_power(state)?
             .ok_or_else(|| anyhow::anyhow!("target has no power"))?;
-        let from_zone = target.get_zone().clone();
+        let from_location = target.get_location().clone();
         let region = target.get_region(state).clone();
 
         let all_surfaces = Location::all_in_region(Region::Surface);
@@ -88,17 +88,15 @@ impl Magic for ChaosTwister {
         let mut effects = vec![Effect::MoveCard {
             player_id: controller_id,
             card_id: target_id,
-            from: from_zone
-                .location().cloned()
-                .expect("Chaos Twister target must be in a location"),
-            to: LocationQuery::from_location(landing_zone.with_region(region)),
+            from: from_location,
+            to: landing_zone.with_region(region).into(),
             tap: false,
             through_path: None,
         }];
 
         let units = CardQuery::new()
             .units()
-            .in_zone(landing_zone)
+            .in_location(landing_zone.clone())
             .id_not(target_id)
             .all(state);
         for unit_id in units {

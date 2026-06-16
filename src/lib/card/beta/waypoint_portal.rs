@@ -63,7 +63,7 @@ impl Magic for WaypointPortal {
             .in_play()
             .with_prompt("Pick the first site")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -74,7 +74,7 @@ impl Magic for WaypointPortal {
             .id_not(first_site_id)
             .with_prompt("Pick the second site")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

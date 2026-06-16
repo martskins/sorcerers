@@ -106,13 +106,12 @@ impl Card for Maelström {
                     let minion = state.get_card(&minion_id);
                     let steps = minion
                         .get_location()
-                        .steps_to_location(self.get_location())
+                        .steps_to_location(state, self.get_location())
                         .unwrap_or_default();
                     let mut zones = minion.get_locations_within_steps(state, steps);
                     zones.retain(|zone| body_of_water.contains(zone));
                     zones.retain(|zone| {
-                        zone
-                            .steps_to_location(self.get_location())
+                        zone.steps_to_location(state, self.get_location())
                             .unwrap_or_default()
                             <= steps
                     });

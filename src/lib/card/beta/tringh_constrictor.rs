@@ -61,7 +61,7 @@ impl ActivatedAbility for Constrict {
             .id_not(*card_id)
             .with_prompt("Pick a minion to constrict")
             .with_source_card(*card_id)
-            .pick(player_id, state, false)
+            .pick(player_id, state)
             .await?
         else {
             return Ok(effects);

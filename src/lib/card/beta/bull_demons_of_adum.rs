@@ -47,7 +47,7 @@ impl ActivatedAbility for TapMoveAndStrike {
                     let targets = CardQuery::new()
                         .units()
                         .untapped()
-                        .id_not_in(vec![*card_id])
+                        .id_not(*card_id)
                         .in_location(next_location.clone())
                         .all(state);
 

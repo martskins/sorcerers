@@ -130,7 +130,7 @@ impl Card for MidlandArmy {
                 };
                 let controller_id = self.get_controller_id(state);
                 Ok(from
-                    .get_adjacent()
+                    .get_adjacent(state)
                     .into_iter()
                     .map(|location| Effect::SummonToken {
                         player_id: controller_id,

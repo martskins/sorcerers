@@ -64,7 +64,7 @@ impl Magic for Backstab {
             .in_locations(&Location::all_in_region(caster_region))
             .with_prompt("Pick a minion to move")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -78,7 +78,7 @@ impl Magic for Backstab {
             .id_not_in(vec![striker_id])
             .with_prompt("Pick a tapped minion to strike")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

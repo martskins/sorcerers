@@ -49,7 +49,7 @@ impl ActivatedAbility for HarpoonPull {
             .in_zones(&target_zones)
             .with_prompt("Pick a minion to harpoon")
             .with_source_card(*card_id)
-            .pick(player_id, state, false)
+            .pick(player_id, state)
             .await?
         else {
             return Ok(vec![]);

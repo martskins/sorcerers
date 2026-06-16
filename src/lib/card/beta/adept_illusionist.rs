@@ -6,7 +6,11 @@ struct AdeptIllusionistAction;
 #[async_trait::async_trait]
 impl ActivatedAbility for AdeptIllusionistAction {
     fn get_name(&self) -> String {
-        "Search for another Adept Illusionist".to_string()
+        "Tap -> Search for another Adept Illusionist".to_string()
+    }
+
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     async fn on_select(
@@ -15,12 +19,17 @@ impl ActivatedAbility for AdeptIllusionistAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
+        // TODO: I don't like how this displays only the adept illusioninsts on each zone. I think
+        // I'd want to show all cards on that section and then highlight the cards that can be
+        // picked instead. We do that somewhere else, but I want something easier to use than that.
+        // Also, if more than one window is opened, they are opened one on top of each other, and
+        // it's not clear that there are more than one until you close it or move it.
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&player_id.clone())
             .named(AdeptIllusionist::NAME.to_string())
             .in_zones(&[Zone::Hand, Zone::Cemetery, Zone::Spellbook])
-            .id_not_in(vec![*card_id])
-            .pick(player_id, state, true)
+            .id_not(*card_id)
+            .pick(player_id, state)
             .await?
         else {
             return Ok(vec![]);

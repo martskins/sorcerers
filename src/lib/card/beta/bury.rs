@@ -57,30 +57,26 @@ impl Magic for Bury {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_targets = CardQuery::new()
+        let player_id = self.get_controller_id(state);
+        let Some(picked_card_id) = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
-            .all(state);
-        let picked_card_id = pick_card(
-            &self.get_controller_id(state),
-            &valid_targets,
-            state,
-            "Bury: Pick a minion or artifact to bury",
-        )
-        .await?;
-        let picked_card = state.get_card(&picked_card_id);
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a minion or artifact to bury")
+            .pick(&player_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
+        let picked_card = state.get_card(&picked_card_id);
         Ok(vec![Effect::MoveCard {
             player_id: self.get_controller_id(state),
             card_id: picked_card_id,
-            from: picked_card
-                .get_zone()
-                .clone()
-                .location()
-                .cloned()
-                .expect("Bury target must be in a location"),
-            to: LocationQuery::from_location(
-                picked_card.get_location().with_region(Region::Underground),
-            ),
+            from: picked_card.get_location().clone(),
+            to: picked_card
+                .get_location()
+                .with_region(Region::Underground)
+                .into(),
             tap: false,
             through_path: None,
         }])

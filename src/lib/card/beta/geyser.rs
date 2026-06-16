@@ -62,7 +62,7 @@ impl Magic for Geyser {
         let Some(target_site_id) = CardQuery::new()
             .sites()
             .count(1)
-            .pick(&player_id, state, false)
+            .pick(&player_id, state)
             .await?
         else {
             return Ok(vec![]);

@@ -90,7 +90,7 @@ impl Card for CraveGolem {
                     .can_be_attacked_by(self.get_id())
                     .randomised()
                     .count(1)
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?;
                 match target_id {
                     Some(card_id) => {
@@ -106,7 +106,7 @@ impl Card for CraveGolem {
                         let mut queue: std::collections::VecDeque<(Location, Location)> =
                             std::collections::VecDeque::new();
 
-                        for adj in self_location.get_adjacent() {
+                        for adj in self_location.get_adjacent(state) {
                             if adj.is_location(state) {
                                 queue.push_back((adj.clone(), adj.clone()));
                             }
@@ -132,7 +132,7 @@ impl Card for CraveGolem {
                                 break 'bfs;
                             }
 
-                            for adj in current.get_adjacent() {
+                            for adj in current.get_adjacent(state) {
                                 if adj.is_location(state) && !visited.contains(&adj) {
                                     queue.push_back((adj.clone(), step_from_self.clone()));
                                 }

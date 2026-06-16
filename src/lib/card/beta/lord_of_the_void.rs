@@ -122,7 +122,7 @@ impl Card for LordOfTheVoid {
                 let Some(target_site_id) = CardQuery::from_ids(candidate_sites)
                     .with_prompt("Pick a site to banish")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

@@ -65,7 +65,7 @@ impl Magic for Sleep {
             .in_locations(&zones)
             .with_prompt("Pick a target minion")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

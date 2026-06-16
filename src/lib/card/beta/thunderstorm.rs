@@ -98,13 +98,14 @@ impl Card for Thunderstorm {
                     .units()
                     .in_locations(&affected_locations)
                     .id_not_in(vec![*self.get_id()])
-                    .pick(&self.get_controller_id(state), state, false)
+                    .pick(&self.get_controller_id(state), state)
                     .await?;
                 let mut effects = vec![Effect::MoveCard {
                     player_id: self.get_controller_id(state),
                     card_id: *self.get_id(),
                     from: (self.get_zone().clone())
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_locations(
                         zones,

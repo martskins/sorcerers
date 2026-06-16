@@ -22,7 +22,7 @@ impl ActivatedAbility for DealDamage {
             .count(1)
             .in_zone(card.get_zone())
             .id_not_in(vec![*card_id])
-            .pick(&card.get_controller_id(state), state, false)
+            .pick(&card.get_controller_id(state), state)
             .await?
         else {
             return Ok(vec![]);

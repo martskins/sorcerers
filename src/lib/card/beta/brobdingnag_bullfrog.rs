@@ -85,7 +85,7 @@ impl Card for BrobdingnagBullfrog {
                     .id_not(*self.get_id())
                     .with_source_card(*self.get_id())
                     .with_prompt("Pick a minon to swallow")
-                    .pick(&player_id, state, false)
+                    .pick(&player_id, state)
                     .await?;
                 let Some(minion) = minion else {
                     return Ok(vec![]);

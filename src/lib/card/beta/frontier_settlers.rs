@@ -6,7 +6,7 @@ struct SettleAction;
 fn adjacent_void_or_rubble(card_id: &CardId, state: &State) -> Vec<Location> {
     let card = state.get_card(card_id);
     card.get_location()
-        .get_adjacent()
+        .get_adjacent(state)
         .into_iter()
         .filter(|z| match z.get_site(state) {
             None => true,

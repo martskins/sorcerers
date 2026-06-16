@@ -92,7 +92,7 @@ impl Card for Undertow {
                     .with_prompt("Choose a unit in the same body of water to move")
                     .with_source_card(*self.get_id())
                     .in_locations(&body_of_water)
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

@@ -22,7 +22,7 @@ impl ActivatedAbility for DestroyNearbySite {
             .near_to(card.get_location())
             .with_prompt("Pick a site to destroy")
             .with_source_card(*card_id)
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

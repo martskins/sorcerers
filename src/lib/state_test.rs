@@ -162,7 +162,7 @@ async fn test_lucky_charm_narrows_random_card_query_through_ongoing_effect() {
     ];
 
     let query = CardQuery::from_ids(targets.clone()).randomised();
-    let pick = query.pick(&player_id, &state, false);
+    let pick = query.pick(&player_id, &state);
     tokio::pin!(pick);
 
     let mut saw_choice = false;
@@ -227,7 +227,7 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
     ];
 
     let card_query = CardQuery::from_ids(targets.clone()).randomised();
-    let pick_card = card_query.pick(&player_id, &state, false);
+    let pick_card = card_query.pick(&player_id, &state);
     tokio::pin!(pick_card);
 
     let picked_card = tokio::time::timeout(std::time::Duration::from_secs(2), async {
@@ -323,7 +323,7 @@ async fn test_blasted_oak_restricts_card_targets_by_precedence() {
 
     let targets = vec![site_id, minion_id, oak_id];
     let query = CardQuery::from_ids(targets).with_source_card(source_id);
-    let pick = query.pick(&player_id, &state, false);
+    let pick = query.pick(&player_id, &state);
     tokio::pin!(pick);
 
     let picked = tokio::time::timeout(std::time::Duration::from_secs(2), async {

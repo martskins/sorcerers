@@ -3,7 +3,6 @@ use crate::{
     card::{Ability, AdditionalCost, CardType, Cost, Region},
     effect::{Effect, EffectEngine},
     error::GameError,
-    evaluation,
     networking::{
         client::Client,
         message::{ClientMessage, ServerMessage},
@@ -1456,9 +1455,6 @@ impl ActivatedAbility for UnitAction {
 pub struct Game {
     pub id: uuid::Uuid,
     pub state: State,
-    /// When `true` every `Sync` message broadcast to clients includes a full
-    /// board evaluation so that UIs and AI agents can display/log it.
-    pub debug_eval: bool,
     streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
@@ -1484,7 +1480,6 @@ impl Game {
             state: State::new(game_id, players, server_sender.clone(), receiver.clone()),
             client_receiver: receiver,
             server_receiver,
-            debug_eval: false,
         }
     }
 
@@ -2019,15 +2014,7 @@ impl Game {
     /// Build a `Sync` message for the current state.  When `debug_eval` is
     /// enabled the message also carries a full board evaluation.
     pub(crate) fn make_sync(&self) -> anyhow::Result<ServerMessage> {
-        let mut sync = self.state.into_sync()?;
-        if self.debug_eval
-            && let ServerMessage::Sync {
-                ref mut evaluation, ..
-            } = sync
-        {
-            *evaluation = Some(evaluation::evaluate(&self.state));
-        }
-        Ok(sync)
+        self.state.into_sync()
     }
 
     pub(crate) fn game_over_messages(&self) -> Option<Vec<ServerMessage>> {

@@ -78,7 +78,7 @@ impl Card for SunkenTreasure {
             .water_sites()
             .with_prompt("Pick a water site to place the treasure under")
             .with_source_card(*self.get_id())
-            .pick(&opponent_id, state, false)
+            .pick(&opponent_id, state)
             .await?
         else {
             return Ok(vec![]);

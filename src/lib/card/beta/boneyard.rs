@@ -99,7 +99,7 @@ impl Card for Boneyard {
                         .with_source_card(*self.get_id())
                         // TODO: The minion can be summoned in any region on the site, not just atop.
                         .with_prompt("Pick a minion in your cemetery to summon in Boneyard")
-                        .pick(&player_id, &state, false)
+                        .pick(&player_id, &state)
                         .await?;
                     let Some(minion) = minion else {
                         return Ok(vec![]);

@@ -67,7 +67,7 @@ impl Magic for ScorchedEarth {
             let Some(site_id) = CardQuery::from_ids(remaining_sites.clone())
                 .with_prompt("Choose a site to destroy (or cancel)")
                 .with_source_card(*self.get_id())
-                .pick(&controller_id, state, false)
+                .pick(&controller_id, state)
                 .await?
             else {
                 break;

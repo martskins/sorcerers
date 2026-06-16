@@ -188,7 +188,7 @@ impl Magic for DreamQuest {
         let picked_id = CardQuery::from_ids(spellcasters)
             .with_prompt("Pick an allied Spellcaster to send on a dream quest")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?;
 
         let Some(minion_id) = picked_id else {

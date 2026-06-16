@@ -64,7 +64,7 @@ impl Magic for Boil {
         let Some(picked_site_id) = CardQuery::new()
             .water_sites()
             .in_locations(&zones)
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

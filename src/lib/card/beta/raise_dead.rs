@@ -63,7 +63,7 @@ impl Magic for RaiseDead {
             .randomised()
             .in_zone(&Zone::Cemetery)
             .minions()
-            .pick(self.get_owner_id(), state, false)
+            .pick(self.get_owner_id(), state)
             .await?
             .expect("Raise Dead: No valid targets in cemetery");
         let minion = state.get_card(&minion_id);

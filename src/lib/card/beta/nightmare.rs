@@ -96,7 +96,7 @@ impl Card for Nightmare {
                     .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
                     .collect::<Vec<_>>();
 
-                let adjacent_locations = self.get_location().get_adjacent();
+                let adjacent_locations = self.get_location().get_adjacent(state);
                 if adjacent_locations.is_empty() {
                     return Ok(vec![]);
                 }

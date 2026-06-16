@@ -92,7 +92,7 @@ impl Card for Battlefield {
                     .in_zone(&Zone::Cemetery)
                     .with_prompt("Pick a weapon or armor to conjure")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, true)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

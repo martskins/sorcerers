@@ -64,7 +64,7 @@ impl Magic for Teleport {
             .with_source_card(*self.get_id())
             .units()
             .controlled_by(&controller_id)
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?;
         let card_id = card_id.expect("value not to be None");
         let zone = ZoneQuery::any_site(
@@ -77,7 +77,8 @@ impl Magic for Teleport {
             player_id: *self.get_owner_id(),
             card_id,
             to_location: zone
-                .location().cloned()
+                .location()
+                .cloned()
                 .expect("teleport target must be a location"),
         }])
     }

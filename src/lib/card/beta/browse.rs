@@ -78,7 +78,7 @@ impl Magic for Browse {
         let chosen_id = CardQuery::from_ids(looked_at.clone())
             .with_source_card(*self.get_id())
             .with_prompt("Pick a spell to put into your hand")
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?;
         let Some(chosen_id) = chosen_id else {
             return Ok(vec![]);

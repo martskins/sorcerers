@@ -87,7 +87,7 @@ impl Magic for Recall {
             let picked = CardQuery::from_ids(remaining.clone())
                 .with_prompt(prompt)
                 .with_source_card(*self.get_id())
-                .pick(&controller_id, state, false)
+                .pick(&controller_id, state)
                 .await?;
 
             match picked {
@@ -97,7 +97,8 @@ impl Magic for Recall {
                         card_id,
                         to_location: caster_zone
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("teleport target must be a location"),
                     });
                     remaining.retain(|id| *id != card_id);

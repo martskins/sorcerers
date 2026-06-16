@@ -262,7 +262,14 @@ impl Location {
         }
     }
 
-    pub fn get_adjacent(&self) -> Vec<Self> {
+    pub fn get_adjacent(&self, state: &State) -> Vec<Self> {
+        self.get_adjacent_unchecked()
+            .into_iter()
+            .filter(|l| l.is_location(state))
+            .collect()
+    }
+
+    fn get_adjacent_unchecked(&self) -> Vec<Self> {
         match self {
             Location::Square(square, region) => {
                 let mut adjacent = match square % 5 {
@@ -331,7 +338,7 @@ impl Location {
     }
 
     fn get_nearby_unchecked(&self) -> Vec<Self> {
-        let mut nearby = self.get_adjacent();
+        let mut nearby = self.get_adjacent_unchecked();
         let region = self.region().clone();
 
         match self {
@@ -362,7 +369,7 @@ impl Location {
                 nearby.clear();
                 for square in squares {
                     let square_location = Location::Square(*square, region.clone());
-                    nearby.extend(square_location.get_adjacent());
+                    nearby.extend(square_location.get_adjacent_unchecked());
 
                     let diagonals = match square % 5 {
                         0 => vec![
@@ -408,14 +415,14 @@ impl Location {
     }
 
     pub fn is_adjacent(&self, other: &Location) -> bool {
-        self.get_adjacent().contains(other)
+        self.get_adjacent_unchecked().contains(other)
     }
 
-    pub fn steps_to_location(&self, other: &Location) -> Option<u8> {
-        self.min_steps_to_location(other)
+    pub fn steps_to_location(&self, state: &State, other: &Location) -> Option<u8> {
+        self.min_steps_to_location(state, other)
     }
 
-    pub fn min_steps_to_location(&self, other: &Location) -> Option<u8> {
+    pub fn min_steps_to_location(&self, state: &State, other: &Location) -> Option<u8> {
         let mut visited = Vec::new();
         let mut to_visit = vec![(self.clone(), 0)];
 
@@ -427,7 +434,7 @@ impl Location {
             if !visited.contains(&current_location) {
                 visited.push(current_location.clone());
 
-                for adjacent in current_location.get_adjacent() {
+                for adjacent in current_location.get_adjacent(state) {
                     to_visit.push((adjacent, current_step + 1));
                 }
             }
@@ -438,13 +445,10 @@ impl Location {
 
     pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
         self.get_nearby(state)
-            .into_iter()
-            .filter(|location| location.is_location(state))
-            .collect()
     }
 
     pub fn get_adjacent_locations(&self, state: &State) -> Vec<Self> {
-        self.get_adjacent()
+        self.get_adjacent(state)
             .into_iter()
             .filter(|location| location.is_location(state))
             .collect()
@@ -465,7 +469,7 @@ impl Location {
     }
 
     pub fn get_adjacent_sites(&self, state: &State) -> Vec<Self> {
-        self.get_adjacent()
+        self.get_adjacent(state)
             .into_iter()
             .filter_map(|location| {
                 let square = location.get_square()?;
@@ -490,7 +494,7 @@ impl Location {
     }
 
     pub fn get_adjacent_voids(&self, state: &State) -> Vec<Self> {
-        self.get_adjacent()
+        self.get_adjacent(state)
             .into_iter()
             .filter_map(|location| {
                 let square = location.get_square()?;
@@ -656,8 +660,7 @@ impl Location {
                             .all(state)
                             .into_iter()
                             .map(|cid| state.get_card(&cid).get_location())
-                            .flat_map(|l| l.get_adjacent())
-                            .filter(|l| l.get_site(state).is_none())
+                            .flat_map(|l| l.with_region(Region::Void).get_adjacent(state))
                             .collect();
 
                         Ok(empty_adjacent_zones.contains(self))
@@ -757,5 +760,59 @@ impl Zone {
             self,
             Zone::Location(Location::Square(_, _)) | Zone::Location(Location::Intersection(_, _))
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{card::Region, zone::Location};
+
+    #[test]
+    fn test_get_adjacent_squares() {
+        let adj = Location::Square(8, Region::Surface).get_adjacent_unchecked();
+        assert!(adj.contains(&Location::Square(3, Region::Surface)));
+        assert!(adj.contains(&Location::Square(7, Region::Surface)));
+        assert!(adj.contains(&Location::Square(9, Region::Surface)));
+        assert!(adj.contains(&Location::Square(13, Region::Surface)));
+    }
+
+    #[test]
+    fn test_locations_are_adjacent() {
+        assert!(
+            Location::Square(1, Region::Surface).is_adjacent(&Location::Square(2, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_adjacent(&Location::Square(2, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_adjacent(&Location::Square(4, Region::Surface))
+        );
+        assert!(
+            !Location::Square(3, Region::Surface)
+                .is_adjacent(&Location::Square(7, Region::Surface))
+        );
+        assert!(
+            !Location::Square(3, Region::Surface)
+                .is_adjacent(&Location::Square(9, Region::Surface))
+        );
+    }
+
+    #[test]
+    fn test_locations_are_nearby() {
+        assert!(
+            Location::Square(1, Region::Surface).is_nearby(&Location::Square(2, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_nearby(&Location::Square(2, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_nearby(&Location::Square(4, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_nearby(&Location::Square(7, Region::Surface))
+        );
+        assert!(
+            Location::Square(3, Region::Surface).is_nearby(&Location::Square(9, Region::Surface))
+        );
     }
 }

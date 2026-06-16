@@ -66,7 +66,7 @@ impl Magic for Immolation {
             .near_to(&caster_location)
             .with_prompt("Pick target minion")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

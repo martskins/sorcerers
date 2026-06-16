@@ -109,7 +109,7 @@ impl Card for ImperialRoad {
                     let Some(chosen_site) = CardQuery::from_ids(sites_in_atlasbook)
                         .with_prompt("Play an adjacent site?")
                         .with_source_card(*self.get_id())
-                        .pick(&player_id, state, true)
+                        .pick(&player_id, state)
                         .await?
                     else {
                         continue;

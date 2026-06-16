@@ -58,39 +58,23 @@ impl Magic for CallToWar {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let deck = state.decks.get(&controller_id).unwrap();
-        let targets: Vec<CardId> = deck
-            .spells
-            .iter()
-            .copied()
-            .filter(|id| {
-                let card = state.get_card(id);
-                card.is_minion()
-                    && card
-                        .get_unit_base()
-                        .is_some_and(|base| base.types.contains(&MinionType::Mortal))
-                    && card.get_base().rarity == Rarity::Exceptional
-            })
-            .collect();
-        if targets.is_empty() {
-            return Ok(vec![Effect::ShuffleDeck {
-                player_id: controller_id,
-            }]);
-        }
-
-        let chosen = pick_card_with_options(
-            &controller_id,
-            &targets,
-            &deck.spells,
-            false,
-            state,
-            "Call to War: Choose an Exceptional Mortal to put into your hand",
-        )
-        .await?;
+        let Some(picked_card_id) = CardQuery::new()
+            .minions()
+            .in_zone(Zone::Spellbook)
+            .owned_by(&controller_id)
+            .minion_type(&MinionType::Mortal)
+            .rarity(&Rarity::Exceptional)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick an exceptional mortal to put in your hand")
+            .pick(&controller_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
         Ok(vec![
             Effect::SetCardZone {
-                card_id: chosen,
+                card_id: picked_card_id,
                 zone: Zone::Hand,
             },
             Effect::ShuffleDeck {

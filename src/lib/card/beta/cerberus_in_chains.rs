@@ -103,17 +103,12 @@ impl Card for CerberusInChains {
                 let player_id = self.get_controller_id(state);
                 let avatar_id = state.get_player_avatar_id(&player_id)?;
                 let avatar = state.get_card(&avatar_id);
-                let new_zone = avatar.get_zone().clone();
-
+                let new_location = avatar.get_location().clone();
                 Ok(vec![Effect::MoveCard {
                     player_id,
                     card_id: *self.get_id(),
-                    from: self
-                        .get_zone()
-                        .clone()
-                        .location().cloned()
-                        .expect("Cerberus must be in a location"),
-                    to: LocationQuery::from_zone(new_zone),
+                    from: self.get_location().clone(),
+                    to: new_location.into(),
                     tap: false,
                     through_path: None,
                 }])

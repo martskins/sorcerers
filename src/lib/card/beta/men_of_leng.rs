@@ -95,7 +95,7 @@ impl Card for MenOfLeng {
                     .controlled_by(&avatar_controller)
                     .randomised()
                     .count(1)
-                    .pick(&avatar_controller, state, false)
+                    .pick(&avatar_controller, state)
                     .await?;
 
                 if let Some(card_id) = random_card {

@@ -66,7 +66,7 @@ impl Magic for Blink {
             .with_prompt("Pick an ally to teleport")
             .with_source_card(*self.get_id())
             .id_not_in(vec![*caster_id])
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?;
         let card_id = card_id.expect("value not to be None");
         let card = state.get_card(&card_id);

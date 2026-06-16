@@ -90,11 +90,11 @@ impl Card for CauldronCrones {
                 let Some(picked) = CardQuery::new()
                     .minions()
                     .controlled_by(&controller_id)
-                    .in_zone(self.get_zone())
-                    .id_not_in(vec![*self.get_id()])
+                    .in_location(self.get_location().clone())
+                    .id_not(*self.get_id())
                     .with_prompt("Choose a minion to sacrifice")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

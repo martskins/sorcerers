@@ -106,7 +106,7 @@ impl Card for Mudflow {
                     .near_to(self.get_location())
                     .with_prompt("Pick a nearby site to surface/unburrow all minions")
                     .with_source_card(*self.get_id())
-                    .pick(&controller_id, state, false)
+                    .pick(&controller_id, state)
                     .await?
                 else {
                     return Ok(vec![]);

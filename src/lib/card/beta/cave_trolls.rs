@@ -16,7 +16,7 @@ impl CaveTrolls {
                 power: 3,
                 toughness: 3,
                 abilities: vec![Ability::Burrowing],
-                types: vec![MinionType::Mortal],
+                types: vec![MinionType::Troll],
                 tapped: false,
                 ..Default::default()
             },

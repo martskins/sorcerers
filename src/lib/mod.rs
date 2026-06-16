@@ -3,7 +3,6 @@ pub mod card;
 pub mod deck;
 pub mod effect;
 pub mod error;
-pub mod evaluation;
 pub mod game;
 pub mod networking;
 pub mod query;
@@ -12,8 +11,6 @@ pub mod zone;
 
 #[cfg(test)]
 mod effect_test;
-#[cfg(test)]
-mod game_test;
 #[cfg(test)]
 mod state_test;
 #[cfg(test)]

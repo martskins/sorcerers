@@ -27,7 +27,7 @@ impl ActivatedAbility for SpearStrike {
             .in_play()
             .with_prompt("Choose a minion anywhere")
             .with_source_card(*card_id)
-            .pick(player_id, state, false)
+            .pick(player_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -42,7 +42,8 @@ impl ActivatedAbility for SpearStrike {
                 player_id: controller_id,
                 card_id: *card_id,
                 to_location: target_zone
-                    .location().cloned()
+                    .location()
+                    .cloned()
                     .expect("teleport target must be a location"),
             },
             Effect::KillMinion {

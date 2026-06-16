@@ -123,7 +123,7 @@ impl Card for ChainsOfPrometheus {
                 if strongest.len() > 1 {
                     let Some(picked_card) = CardQuery::from_ids(strongest)
                         .count(1)
-                        .pick(&drawing_player, state, false)
+                        .pick(&drawing_player, state)
                         .await?
                     else {
                         return Ok(vec![]);

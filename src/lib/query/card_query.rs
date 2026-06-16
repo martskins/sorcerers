@@ -4,7 +4,7 @@ use crate::{
     card::{
         Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType,
     },
-    game::{CardId, Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
+    game::{CardId, Direction, Element, PlayerId, pick_card_source},
     query::QueryCache,
     state::State,
     zone::{Location, Zone},
@@ -666,7 +666,6 @@ impl CardQuery {
         &self,
         player_id: &PlayerId,
         state: &State,
-        use_preview: bool,
     ) -> anyhow::Result<Option<CardId>> {
         let query_id = *self.id.get_or_init(uuid::Uuid::new_v4);
         if let Some(cached) = QueryCache::card_result(&query_id) {
@@ -706,12 +705,7 @@ impl CardQuery {
                 if let crate::state::OngoingEffect::ModifyCardQuery { modifier, .. } = effect
                     && let Some(query) = modifier(state, player_id, &effective_query)?
                 {
-                    let output = Box::pin(query.without_modifiers().pick(
-                        player_id,
-                        state,
-                        use_preview,
-                    ))
-                    .await?;
+                    let output = Box::pin(query.without_modifiers().pick(player_id, state)).await?;
                     if let Some(output) = output {
                         QueryCache::store_card_result(state.game_id, query_id, output);
                     }
@@ -733,27 +727,14 @@ impl CardQuery {
                 .prompt
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
-            if use_preview {
-                pick_card_with_options_source(
-                    player_id,
-                    &card_ids,
-                    &card_ids,
-                    false,
-                    state,
-                    &prompt,
-                    effective_query.source_card_id,
-                )
-                .await?
-            } else {
-                pick_card_source(
-                    player_id,
-                    &card_ids,
-                    state,
-                    &prompt,
-                    effective_query.source_card_id,
-                )
-                .await?
-            }
+            pick_card_source(
+                player_id,
+                &card_ids,
+                state,
+                &prompt,
+                effective_query.source_card_id,
+            )
+            .await?
         };
 
         QueryCache::store_card_result(state.game_id, query_id, output);

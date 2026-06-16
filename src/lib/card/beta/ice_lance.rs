@@ -72,8 +72,14 @@ impl Magic for IceLance {
 
         let location_dmg = vec![
             (Some(location.clone()), 3),
-            (location.steps_in_direction(&direction, 1, state, Some(caster_id)), 2),
-            (location.steps_in_direction(&direction, 2, state, Some(caster_id)), 1),
+            (
+                location.steps_in_direction(&direction, 1, state, Some(caster_id)),
+                2,
+            ),
+            (
+                location.steps_in_direction(&direction, 2, state, Some(caster_id)),
+                1,
+            ),
         ];
 
         let mut effects = vec![];
@@ -86,7 +92,7 @@ impl Magic for IceLance {
                     .with_prompt("Pick a unit to damage")
                     .with_source_card(*self.get_id());
 
-                if let Some(card_id) = qry.pick(&controller_id, state, false).await? {
+                if let Some(card_id) = qry.pick(&controller_id, state).await? {
                     effects.push(Effect::TakeDamage {
                         card_id,
                         from: *self.get_id(),

@@ -126,8 +126,7 @@ impl EffectQuery {
 
                 for sc in summoned_cards {
                     let card_matches = card_query.matches(&sc.card_id, state);
-                    let location_matches =
-                        location_query.options(state).contains(&sc.to_location);
+                    let location_matches = location_query.options(state).contains(&sc.to_location);
                     if card_matches && location_matches {
                         return Ok(true);
                     }
@@ -292,6 +291,25 @@ impl EffectQuery {
             }
             (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
+            }
+            (
+                EffectQuery::SetCardRegion {
+                    card,
+                    destination: target_dest,
+                },
+                Effect::MoveCard {
+                    card_id,
+                    player_id,
+                    to: actual_dest,
+                    ..
+                },
+            ) => {
+                let card_matches = card.matches(card_id, state);
+                let actual_dest = actual_dest.pick(player_id, state).await?;
+                let dest_matches = target_dest
+                    .as_ref()
+                    .is_none_or(|r| r == actual_dest.region());
+                Ok(card_matches && dest_matches)
             }
             (
                 EffectQuery::SetCardRegion {

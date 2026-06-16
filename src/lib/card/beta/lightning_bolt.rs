@@ -72,7 +72,7 @@ impl Magic for LightningBolt {
             .in_zone(&picked_zone)
             .randomised()
             .count(1)
-            .pick(&self.get_controller_id(state), state, false)
+            .pick(&self.get_controller_id(state), state)
             .await?
         else {
             return Ok(vec![]);

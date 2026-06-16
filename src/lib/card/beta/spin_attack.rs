@@ -61,7 +61,7 @@ impl Magic for SpinAttack {
             .controlled_by(&controller_id)
             .with_prompt("Choose an ally to strike all enemies at its location")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         {
             Some(id) => id,

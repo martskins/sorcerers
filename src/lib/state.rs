@@ -1707,7 +1707,7 @@ impl State {
                     {
                         body_of_water.push(location.clone());
                     }
-                    for adj in location.get_adjacent() {
+                    for adj in location.get_adjacent(state) {
                         dfs(state, &adj, visited, body_of_water);
                     }
                 }
@@ -1767,7 +1767,7 @@ impl State {
                     if !span.iter().any(|span_location| span_location == &location) {
                         span.push(location.clone());
                     }
-                    for adj in location.get_adjacent() {
+                    for adj in location.get_adjacent(state) {
                         dfs(state, &adj, visited, span);
                     }
                 }
@@ -1986,7 +1986,6 @@ impl State {
                 .into_iter()
                 .map(|(name, description)| EffectDebugData { name, description })
                 .collect(),
-            evaluation: None,
         })
     }
 

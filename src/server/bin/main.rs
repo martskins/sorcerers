@@ -16,21 +16,14 @@ async fn main() -> anyhow::Result<()> {
     QueryCache::init();
 
     // Enable board-evaluation debug output with `--eval` or `SORCERERS_DEBUG_EVAL=1`.
-    let debug_eval = std::env::args().any(|a| a == "--eval")
-        || std::env::var("SORCERERS_DEBUG_EVAL").is_ok_and(|v| v == "1");
     let test_state = std::env::args().any(|a| a == "--test-state")
         || std::env::var("SORCERERS_TEST_STATE").is_ok_and(|v| v == "1");
-    if debug_eval {
-        println!(
-            "Board evaluation debug mode enabled – Sync messages will include evaluation data."
-        );
-    }
     if test_state {
         println!("Server test-state mode enabled – new games will include the seeded test board.");
     }
 
     let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;
-    let server = Arc::new(Mutex::new(Server::new(debug_eval, test_state)));
+    let server = Arc::new(Mutex::new(Server::new(test_state)));
 
     loop {
         let (stream, addr) = socket.accept().await?;

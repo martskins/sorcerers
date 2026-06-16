@@ -65,7 +65,7 @@ impl Magic for WhirlingBlades {
             .in_play()
             .with_prompt("Pick an ally")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);

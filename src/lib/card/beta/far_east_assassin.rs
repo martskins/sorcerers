@@ -52,7 +52,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
             .adjacent_to(card.get_location())
             .with_prompt("Pick a target unit in an adjacent zone")
             .with_source_card(*card_id)
-            .pick(player_id, state, false)
+            .pick(player_id, state)
             .await?
         else {
             return Ok(vec![]);

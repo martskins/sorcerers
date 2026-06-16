@@ -64,7 +64,7 @@ impl Magic for Riptide {
             .with_prompt("Pick a water site to pull a unit into")
             .with_source_card(*self.get_id())
             .sites()
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -75,7 +75,7 @@ impl Magic for Riptide {
             .adjacent_to(site.get_location())
             .with_prompt("Pick a unit to pull")
             .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
+            .pick(&controller_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -86,10 +86,12 @@ impl Magic for Riptide {
                 player_id: self.get_controller_id(state),
                 card_id: picked_unit_id,
                 from: (unit.get_zone().clone())
-                    .location().cloned()
+                    .location()
+                    .cloned()
                     .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_location(
-                    site.get_location().with_region(unit.get_region(state).clone()),
+                    site.get_location()
+                        .with_region(unit.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

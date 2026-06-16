@@ -75,9 +75,9 @@ impl Card for BuriedTreasure {
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(player_id)
             .land_sites()
-            .with_prompt("Pick a land site to place the treasure under")
+            .with_prompt("Pick a land site to bury opponent's buried treasure under")
             .with_source_card(*self.get_id())
-            .pick(&opponent_id, state, false)
+            .pick(&opponent_id, state)
             .await?
         else {
             return Ok(vec![]);
@@ -99,10 +99,13 @@ impl Card for BuriedTreasure {
     }
 
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let Some(bearer_id) = self.get_bearer()? else {
+            return Ok(vec![]);
+        };
         Ok(vec![Hook {
             id: CHANGE_REGION_HOOK,
             trigger: EffectQuery::SetCardRegion {
-                card: self.get_id().into(),
+                card: bearer_id.into(),
                 destination: Some(Region::Surface),
             },
             timing: HookTiming::After,
