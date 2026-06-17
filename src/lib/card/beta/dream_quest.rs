@@ -65,17 +65,6 @@ impl Card for DreamQuest {
         Ok(())
     }
 
-    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: NEXT_TURN_HOOK,
-            trigger: EffectQuery::TurnStart {
-                player_id: Some(self.get_controller_id(state)),
-            },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::Any,
-        }])
-    }
-
     async fn resolve_hook(
         &self,
         hook_id: HookId,
@@ -185,13 +174,12 @@ impl Magic for DreamQuest {
             return Ok(vec![]);
         }
 
-        let picked_id = CardQuery::from_ids(spellcasters)
+        let Some(minion_id) = CardQuery::from_ids(spellcasters)
             .with_prompt("Pick an allied Spellcaster to send on a dream quest")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)
-            .await?;
-
-        let Some(minion_id) = picked_id else {
+            .await?
+        else {
             return Ok(vec![]);
         };
 

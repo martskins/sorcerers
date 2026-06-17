@@ -55,7 +55,6 @@ impl Card for DodgeRoll {
         let dodge_rolls_in_hand = CardQuery::new()
             .named(DodgeRoll::NAME.to_string())
             .controlled_by(&controller_id)
-            .including_not_in_play()
             .in_zone(&Zone::Hand)
             .all(state);
         if dodge_rolls_in_hand.first() != Some(self.get_id()) {
@@ -104,17 +103,11 @@ impl Card for DodgeRoll {
                 let avatar_id = state.get_player_avatar_id(&defender_controller)?;
                 let avatar = state.get_card(&avatar_id);
                 let adjacent_locations = defender.get_location().get_adjacent_locations(state);
-                let prompt = "Dodge Roll: Pick an adjacent location to move to";
-                let picked_site = pick_location_source(
-                    defender_controller,
-                    &adjacent_locations,
-                    state,
-                    true,
-                    prompt,
-                    Some(*self.get_id()),
-                )
-                .await?;
-
+                let picked_site = LocationQuery::from_locations(adjacent_locations)
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick an adjacent location to move to")
+                    .pick(&self.get_controller_id(state), state)
+                    .await?;
                 let attacker = state.get_card(attacker_id);
                 let attacker_controller = attacker.get_controller_id(state);
                 Ok(vec![
@@ -125,13 +118,8 @@ impl Card for DodgeRoll {
                     Effect::MoveCard {
                         player_id: attacker_controller,
                         card_id: *attacker_id,
-                        from: attacker
-                            .get_zone()
-                            .clone()
-                            .location()
-                            .cloned()
-                            .expect("Dodge Roll attacker must be in a location"),
-                        to: LocationQuery::from_location(defender.get_location().clone()),
+                        from: attacker.get_location().clone(),
+                        to: defender.get_location().clone().into(),
                         tap: true,
                         through_path: None,
                     },
@@ -139,12 +127,7 @@ impl Card for DodgeRoll {
                         player_id: defender_controller,
                         card_id: *self.get_id(),
                         caster_id: avatar_id,
-                        from: avatar
-                            .get_zone()
-                            .clone()
-                            .location()
-                            .cloned()
-                            .expect("Dodge Roll caster must be in a location"),
+                        from: avatar.get_location().clone(),
                     },
                 ])
             }

@@ -87,7 +87,6 @@ impl Card for Crossroads {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
                 let deck = state.decks.get(&controller_id).unwrap().clone();
-
                 let mut remaining_sites = deck.sites.clone();
                 let mut looked_at: Vec<CardId> = vec![];
                 for _ in 0..4 {
@@ -100,13 +99,14 @@ impl Card for Crossroads {
                     return Ok(vec![]);
                 }
 
-                let chosen_id = pick_card_with_preview(
-                    &controller_id,
-                    &looked_at,
-                    state,
-                    "Crossroads: Pick a site to keep on top of your atlas",
-                )
-                .await?;
+                let Some(chosen_id) = CardQuery::from_ids(looked_at.clone())
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick a site to keep on top of your atlas")
+                    .pick(&controller_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
                 // The rest go to the bottom of the deck (front of sites vec).
                 let bottom: Vec<CardId> = looked_at

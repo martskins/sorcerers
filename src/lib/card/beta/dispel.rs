@@ -60,24 +60,20 @@ impl Magic for Dispel {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-
-        let zones_within_two = caster
-            .get_locations_within_steps(state, 2)
-            .into_iter()
-            .map(Zone::from)
-            .collect();
-        let target_zone = ZoneQuery::from_options(
-            zones_within_two,
-            Some("Dispel: Pick a zone to disenchant".to_string()),
-        )
-        .pick(&controller_id, state)
-        .await?;
+        let locs_within_two_steps = caster.get_locations_within_steps(state, 2);
+        let target_zone = LocationQuery::from_locations(locs_within_two_steps)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a zone to disenchant")
+            .pick(&controller_id, state)
+            .await?;
 
         let artifacts_and_auras = CardQuery::new()
             .card_types(vec![CardType::Aura, CardType::Artifact])
             .in_zone(&target_zone)
             .all(state);
 
+        // TODO: Do we need a destroy effect for non-minion cards? Or even a generic one that does
+        // what KillMinion does?
         Ok(artifacts_and_auras
             .into_iter()
             .map(|id| Effect::BuryCard { card_id: id })

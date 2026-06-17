@@ -75,7 +75,7 @@ impl Card for Crusade {
                     .in_affected_zones_of_card(self.get_id())
                     .controlled_by(&controller_id)
                     .minions()
-                    .with_affinity_in(vec![Element::Earth]),
+                    .with_affinity(Element::Earth),
             },
         ])
     }

@@ -72,22 +72,17 @@ impl Card for DeathDealer {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GENESIS_HOOK_ID => {
-                let self_id = *self.get_id();
-
-                Ok(CardQuery::new()
-                    .minions()
-                    .in_play()
-                    .id_not_in(vec![self_id])
-                    .all(state)
-                    .into_iter()
-                    .map(|id| Effect::KillMinion {
-                        card_id: id,
-                        killer_id: *self.get_id(),
-                        from_attack: false,
-                    })
-                    .collect())
-            }
+            GENESIS_HOOK_ID => Ok(CardQuery::new()
+                .minions()
+                .id_not(*self.get_id())
+                .all(state)
+                .into_iter()
+                .map(|id| Effect::KillMinion {
+                    card_id: id,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                })
+                .collect()),
             _ => Ok(vec![]),
         }
     }

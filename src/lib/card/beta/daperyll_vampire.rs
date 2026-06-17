@@ -1,9 +1,5 @@
 use crate::prelude::*;
 
-/// **Daperyll Vampire** — Exceptional Minion (5 cost, 4/4)
-///
-/// Airborne
-/// Daperyll Vampire's strike damage against units heals you.
 #[derive(Debug, Clone)]
 pub struct DaperyllVampire {
     unit_base: UnitBase,

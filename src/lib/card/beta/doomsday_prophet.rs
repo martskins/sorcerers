@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TAKE_DAMAGE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct DoomsdayProphet {
     unit_base: UnitBase,
@@ -61,18 +63,53 @@ impl Card for DoomsdayProphet {
         Some(&mut self.unit_base)
     }
 
-    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![OngoingEffect::DoubleDamageTaken {
-            affected_cards: CardQuery::new()
-                .nearby_locations_to_card(self.get_id())
-                .units()
-                .id_not_in(vec![*self.get_id()]),
-            except_strikes: true,
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TAKE_DAMAGE_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: None,
+                target: Some(CardQuery::new().units().nearby_to_card(self.get_id())),
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            TAKE_DAMAGE_HOOK => {
+                let Effect::TakeDamage {
+                    card_id,
+                    from,
+                    damage,
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
+                if damage.is_strike {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![Effect::TakeDamage {
+                    card_id: *card_id,
+                    from: *from,
+                    damage: Damage {
+                        amount: damage.amount * 2,
+                        is_attack: damage.is_attack,
+                        is_ranged: damage.is_ranged,
+                        is_lethal: damage.is_lethal,
+                        is_strike: damage.is_strike,
+                    },
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

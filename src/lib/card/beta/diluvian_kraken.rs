@@ -6,7 +6,7 @@ struct TapToStrikeNearbyMinions;
 #[async_trait::async_trait]
 impl ActivatedAbility for TapToStrikeNearbyMinions {
     fn get_name(&self) -> String {
-        "Tap to Strike Nearby Minions".to_string()
+        "Tap -> Strike nearby units".to_string()
     }
 
     async fn on_select(
@@ -19,26 +19,23 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         let mut effects = CardQuery::new()
             .units()
             .near_to(kraken.get_location())
-            .id_not_in(vec![*kraken.get_id()])
+            .id_not(*kraken.get_id())
             .all(state)
             .into_iter()
             .map(|unit_id| Effect::Strike {
-                striker_id: unit_id,
-                target_id: *kraken.get_id(),
+                striker_id: *kraken.get_id(),
+                target_id: unit_id,
             })
             .collect::<Vec<Effect>>();
 
         effects.push(Effect::MoveCard {
             player_id: *player_id,
             card_id: *card_id,
-            from: (kraken.get_zone().clone())
-                .location().cloned()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::from_location(
-                kraken
-                    .get_location()
-                    .with_region(kraken.get_region(state).clone()),
-            ),
+            from: kraken.get_location().clone(),
+            to: kraken
+                .get_location()
+                .with_region(kraken.get_region(state).clone())
+                .into(),
             tap: false,
             through_path: None,
         });

@@ -792,9 +792,14 @@ impl Effect {
             } => {
                 let attacker = state.get_card(from).get_name();
                 let defender = state.get_card(card_id).get_name();
+                let mut damage_desc = "damage";
+                if damage.is_lethal {
+                    damage_desc = "lethal damage";
+                }
+
                 Some(format!(
-                    "{} takes {} damage from {}",
-                    defender, damage.amount, attacker
+                    "{} takes {} {} from {}",
+                    defender, damage.amount, damage_desc, attacker
                 ))
             }
             Effect::KillMinion {
@@ -2317,10 +2322,8 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let Some(original_zone) = card.get_location().cloned() else {
-                    state.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                    return Ok(());
-                };
+                let original_zone = card.get_location().clone();
+                state.get_card_mut(card_id).set_zone(Zone::Cemetery);
                 if state.mark_for_death(*card_id, original_zone.clone().into()) {
                     state.queue_one(Effect::TriggerDeathrite {
                         card_id: *card_id,

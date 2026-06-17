@@ -84,17 +84,11 @@ impl Card for DevilSEgg {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-                if !self.get_zone().is_in_play() {
+                let Some(site) = self.get_location().get_site(state) else {
                     return Ok(vec![]);
-                }
-
-                let site = match self.get_location().get_site(state) {
-                    Some(s) => s,
-                    None => return Ok(vec![]),
                 };
 
                 let site_controller_id = site.get_controller_id(state);
-
                 Ok(vec![Effect::AdjustAvatarLife {
                     player_id: site_controller_id,
                     amount: -1,

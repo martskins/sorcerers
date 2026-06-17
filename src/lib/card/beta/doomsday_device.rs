@@ -102,10 +102,6 @@ impl Card for DoomsdayDevice {
                 data: std::sync::Arc::new(6u8),
             }]),
             TURN_END_HOOK => {
-                if !self.get_zone().is_in_play() {
-                    return Ok(vec![]);
-                }
-
                 if self.doom_counters == 0 {
                     return Ok(vec![]);
                 }

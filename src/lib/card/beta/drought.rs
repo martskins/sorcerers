@@ -62,9 +62,7 @@ impl Card for Drought {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::ModifyProvidedAffinities {
-            // TODO: This removes only one W affinity. Not sure what should happen with sites that
-            // provide WW. Not sure if those sites even exist.
-            modifier: AffinityModifier::Remove(Thresholds::parse("W")),
+            modifier: AffinityModifier::RemoveAll(Element::Water),
             affected_sites: CardQuery::new()
                 .in_affected_zones_of_card(self.get_id())
                 .sites(),

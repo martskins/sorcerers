@@ -181,9 +181,37 @@ impl EffectEngine {
             let eliminated_before = game.state.eliminated_players.clone();
             let replace_hooks =
                 Self::collect_hooks(&game.state, &effect, HookTiming::Replace).await?;
-            let replacements =
+            let mut replacements =
                 Self::resolve_hook_replacements(&mut game.state, &effect, &replace_hooks).await?;
             if !replacements.is_empty() {
+                if let Some(first_effect) = replacements.pop() {
+                    // Process first effect in the replacements vec, assuming that if an effect is
+                    // replaced with the same effect with different parameters, it will be on the
+                    // first position.
+                    //
+                    // TODO: Probably a better way to do this is to skip this specific effect in the
+                    // card that triggered the replacement. We may need to include an id in effects.
+                    // Some cards that may benefit from this are Doomsday Prophet, Critical Strike,
+                    // Drums of Doom.
+                    first_effect.apply(&mut game.state).await?;
+
+                    EffectLogEmitter::emit(game, first_effect.clone()).await?;
+
+                    let after_hooks =
+                        Self::collect_hooks(&game.state, &first_effect, HookTiming::After).await?;
+                    Self::resolve_hooks(game, &first_effect, &after_hooks).await?;
+
+                    Game::dispell_auras(&mut game.state).await?;
+                    game.broadcast(&game.make_sync()?).await?;
+                    if game.state.eliminated_players != eliminated_before
+                        && let Some(messages) = game.game_over_messages()
+                    {
+                        for message in messages {
+                            game.send_to_player(&message).await?;
+                        }
+                    }
+                }
+
                 game.state.queue(replacements);
                 return Ok(());
             }

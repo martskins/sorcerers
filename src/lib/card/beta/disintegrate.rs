@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-/// **Disintegrate** — Elite Fire Magic (3 cost, FF threshold)
-///
-/// Banish target minion nearby, and everything it carries.
 #[derive(Debug, Clone)]
 pub struct Disintegrate {
     card_base: CardBase,

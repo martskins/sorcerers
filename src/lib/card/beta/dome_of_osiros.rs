@@ -14,7 +14,7 @@ impl DomeOfOsiros {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
-                provided_thresholds: Thresholds::new(),
+                provided_thresholds: Thresholds::ZERO,
                 tapped: false,
                 ..Default::default()
             },
@@ -73,10 +73,6 @@ impl Card for DomeOfOsiros {
     }
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
         Ok(vec![
             // The site itself cannot be attacked.
             OngoingEffect::GrantAbility {

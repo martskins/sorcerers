@@ -4,7 +4,7 @@ use crate::{
     },
     deck::Deck,
     effect::{Counter, Effect, EffectEngine, EffectState},
-    game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
+    game::{ActivatedAbility, CardId, Element, PlayerId, Resources, Thresholds, ThresholdsDiff},
     networking::message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
     query::{CardQuery, LocationQuery, ZoneQuery},
     zone::{Location, Zone},
@@ -90,6 +90,7 @@ pub enum AffinityModifier {
     Set(Thresholds),
     AddMinimum(Thresholds),
     Remove(Thresholds),
+    RemoveAll(Element),
 }
 
 impl AffinityModifier {
@@ -108,6 +109,12 @@ impl AffinityModifier {
                 affinities.earth = affinities.earth.saturating_sub(to_remove.earth);
                 affinities.water = affinities.water.saturating_sub(to_remove.water);
             }
+            Self::RemoveAll(element) => match element {
+                Element::Fire => affinities.fire = 0,
+                Element::Air => affinities.air = 0,
+                Element::Earth => affinities.earth = 0,
+                Element::Water => affinities.water = 0,
+            },
         }
     }
 }
