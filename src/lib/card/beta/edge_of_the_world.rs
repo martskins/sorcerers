@@ -72,6 +72,7 @@ impl Card for EdgeOfTheWorld {
         Some(self)
     }
 
+    // TODO: Modify site playability around it so that there's always at least one void.
     fn get_valid_play_locations(
         &self,
         state: &State,

@@ -13,8 +13,6 @@ pub mod zone;
 mod effect_test;
 #[cfg(test)]
 mod state_test;
-#[cfg(test)]
-mod zone_test;
 
 pub(crate) mod prelude {
     pub use crate::card::{

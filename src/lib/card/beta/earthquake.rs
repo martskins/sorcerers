@@ -58,25 +58,23 @@ impl Magic for Earthquake {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let areas = Location::all_intersections();
-        let area = pick_location(
-            &controller_id,
-            &areas,
-            state,
-            false,
-            "Earthquake: Pick a two-by-two area",
-        )
-        .await?;
+        let area = LocationQuery::from_locations(Location::all_intersections())
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a two-by-two area")
+            .pick(&controller_id, state)
+            .await?;
         let Location::Intersection(squares, _) = area else {
             return Ok(vec![]);
         };
-        let affected_zones = squares
+
+        // TODO: Missing rearrange logic here.
+        let affected_locations = squares
             .into_iter()
-            .map(|square| Zone::Location(Location::Square(square, Region::Surface)))
-            .collect::<Vec<Zone>>();
+            .map(|square| Location::Square(square, Region::Surface))
+            .collect::<Vec<Location>>();
         let affected_cards = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_zones(&affected_zones)
+            .in_locations(&affected_locations)
             .normal_sized()
             .all(state);
 

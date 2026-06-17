@@ -436,7 +436,6 @@ async fn test_turn_end_projectile_damage_is_cleared_before_next_turn() {
     let opponent_id = state.players[1].id;
 
     let mut dragonettes = ColickyDragonettes::new(player_id);
-    let dragonettes_id = *dragonettes.get_id();
     dragonettes.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.add_card(Box::new(dragonettes));
 
@@ -489,15 +488,12 @@ async fn test_hook_source_zones_control_out_of_play_triggers() {
     let player_id = state.players[0].id;
 
     let in_play_only = TestHookSource::new(player_id, HookSourceZones::InPlay);
-    let in_play_only_id = *in_play_only.get_id();
     state.add_card(Box::new(in_play_only));
 
     let any_zone = TestHookSource::new(player_id, HookSourceZones::Any);
-    let any_zone_id = *any_zone.get_id();
     state.add_card(Box::new(any_zone));
 
     let hand_zone = TestHookSource::new(player_id, HookSourceZones::Zones(vec![Zone::Hand]));
-    let hand_zone_id = *hand_zone.get_id();
     state.add_card(Box::new(hand_zone));
 
     state.queue_one(Effect::DrawCard {
@@ -1569,7 +1565,6 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     let player_id = state.players[0].id;
 
     let mut pit = BottomlessPit::new(player_id);
-    let pit_id = *pit.get_id();
     pit.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.add_card(Box::new(pit));
 
@@ -1609,7 +1604,6 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
         .unwrap();
 
     let mut destination = AridDesert::new(player_id);
-    let destination_id = *destination.get_id();
     destination.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.add_card(Box::new(destination));
 
@@ -1654,7 +1648,6 @@ async fn test_wall_of_fire_damages_unit_crossing_its_border() {
     let player_id = state.players[0].id;
 
     let mut wall = WallOfFire::new(player_id);
-    let wall_id = *wall.get_id();
     wall.set_zone(Zone::Location(Location::Intersection(
         vec![1, 2, 6, 7],
         Region::Surface,
@@ -1854,7 +1847,6 @@ async fn test_submerged_minion_dies_when_water_site_becomes_land() {
     let player_id = state.players[0].id;
 
     let mut spring_river = SpringRiver::new(player_id);
-    let spring_river_id = *spring_river.get_id();
     spring_river.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.add_card(Box::new(spring_river));
 
@@ -1961,7 +1953,6 @@ async fn test_playing_site_under_flood_does_not_recurse() {
     let player_id = state.players[0].id;
 
     let mut flood = Flood::new(player_id);
-    let flood_id = *flood.get_id();
     flood.set_zone(Zone::Location(Location::Intersection(
         vec![1, 2, 6, 7],
         Region::Surface,
