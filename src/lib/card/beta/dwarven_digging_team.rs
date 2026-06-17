@@ -63,17 +63,13 @@ impl Card for DwarvenDiggingTeam {
     }
 
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Burrowing,
             affected_cards: CardQuery::new()
                 .minions()
-                .nearby_locations_to_card(self.get_id())
                 .controlled_by(&self.get_controller_id(state))
-                .id_not_in(vec![*self.get_id()]),
+                .occupying_sites_near_card(self.get_id())
+                .id_not(*self.get_id()),
         }])
     }
 }

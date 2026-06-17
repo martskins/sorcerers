@@ -102,7 +102,7 @@ impl Card for DodgeRoll {
 
                 let avatar_id = state.get_player_avatar_id(&defender_controller)?;
                 let avatar = state.get_card(&avatar_id);
-                let adjacent_locations = defender.get_location().get_adjacent_locations(state);
+                let adjacent_locations = defender.get_location().get_adjacent(state);
                 let picked_site = LocationQuery::from_locations(adjacent_locations)
                     .with_source_card(*self.get_id())
                     .with_prompt("Pick an adjacent location to move to")

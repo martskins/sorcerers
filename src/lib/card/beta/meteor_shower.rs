@@ -43,6 +43,8 @@ impl MeteorShower {
                 let location = state.get_card(site_id).get_location();
                 selected_locations
                     .iter()
+                    // TODO: Check if we can implement this in a way that lets us get rid of
+                    // is_adjacent.
                     .all(|selected| location != selected && !location.is_adjacent(selected))
             })
             .collect()
@@ -55,14 +57,38 @@ impl MeteorShower {
     ) -> Vec<(Option<Location>, u16)> {
         vec![
             (Some(location.clone()), 7),
-            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),
-            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 5),
-            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 5),
-            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 5),
-            (location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)), 3),
-            (location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)), 3),
-            (location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)), 3),
-            (location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)), 3),
+            (
+                location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)),
+                5,
+            ),
+            (
+                location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)),
+                5,
+            ),
+            (
+                location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)),
+                5,
+            ),
+            (
+                location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)),
+                5,
+            ),
+            (
+                location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)),
+                3,
+            ),
+            (
+                location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)),
+                3,
+            ),
+            (
+                location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)),
+                3,
+            ),
+            (
+                location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)),
+                3,
+            ),
         ]
     }
 
@@ -73,10 +99,22 @@ impl MeteorShower {
     ) -> Vec<(Option<Location>, u16)> {
         vec![
             (Some(location.clone()), 4),
-            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 2),
-            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 2),
-            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 2),
-            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 2),
+            (
+                location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)),
+                2,
+            ),
+            (
+                location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)),
+                2,
+            ),
+            (
+                location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)),
+                2,
+            ),
+            (
+                location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)),
+                2,
+            ),
         ]
     }
 

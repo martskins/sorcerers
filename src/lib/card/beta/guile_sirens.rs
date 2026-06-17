@@ -101,7 +101,7 @@ impl Card for GuileSirens {
                 let picked_card = state.get_card(&picked_card_id);
                 let zones = picked_card
                     .get_location()
-                    .get_adjacent_locations(state)
+                    .get_adjacent(state)
                     .into_iter()
                     .map(|location| {
                         let steps = location.steps_to_location(state, self.get_location());

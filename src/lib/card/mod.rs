@@ -100,7 +100,9 @@ impl Edition {
     }
 }
 
-#[derive(Debug, Default, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize, EnumIter,
+)]
 pub enum Region {
     Void,
     Underground,

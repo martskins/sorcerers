@@ -187,10 +187,11 @@ enum SpatialFilter {
     NearbyLocationsToCard(uuid::Uuid),
     AffectedZonesOfCard(uuid::Uuid),
     AdjacentSites(Location),
-    NearbySites(Location),
-    NearbySitesToCard(uuid::Uuid),
+    SquaresNearCard(uuid::Uuid),
     AdjacentVoids(Location),
     NearbyVoids(Location),
+    OccupyingSitesNearCard(uuid::Uuid),
+    OccupyingSiteAtLocation(Location),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -207,34 +208,75 @@ struct PreparedCardQuery<'a> {
 
 impl<'a> PreparedCardQuery<'a> {
     fn new(query: &'a CardQuery, state: &'a State) -> Self {
+        let querying_for_sites = query
+            .card_types
+            .as_ref()
+            .is_some_and(|ct| ct.len() == 1 && ct[0] == CardType::Site);
         let spatial_zones = query
             .spatial_filters
             .iter()
             .map(|filter| match filter {
+                SpatialFilter::OccupyingSiteAtLocation(location) => match location {
+                    Location::Square(square, _) => vec![
+                        Location::Square(*square, Region::Surface),
+                        Location::Square(*square, Region::Underwater),
+                        Location::Square(*square, Region::Underground),
+                    ],
+                    Location::Intersection(_, _) => vec![],
+                }
+                .into_iter()
+                .map(Zone::from)
+                .collect(),
+                SpatialFilter::OccupyingSitesNearCard(card_id) => state
+                    .get_card(card_id)
+                    .get_location()
+                    .get_nearby_squares()
+                    .into_iter()
+                    .filter(|l| l.region() != &Region::Void)
+                    .map(Zone::from)
+                    .collect(),
                 SpatialFilter::AdjacentLocations(location) => location
-                    .get_adjacent_locations(state)
+                    .get_adjacent(state)
                     .into_iter()
                     .map(Zone::from)
                     .collect(),
                 SpatialFilter::AdjacentLocationsToAny(locations) => locations
                     .iter()
-                    .flat_map(|location| location.get_adjacent_locations(state))
+                    .flat_map(|location| location.get_adjacent(state))
                     .map(Zone::from)
                     .collect(),
-                SpatialFilter::NearbyLocations(location) => location
-                    .get_nearby_locations(state)
-                    .into_iter()
-                    .map(Zone::from)
-                    .collect(),
-                SpatialFilter::NearbyToCard(card_id) => state
-                    .try_get_card(card_id)
-                    .filter(|card| card.get_zone().is_in_play())
-                    .map(|card| {
-                        card.get_location()
+                SpatialFilter::NearbyLocations(location) => {
+                    if querying_for_sites {
+                        location
+                            .get_nearby_squares()
+                            .into_iter()
+                            .map(Zone::from)
+                            .collect()
+                    } else {
+                        location
                             .get_nearby(state)
                             .into_iter()
                             .map(Zone::from)
                             .collect()
+                    }
+                }
+                SpatialFilter::NearbyToCard(card_id) => state
+                    .try_get_card(card_id)
+                    .filter(|card| card.get_zone().is_in_play())
+                    .map(|card| {
+                        if querying_for_sites {
+                            card.get_location()
+                                .get_nearby_squares()
+                                .into_iter()
+                                .map(Zone::from)
+                                .collect()
+                        } else {
+                            card.get_location()
+                                .get_nearby(state)
+                                .into_iter()
+                                .map(Zone::from)
+                                .collect()
+                        }
                     })
                     .unwrap_or_default(),
                 SpatialFilter::ZoneOfCard(card_id) => state
@@ -270,7 +312,7 @@ impl<'a> PreparedCardQuery<'a> {
                     .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
-                            .get_nearby_locations(state)
+                            .get_nearby(state)
                             .into_iter()
                             .map(Zone::from)
                             .collect()
@@ -294,17 +336,12 @@ impl<'a> PreparedCardQuery<'a> {
                     .into_iter()
                     .map(Zone::from)
                     .collect(),
-                SpatialFilter::NearbySites(location) => location
-                    .get_nearby_sites(state)
-                    .into_iter()
-                    .map(Zone::from)
-                    .collect(),
-                SpatialFilter::NearbySitesToCard(card_id) => state
+                SpatialFilter::SquaresNearCard(card_id) => state
                     .try_get_card(card_id)
                     .filter(|card| card.get_zone().is_in_play())
                     .map(|card| {
                         card.get_location()
-                            .get_nearby_sites(state)
+                            .get_nearby_squares()
                             .into_iter()
                             .map(Zone::from)
                             .collect()
@@ -936,16 +973,16 @@ impl CardQuery {
         }
     }
 
-    pub fn occupying_site_at_location(self, location: Location) -> Self {
-        let zones = vec![
-            Zone::Location(location.with_region(Region::Surface)),
-            Zone::Location(location.with_region(Region::Underwater)),
-            Zone::Location(location.with_region(Region::Underground)),
-        ];
-        Self {
-            in_zones: Some(zones),
-            ..self
-        }
+    pub fn occupying_sites_near_card(mut self, card_id: &CardId) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::OccupyingSitesNearCard(*card_id));
+        self
+    }
+
+    pub fn occupying_site_at_location(mut self, location: Location) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::OccupyingSiteAtLocation(location));
+        self
     }
 
     pub fn in_zone(self, zone: impl Into<Zone>) -> Self {
@@ -1076,15 +1113,9 @@ impl CardQuery {
         self
     }
 
-    pub fn nearby_sites_to(mut self, location: &Location) -> Self {
+    pub fn in_squares_near_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
-            .push(SpatialFilter::NearbySites(location.clone()));
-        self
-    }
-
-    pub fn nearby_sites_to_card(mut self, card_id: &CardId) -> Self {
-        self.spatial_filters
-            .push(SpatialFilter::NearbySitesToCard(*card_id));
+            .push(SpatialFilter::SquaresNearCard(*card_id));
         self
     }
 

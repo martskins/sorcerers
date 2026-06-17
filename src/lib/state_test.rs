@@ -1222,7 +1222,7 @@ fn test_adjacent_sites_cross_region_boundaries() {
 
     assert!(
         !source
-            .get_adjacent_locations(&state)
+            .get_adjacent(&state)
             .contains(&Location::Square(8, Region::Surface))
     );
     assert!(

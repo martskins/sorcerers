@@ -5,6 +5,7 @@ use crate::{
     state::{OngoingEffect, State},
 };
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
 pub enum Location {
@@ -410,10 +411,6 @@ impl Location {
         }
     }
 
-    pub fn is_nearby(&self, other: &Location) -> bool {
-        self.get_nearby_unchecked().contains(other)
-    }
-
     pub fn is_adjacent(&self, other: &Location) -> bool {
         self.get_adjacent_unchecked().contains(other)
     }
@@ -443,14 +440,17 @@ impl Location {
         None
     }
 
-    pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
-        self.get_nearby(state)
-    }
-
-    pub fn get_adjacent_locations(&self, state: &State) -> Vec<Self> {
-        self.get_adjacent(state)
+    pub fn get_nearby_squares(&self) -> Vec<Self> {
+        self.get_nearby_unchecked()
             .into_iter()
-            .filter(|location| location.is_location(state))
+            .flat_map(|loc| match loc {
+                Location::Square(square, _) => Region::iter()
+                    .map(|r| Location::Square(square, r))
+                    .collect::<Vec<_>>(),
+                Location::Intersection(squares, _) => Region::iter()
+                    .map(|r| Location::Intersection(squares.to_vec(), r))
+                    .collect::<Vec<_>>(),
+            })
             .collect()
     }
 
@@ -776,37 +776,18 @@ mod test {
     }
 
     #[test]
-    fn test_locations_are_nearby() {
-        assert!(
-            Location::Square(1, Region::Surface).is_nearby(&Location::Square(2, Region::Surface))
-        );
-        assert!(
-            Location::Square(3, Region::Surface).is_nearby(&Location::Square(2, Region::Surface))
-        );
-        assert!(
-            Location::Square(3, Region::Surface).is_nearby(&Location::Square(4, Region::Surface))
-        );
-        assert!(
-            Location::Square(3, Region::Surface).is_nearby(&Location::Square(7, Region::Surface))
-        );
-        assert!(
-            Location::Square(3, Region::Surface).is_nearby(&Location::Square(9, Region::Surface))
-        );
-    }
-
-    #[test]
     fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
         let state = State::new_mock_state(vec![8, 9]);
         let source = Location::Square(8, Region::Surface);
 
         assert!(
             source
-                .get_adjacent_locations(&state)
+                .get_adjacent(&state)
                 .contains(&Location::Square(9, Region::Surface))
         );
         assert!(
             !source
-                .get_adjacent_locations(&state)
+                .get_adjacent(&state)
                 .contains(&Location::Square(13, Region::Surface))
         );
         assert!(
@@ -820,6 +801,57 @@ mod test {
                 .with_region(Region::Void)
                 .get_adjacent(&state)
                 .contains(&Location::Square(9, Region::Void))
+        );
+    }
+
+    #[test]
+    fn test_get_nearby_locations() {
+        let state = State::new_mock_state(vec![3, 8, 9, 7, 6]);
+
+        let loc = Location::Square(6, Region::Surface);
+        let mut nearby = loc.get_nearby(&state);
+        nearby.sort();
+        assert_eq!(
+            vec![
+                Location::Square(6, Region::Surface),
+                Location::Square(7, Region::Surface),
+            ],
+            nearby
+        );
+
+        let loc = Location::Square(2, Region::Void);
+        let mut nearby = loc.get_nearby(&state);
+        nearby.sort();
+        assert_eq!(
+            vec![
+                Location::Square(1, Region::Void),
+                Location::Square(2, Region::Void),
+            ],
+            nearby
+        );
+
+        let loc = Location::Square(2, Region::Void);
+        let mut nearby = loc.get_nearby_sites(&state);
+        nearby.sort();
+        assert_eq!(
+            vec![
+                Location::Square(3, Region::Surface),
+                Location::Square(6, Region::Surface),
+                Location::Square(7, Region::Surface),
+                Location::Square(8, Region::Surface),
+            ],
+            nearby
+        );
+
+        let loc = Location::Square(2, Region::Void);
+        let mut nearby = loc.get_adjacent_sites(&state);
+        nearby.sort();
+        assert_eq!(
+            vec![
+                Location::Square(3, Region::Surface),
+                Location::Square(7, Region::Surface),
+            ],
+            nearby
         );
     }
 }

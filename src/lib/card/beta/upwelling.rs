@@ -62,7 +62,7 @@ impl Magic for Upwelling {
         let caster = state.get_card(caster_id);
         let Some(site_id) = CardQuery::new()
             .sites()
-            .nearby_sites_to(caster.get_location())
+            .near_to(caster.get_location())
             .with_prompt("Pick a site")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)

@@ -35,7 +35,7 @@ impl Wildfire {
 
     fn unvisited_adjacent_locations(&self, state: &State) -> Vec<Location> {
         self.get_location()
-            .get_adjacent_locations(state)
+            .get_adjacent(state)
             .into_iter()
             .filter(|location| !self.sites_visited.contains(location))
             .collect()
@@ -156,7 +156,8 @@ impl Card for Wildfire {
                     from: self
                         .get_zone()
                         .clone()
-                        .location().cloned()
+                        .location()
+                        .cloned()
                         .expect("Wildfire must be in a location"),
                     to: LocationQuery::from_location(picked_zone),
                     tap: false,
@@ -175,7 +176,10 @@ impl Card for Wildfire {
         _player_id: &PlayerId,
         caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
-        Ok(state.get_card(caster_id).get_location().get_nearby_sites(state))
+        Ok(state
+            .get_card(caster_id)
+            .get_location()
+            .get_nearby_sites(state))
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {

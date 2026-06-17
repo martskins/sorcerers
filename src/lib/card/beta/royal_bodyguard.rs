@@ -62,7 +62,7 @@ impl Card for RoyalBodyguard {
             id: TAKE_DAMAGE_INSTEAD_HOOK,
             trigger: EffectQuery::DamageDealt {
                 source: None,
-                target: Some(CardQuery::new()),
+                target: Some(CardQuery::new().units().nearby_to_card(self.get_id())),
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::InPlay,
@@ -83,18 +83,12 @@ impl Card for RoyalBodyguard {
                     damage,
                 } = effect
                 else {
+                    // Returning empty results in the effect not being replaced. Effect::NoOp exists
+                    // to replace with a do-nothing effect.
                     return Ok(vec![]);
                 };
 
                 let target = state.get_card(card_id);
-                let Some(target_location) = target.get_zone().location() else {
-                    return Ok(vec![]);
-                };
-                let is_nearby = self.get_location().is_nearby(target_location);
-                if !is_nearby {
-                    return Ok(vec![]);
-                }
-
                 if card_id == self.get_id() || damage.amount == 0 {
                     return Ok(vec![]);
                 }

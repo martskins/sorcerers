@@ -196,12 +196,12 @@ impl ZoneQuery {
         let filter_zones = |filter: &ZoneSpatialFilter| match filter {
             ZoneSpatialFilter::Empty => vec![],
             ZoneSpatialFilter::AdjacentLocations(location) => location
-                .get_adjacent_locations(state)
+                .get_adjacent(state)
                 .into_iter()
                 .map(Zone::from)
                 .collect(),
             ZoneSpatialFilter::NearbyLocations(location) => location
-                .get_nearby_locations(state)
+                .get_nearby(state)
                 .into_iter()
                 .map(Zone::from)
                 .collect(),

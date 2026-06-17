@@ -75,7 +75,7 @@ impl Card for SmokestacksOfGnaak {
             status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .sites()
-                .nearby_sites_to_card(self.get_id())
+                .nearby_to_card(self.get_id())
                 .id_not_in(vec![*self.get_id()]),
         }])
     }
