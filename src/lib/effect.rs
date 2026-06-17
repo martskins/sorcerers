@@ -1984,13 +1984,8 @@ impl Effect {
                                     Effect::MoveCard {
                                         player_id: defending_card.get_controller_id(state),
                                         card_id: *defending_id,
-                                        from: defending_card
-                                            .get_zone()
-                                            .clone()
-                                            .location()
-                                            .cloned()
-                                            .expect("MoveCard source must be a location"),
-                                        to: LocationQuery::from_zone(attack_location.clone()),
+                                        from: defending_card.get_location().clone(),
+                                        to: attack_location.clone().into(),
                                         tap: true,
                                         through_path: None,
                                     }
@@ -2012,6 +2007,9 @@ impl Effect {
                             for defending_id in defending_ids {
                                 let damage =
                                     assigned_damage.get(defending_id).copied().unwrap_or(0);
+                                // TODO: Fight should be modelled as strikes, not as TakeDamage.
+                                // This is necessary for on-strike hooks, as they are not triggering
+                                // now on attacks, when they should.
                                 first_strike_effects.push(Effect::TakeDamage {
                                     card_id: *defending_id,
                                     from: *attacker_id,
@@ -2115,12 +2113,7 @@ impl Effect {
                     effects.push(Effect::MoveCard {
                         player_id: attacker.get_controller_id(state),
                         card_id: *attacker_id,
-                        from: attacker
-                            .get_zone()
-                            .clone()
-                            .location()
-                            .cloned()
-                            .expect("MoveCard source must be a location"),
+                        from: attacker.get_location().clone(),
                         to: defender.get_zone().into(),
                         tap: true,
                         through_path: None,
@@ -2285,7 +2278,7 @@ impl Effect {
                         effects.extend(
                             CardQuery::new()
                                 .units()
-                                .in_zone(target.get_zone())
+                                .in_location(target.get_location().clone())
                                 .id_not(*card_id)
                                 .all(&snapshot)
                                 .into_iter()
@@ -2324,7 +2317,7 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let Some(original_zone) = card.get_zone().location().cloned() else {
+                let Some(original_zone) = card.get_location().cloned() else {
                     state.get_card_mut(card_id).set_zone(Zone::Cemetery);
                     return Ok(());
                 };
@@ -2443,13 +2436,8 @@ impl Effect {
                 state.queue_one(Effect::MoveCard {
                     player_id: *player_id,
                     card_id: *card_id,
-                    from: card
-                        .get_zone()
-                        .clone()
-                        .location()
-                        .cloned()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_location(to_location.clone()),
+                    from: card.get_location().clone(),
+                    to: to_location.clone().into(),
                     tap: false,
                     through_path: None,
                 });

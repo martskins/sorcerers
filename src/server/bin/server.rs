@@ -217,7 +217,7 @@ impl Server {
         let player_two = game.state.players[1].id;
         let card = card::from_name_and_zone(Battlefield::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(CraveGolem::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(CriticalStrike::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(AdeptIllusionist::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);

@@ -51,18 +51,6 @@ impl Card for CriticalStrike {
         Some(self)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: STRIKE_HOOK,
-            trigger: EffectQuery::StrikeCard {
-                card: CardQuery::new().units(),
-                striker: Some(self.get_id().into()),
-            },
-            timing: HookTiming::Replace,
-            source_zones: HookSourceZones::Any,
-        }])
-    }
-
     async fn resolve_hook(
         &self,
         hook_id: HookId,
@@ -106,7 +94,7 @@ impl Magic for CriticalStrike {
                 card_id: *self.get_id(),
                 trigger_on_effect: EffectQuery::StrikeCard {
                     card: CardQuery::new().units(),
-                    striker: Some(CardQuery::new().minions().controlled_by(&controller_id)),
+                    striker: Some(CardQuery::new().units().controlled_by(&controller_id)),
                 },
                 expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),

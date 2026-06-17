@@ -391,16 +391,14 @@ impl EffectQuery {
             }
             (
                 EffectQuery::StrikeCard { card, striker },
-                Effect::TakeDamage {
-                    card_id,
-                    from,
-                    damage,
+                Effect::Strike {
+                    striker_id,
+                    target_id,
                 },
             ) => {
-                let card_matches = card.matches(card_id, state);
-                let striker_matches = striker.clone().is_none_or(|k| k.matches(from, state));
-                let is_strike = damage.is_strike;
-                Ok(is_strike && card_matches && striker_matches)
+                let card_matches = card.matches(target_id, state);
+                let striker_matches = striker.clone().is_none_or(|k| k.matches(striker_id, state));
+                Ok(card_matches && striker_matches)
             }
             (
                 EffectQuery::RangedStrike { striker },
