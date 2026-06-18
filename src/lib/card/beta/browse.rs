@@ -73,8 +73,6 @@ impl Magic for Browse {
             return Ok(vec![]);
         }
 
-        // TODO: Window is not closing after last selection. We need to close it only if it was
-        // automatically opened, not when the player opened it.
         let chosen_id = CardQuery::from_ids(looked_at.clone())
             .with_source_card(*self.get_id())
             .with_prompt("Pick a spell to put into your hand")
@@ -99,13 +97,17 @@ impl Magic for Browse {
             } else {
                 format!("position {} from the bottom", ordered_bottom.len() + 1)
             };
-            let picked_id = pick_card_with_preview(
-                &controller_id,
-                &bottom_spells,
-                state,
-                &format!("Browse: Pick a spell to place at {}", position_label),
-            )
-            .await?;
+            let picked_id = CardQuery::from_ids(bottom_spells.clone())
+                .with_source_card(*self.get_id())
+                .with_prompt(&format!(
+                    "Browse: Pick a spell to place at {}",
+                    position_label
+                ))
+                .pick(&controller_id, state)
+                .await?;
+            let Some(picked_id) = picked_id else {
+                break;
+            };
             ordered_bottom.push(picked_id);
             bottom_spells.retain(|id| id != &picked_id);
         }

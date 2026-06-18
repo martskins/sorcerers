@@ -24,6 +24,12 @@ pub enum ComponentType {
 }
 
 #[derive(Debug, Clone)]
+pub enum CardViewerMode {
+    Manual,
+    Selection { card_ids: Vec<CardId> },
+}
+
+#[derive(Debug, Clone)]
 pub enum ComponentCommand {
     SetVisibility {
         component_type: ComponentType,
@@ -38,7 +44,7 @@ pub enum ComponentCommand {
         title: String,
         zone: Zone,
         controller_id: Option<PlayerId>,
-        card_ids: Option<Vec<CardId>>,
+        mode: CardViewerMode,
         open_only: bool,
     },
     DropHandCard {

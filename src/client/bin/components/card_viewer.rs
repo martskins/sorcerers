@@ -1,6 +1,6 @@
 use crate::{
     card_layout::{self, CardDims, HandLayout},
-    components::{Component, ComponentCommand, ComponentType},
+    components::{CardViewerMode, Component, ComponentCommand, ComponentType},
     render::{self},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
@@ -25,7 +25,8 @@ fn draw_card_thumb(
     client: &Client,
     game_id: &uuid::Uuid,
     player_id: &PlayerId,
-) {
+) -> bool {
+    let mut picked_card = false;
     let texture = TextureCache::get_card_texture_blocking(card, ui.ctx());
     if let Some(ref tex) = texture {
         let resp = ui.allocate_rect(card_rect, Sense::CLICK | Sense::HOVER);
@@ -36,10 +37,11 @@ fn draw_card_thumb(
             Color32::WHITE,
         );
 
-        if resp.clicked()
-            && let Err(e) = handle_card_click(data, card, client, game_id, player_id)
-        {
-            eprintln!("Error handling card click: {}", e);
+        if resp.clicked() {
+            match handle_card_click(data, card, client, game_id, player_id) {
+                Ok(did_pick) => picked_card = did_pick,
+                Err(e) => eprintln!("Error handling card click: {}", e),
+            }
         }
 
         let border_color = if resp.hovered() {
@@ -73,10 +75,11 @@ fn draw_card_thumb(
         }
     } else {
         let resp = ui.allocate_rect(card_rect, Sense::CLICK | Sense::HOVER);
-        if resp.clicked()
-            && let Err(e) = handle_card_click(data, card, client, game_id, player_id)
-        {
-            eprintln!("Error handling card click: {}", e);
+        if resp.clicked() {
+            match handle_card_click(data, card, client, game_id, player_id) {
+                Ok(did_pick) => picked_card = did_pick,
+                Err(e) => eprintln!("Error handling card click: {}", e),
+            }
         }
 
         let painter = ui.painter();
@@ -89,6 +92,8 @@ fn draw_card_thumb(
             Color32::LIGHT_GRAY,
         );
     }
+
+    picked_card
 }
 
 fn render_hand_viewer(
@@ -98,7 +103,8 @@ fn render_hand_viewer(
     client: &Client,
     game_id: &uuid::Uuid,
     player_id: &PlayerId,
-) {
+) -> bool {
+    let mut picked_card = false;
     let spells = cards
         .iter()
         .filter(|card| card.is_spell())
@@ -120,16 +126,18 @@ fn render_hand_viewer(
 
             for (idx, card) in spells.iter().enumerate() {
                 let rect = card_layout::spell_rect(content_rect, &layout, dims, idx);
-                draw_card_thumb(data, card, rect, ui, client, game_id, player_id);
+                picked_card |= draw_card_thumb(data, card, rect, ui, client, game_id, player_id);
             }
 
             if !sites.is_empty() {
                 for (idx, card) in sites.iter().enumerate() {
                     let rect = card_layout::site_rect(content_rect, &layout, dims, idx);
-                    draw_card_thumb(data, card, rect, ui, client, game_id, player_id);
+                    picked_card |= draw_card_thumb(data, card, rect, ui, client, game_id, player_id);
                 }
             }
         });
+
+    picked_card
 }
 
 #[derive(Debug)]
@@ -137,8 +145,51 @@ struct ViewerEntry {
     title: String,
     zone: Zone,
     controller_id: Option<PlayerId>,
-    card_ids: Option<Vec<uuid::Uuid>>,
+    mode: CardViewerMode,
     visible: bool,
+}
+
+impl ViewerEntry {
+    fn is_selection(&self) -> bool {
+        matches!(self.mode, CardViewerMode::Selection { .. })
+    }
+
+    fn matches_command(
+        &self,
+        zone: &Zone,
+        controller_id: &Option<PlayerId>,
+        mode: &CardViewerMode,
+    ) -> bool {
+        &self.zone == zone
+            && &self.controller_id == controller_id
+            && matches!(
+                (&self.mode, mode),
+                (CardViewerMode::Manual, CardViewerMode::Manual)
+                    | (
+                        CardViewerMode::Selection { .. },
+                        CardViewerMode::Selection { .. }
+                    )
+            )
+    }
+
+    fn window_id(&self) -> egui::Id {
+        let mode = if self.is_selection() {
+            "selection"
+        } else {
+            "manual"
+        };
+        egui::Id::new(format!(
+            "{:?}-{:?}-{}",
+            self.zone, self.controller_id, mode
+        ))
+    }
+
+    fn includes_card(&self, card_id: &uuid::Uuid) -> bool {
+        match &self.mode {
+            CardViewerMode::Manual => true,
+            CardViewerMode::Selection { card_ids } => card_ids.contains(card_id),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -166,7 +217,7 @@ fn handle_card_click(
     client: &Client,
     game_id: &uuid::Uuid,
     player_id: &PlayerId,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     match &data.status {
         Status::Idle => {
             client.send(ClientMessage::ClickCard {
@@ -175,7 +226,7 @@ fn handle_card_click(
                 card_id: card.id,
             })?;
 
-            Ok(())
+            Ok(false)
         }
         Status::SelectingCard {
             pickable_cards,
@@ -183,7 +234,7 @@ fn handle_card_click(
             ..
         } => {
             if !pickable_cards.contains(&card.id) {
-                return Ok(());
+                return Ok(false);
             }
 
             client.send(ClientMessage::PickCard {
@@ -193,9 +244,9 @@ fn handle_card_click(
             })?;
             data.status = Status::Idle;
 
-            Ok(())
+            Ok(true)
         }
-        _ => Ok(()),
+        _ => Ok(false),
     }
 }
 
@@ -206,21 +257,17 @@ fn render_viewer(
     client: &Client,
     game_id: &uuid::Uuid,
     player_id: &PlayerId,
-) {
+) -> bool {
+    let mut picked_card = false;
     let cards = data
         .cards
         .iter()
         .filter(|c| c.zone == entry.zone && entry.controller_id.is_none_or(|id| c.owner_id == id))
-        .filter(|c| {
-            entry
-                .card_ids
-                .as_ref()
-                .is_none_or(|card_ids| card_ids.contains(&c.id))
-        })
+        .filter(|c| entry.includes_card(&c.id))
         .cloned()
         .collect::<Vec<CardData>>();
 
-    let window_id = egui::Id::new(format!("{:?}-{:?}", entry.zone, entry.controller_id));
+    let window_id = entry.window_id();
     let mut open = entry.visible;
     egui::Window::new(entry.title.clone())
         .id(window_id)
@@ -247,7 +294,7 @@ fn render_viewer(
             }
 
             if entry.zone == Zone::Hand {
-                render_hand_viewer(&cards, data, ui, client, game_id, player_id);
+                picked_card |= render_hand_viewer(&cards, data, ui, client, game_id, player_id);
                 return;
             }
 
@@ -292,7 +339,7 @@ fn render_viewer(
                                 let x = col_rect.min.x + (col_w - size.x) / 2.0;
                                 let card_rect = Rect::from_min_size(pos2(x, y), size);
 
-                                draw_card_thumb(
+                                picked_card |= draw_card_thumb(
                                     data, &cards[gi], card_rect, ui, client, game_id, player_id,
                                 );
                             }
@@ -302,6 +349,7 @@ fn render_viewer(
         });
 
     entry.visible = open;
+    picked_card
 }
 
 impl Component for CardViewerComponent {
@@ -315,15 +363,25 @@ impl Component for CardViewerComponent {
         ui: &mut Ui,
         _painter: &Painter,
     ) -> anyhow::Result<Option<ComponentCommand>> {
+        if !matches!(data.status, Status::SelectingCard { .. }) {
+            self.viewers.retain(|entry| !entry.is_selection());
+        }
+
         let client = self.client.clone();
         let game_id = self.game_id;
         let player_id = self.player_id;
 
+        let mut close_selection_viewers = false;
         for entry in &mut self.viewers {
             if !entry.visible {
                 continue;
             }
-            render_viewer(entry, data, ui, &client, &game_id, &player_id);
+            close_selection_viewers |=
+                render_viewer(entry, data, ui, &client, &game_id, &player_id);
+        }
+
+        if close_selection_viewers {
+            self.viewers.retain(|entry| !entry.is_selection());
         }
 
         Ok(None)
@@ -338,26 +396,24 @@ impl Component for CardViewerComponent {
             title,
             zone,
             controller_id,
-            card_ids,
+            mode,
             open_only,
         } = command
         {
-            // If a viewer for this zone+controller already exists, either show it or toggle it.
             if let Some(entry) = self
                 .viewers
                 .iter_mut()
-                .find(|e| &e.zone == zone && &e.controller_id == controller_id)
+                .find(|e| e.matches_command(zone, controller_id, mode))
             {
                 entry.visible = if *open_only { true } else { !entry.visible };
-                // Update title in case the caller changed it.
                 entry.title = title.clone();
-                entry.card_ids = card_ids.clone();
+                entry.mode = mode.clone();
             } else {
                 self.viewers.push(ViewerEntry {
                     title: title.clone(),
                     zone: zone.clone(),
                     controller_id: *controller_id,
-                    card_ids: card_ids.clone(),
+                    mode: mode.clone(),
                     visible: true,
                 });
             }

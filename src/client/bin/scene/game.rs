@@ -555,7 +555,7 @@ impl Game {
                 title: format!("{} {}", owner_label, zone_label),
                 zone,
                 controller_id: Some(owner_id),
-                card_ids: Some(card_ids),
+                mode: crate::components::CardViewerMode::Selection { card_ids },
                 open_only: true,
             };
             self.broadcast_command_result(&command)?;
@@ -577,7 +577,7 @@ impl Game {
             title: "Controlled Player's Hand".to_string(),
             zone: Zone::Hand,
             controller_id: Some(self.data.turn_player),
-            card_ids: None,
+            mode: crate::components::CardViewerMode::Manual,
             open_only: true,
         };
         self.broadcast_command(&command);
