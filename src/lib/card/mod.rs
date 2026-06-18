@@ -2682,6 +2682,8 @@ pub trait CardBaseMethods: Card {
         player_id: &PlayerId,
         caster_id: &CardId,
     ) -> anyhow::Result<Vec<Location>>;
+    fn base_playable_regions(&self, state: &State) -> Vec<Region>;
+    fn base_play_locations_at(&self, location: &Location, state: &State) -> Vec<Location>;
 }
 
 #[async_trait::async_trait]
@@ -2718,17 +2720,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         let mut candidates = if self.get_card_type() == CardType::Aura {
             Location::all_intersections()
         } else {
-            Location::all_in_region(Region::Surface)
+            self.base_playable_regions(state)
+                .into_iter()
+                .flat_map(Location::all_in_region)
+                .collect()
         };
-        if self.has_ability(state, &Ability::Burrowing) {
-            candidates.extend(Location::all_in_region(Region::Underground));
-        }
-        if self.has_ability(state, &Ability::Submerge) {
-            candidates.extend(Location::all_in_region(Region::Underwater));
-        }
-        if self.has_ability(state, &Ability::Voidwalk) || self.is_site() {
-            candidates.extend(Location::all_in_region(Region::Void));
-        }
         candidates.sort();
         candidates.dedup();
 
@@ -2747,6 +2743,32 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     .unwrap_or_default()
             })
             .collect::<Vec<Location>>())
+    }
+
+    fn base_playable_regions(&self, state: &State) -> Vec<Region> {
+        let mut regions = vec![Region::Surface];
+        if self.has_ability(state, &Ability::Burrowing) {
+            regions.push(Region::Underground);
+        }
+        if self.has_ability(state, &Ability::Submerge) {
+            regions.push(Region::Underwater);
+        }
+        if self.has_ability(state, &Ability::Voidwalk) || self.is_site() {
+            regions.push(Region::Void);
+        }
+        regions.sort();
+        regions.dedup();
+        regions
+    }
+
+    fn base_play_locations_at(&self, location: &Location, state: &State) -> Vec<Location> {
+        let regions = self.base_playable_regions(state);
+        location
+            .in_all_regions()
+            .into_iter()
+            .filter(|location| regions.contains(location.region()))
+            .filter(|location| location.is_location(state))
+            .collect()
     }
 
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Location> {
