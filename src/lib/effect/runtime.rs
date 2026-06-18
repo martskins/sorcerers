@@ -95,10 +95,11 @@ impl EffectEngine {
             }
 
             let effects = source.resolve_hook(hook.hook_id, state, effect).await?;
-            if Self::queues_resolved_hook_effects(effect) {
-                state.queue(effects);
-            } else {
-                for effect in effects {
+            let should_queue_effects = Self::queues_resolved_hook_effects(effect);
+            for effect in effects {
+                if should_queue_effects || Self::queues_resolved_hook_effects(&effect) {
+                    state.queue_one(effect);
+                } else {
                     Box::pin(effect.apply(state)).await?;
                 }
             }
@@ -130,10 +131,11 @@ impl EffectEngine {
             let effects = source
                 .resolve_hook(hook.hook_id, &game.state, effect)
                 .await?;
-            if Self::queues_resolved_hook_effects(effect) {
-                game.state.queue(effects);
-            } else {
-                for effect in effects {
+            let should_queue_effects = Self::queues_resolved_hook_effects(effect);
+            for effect in effects {
+                if should_queue_effects || Self::queues_resolved_hook_effects(&effect) {
+                    game.state.queue_one(effect);
+                } else {
                     Box::pin(effect.apply(&mut game.state)).await?;
                     EffectLogEmitter::emit(game, effect.clone()).await?;
                 }

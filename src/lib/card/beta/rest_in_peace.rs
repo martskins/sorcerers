@@ -58,7 +58,7 @@ impl Card for RestInPeace {
     }
 
     fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let mut affected_land_sites = self.get_affected_zones(state);
+        let mut affected_land_sites = self.get_affected_locations(state);
         affected_land_sites.retain(|z| match z.get_site(state) {
             Some(site) => site.is_land_site(state).unwrap_or_default(),
             None => false,

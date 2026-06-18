@@ -214,7 +214,7 @@ impl ZoneQuery {
                 .map(|card| {
                     card.get_aura()
                         .map(|aura| {
-                            aura.get_affected_zones(state)
+                            aura.get_affected_locations(state)
                                 .iter()
                                 .map(|l| l.clone().into())
                                 .collect()

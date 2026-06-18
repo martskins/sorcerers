@@ -1657,7 +1657,7 @@ impl Game {
                     .state
                     .get_card(card_id)
                     .get_aura()
-                    .map(|aura| aura.get_affected_zones(&self.state))
+                    .map(|aura| aura.get_affected_locations(&self.state))
                     .unwrap_or_default();
 
                 self.state

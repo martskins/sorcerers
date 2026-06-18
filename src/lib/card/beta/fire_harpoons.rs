@@ -62,29 +62,23 @@ impl Magic for FireHarpoons {
         let controller_id = caster.get_controller_id(state);
 
         // Find adjacent Water sites and collect the zones above/below them.
-        let adjacent_water_sites: Vec<Zone> = CardQuery::new()
+        let adjacent_water_sites: Vec<Location> = CardQuery::new()
             .water_sites()
             .adjacent_to(&caster_location)
             .all(state)
             .into_iter()
-            .map(|cid| state.get_card(&cid).get_zone().clone())
+            .map(|cid| state.get_card(&cid).get_location().clone())
             .collect();
-        let mut target_zones = adjacent_water_sites.clone();
-        target_zones.extend(
-            adjacent_water_sites
-                .iter()
-                .filter_map(Zone::location)
-                .map(|location| Zone::from(location.with_region(Region::Underwater))),
-        );
 
         // Find enemy minions at those zones.
         let targets = CardQuery::new()
             .minions()
-            .id_not_in(vec![*caster_id])
-            .in_zones(&target_zones)
-            .all(state);
+            .id_not(*caster_id)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a minion to fire at")
+            .occupying_sites_at_locations(adjacent_water_sites);
 
-        if targets.is_empty() {
+        if !targets.has_targets(state) {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller_id,
                 count: 1,
@@ -92,13 +86,9 @@ impl Magic for FireHarpoons {
             }]);
         }
 
-        let target_id = pick_card(
-            &controller_id,
-            &targets,
-            state,
-            "Fire Harpoons!: Pick a target minion",
-        )
-        .await?;
+        let Some(target_id) = targets.pick(&controller_id, state).await? else {
+            return Ok(vec![]);
+        };
         let target = state.get_card(&target_id);
 
         Ok(vec![
@@ -110,14 +100,8 @@ impl Magic for FireHarpoons {
             Effect::MoveCard {
                 player_id: controller_id,
                 card_id: target_id,
-                from: target
-                    .get_zone()
-                    .clone()
-                    .location().cloned()
-                    .expect("Fire Harpoons target must be in a location"),
-                to: LocationQuery::from_location(
-                    caster_location.with_region(target.get_region(state).clone()),
-                ),
+                from: target.get_location().clone(),
+                to: caster_location.into(),
                 tap: false,
                 through_path: None,
             },

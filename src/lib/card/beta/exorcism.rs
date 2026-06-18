@@ -59,24 +59,19 @@ impl Magic for Exorcism {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let zones = caster.get_locations_within_steps(state, 2);
+        let locations = caster.get_locations_within_steps(state, 2);
 
-        let picked_zone = pick_location(
-            self.get_owner_id(),
-            &zones,
-            state,
-            false,
-            "Exorcism: Pick a target location",
-        )
-        .await?;
+        let location = LocationQuery::from_locations(locations)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a target location")
+            .pick(&self.get_controller_id(state), state)
+            .await?;
 
-        let targets = CardQuery::new()
+        Ok(CardQuery::new()
             .minions()
             .minion_types(vec![MinionType::Demon, MinionType::Undead])
-            .in_zone(&picked_zone)
-            .all(state);
-
-        Ok(targets
+            .in_location(location)
+            .all(state)
             .into_iter()
             .map(|card_id| Effect::BanishCard { card_id })
             .collect())

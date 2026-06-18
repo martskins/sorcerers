@@ -109,7 +109,7 @@ impl Card for Boneyard {
                     };
 
                     let minion_card = state.get_card(&minion);
-                    let locations = minion_card.base_play_locations_at(&self.get_location(), state);
+                    let locations = minion_card.base_play_locations_at(self.get_location(), state);
                     if locations.is_empty() {
                         continue;
                     }

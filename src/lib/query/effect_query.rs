@@ -4,6 +4,7 @@ use crate::{
     game::PlayerId,
     query::{CardQuery, LocationQuery},
     state::State,
+    zone::Location,
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -49,6 +50,7 @@ pub enum EffectQuery {
     },
     SummonCard {
         card: CardQuery,
+        location: Option<Location>,
     },
     Genesis {
         card: CardQuery,
@@ -251,11 +253,13 @@ impl EffectQuery {
             (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
-            (EffectQuery::SummonCard { card }, Effect::SummonCards { summoned_cards }) => {
-                Ok(summoned_cards
-                    .iter()
-                    .any(|sc| card.matches(&sc.card_id, state)))
-            }
+            (
+                EffectQuery::SummonCard { card, location },
+                Effect::SummonCards { summoned_cards },
+            ) => Ok(summoned_cards.iter().any(|sc| {
+                card.matches(&sc.card_id, state)
+                    && location.as_ref().is_none_or(|loc| loc == &sc.to_location)
+            })),
             (EffectQuery::Genesis { card }, Effect::TriggerGenesis { card_id }) => {
                 Ok(card.matches(card_id, state))
             }

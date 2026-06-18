@@ -91,7 +91,7 @@ impl Card for Thunderstorm {
                 }
 
                 let zones = self.get_valid_move_locations(state).await?;
-                let affected_locations = self.get_affected_zones(state);
+                let affected_locations = self.get_affected_locations(state);
                 let picked_card_id = CardQuery::new()
                     .randomised()
                     .count(1)

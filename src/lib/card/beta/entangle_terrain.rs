@@ -72,10 +72,10 @@ impl Card for EntangleTerrain {
         Some(self)
     }
 
-    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let affected_cards = CardQuery::new()
             .minions()
-            .in_affected_zones_of_card(self.get_id());
+            .occupying_sites_at_locations(self.base_get_affected_locations(state));
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Immobile,

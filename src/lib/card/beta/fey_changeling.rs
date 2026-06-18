@@ -89,13 +89,13 @@ impl Card for FeyChangeling {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let minions_here = CardQuery::new()
+                let minion_query = CardQuery::new()
                     .units()
-                    .in_zone(self.get_zone())
-                    .id_not_in(vec![*self.get_id()])
-                    .all(state);
-
-                if minions_here.is_empty() {
+                    .in_location(self.get_location().clone())
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick a minion to bounce")
+                    .id_not(*self.get_id());
+                if !minion_query.has_targets(state) {
                     return Ok(vec![]);
                 }
 
@@ -110,13 +110,10 @@ impl Card for FeyChangeling {
                     return Ok(vec![]);
                 }
 
-                let target_id = pick_card(
-                    &controller_id,
-                    &minions_here,
-                    state,
-                    "Fey Changeling Genesis: Pick a minion to return to hand",
-                )
-                .await?;
+                let Some(target_id) = minion_query.pick(&controller_id, state).await? else {
+                    return Ok(vec![]);
+                };
+
                 Ok(vec![Effect::SetCardZone {
                     card_id: target_id,
                     zone: Zone::Hand,

@@ -84,13 +84,13 @@ impl Card for FenvaleMuse {
         match hook {
             TRIGGER_RIVER_GENESIS_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                let nearby_rivers = CardQuery::new()
+                let rivers_query = CardQuery::new()
                     .sites()
                     .near_to(self.get_location())
-                    .site_types(vec![SiteType::River])
-                    .all(state);
-
-                if nearby_rivers.is_empty() {
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick a nearby River to trigger")
+                    .site_types(vec![SiteType::River]);
+                if !rivers_query.has_targets(state) {
                     return Ok(vec![]);
                 }
 
@@ -105,13 +105,10 @@ impl Card for FenvaleMuse {
                     return Ok(vec![]);
                 }
 
-                let river_id = pick_card(
-                    &controller_id,
-                    &nearby_rivers,
-                    state,
-                    "Fenvale Muse: Pick a nearby River to trigger",
-                )
-                .await?;
+                let Some(river_id) = rivers_query.pick(&controller_id, state).await? else {
+                    return Ok(vec![]);
+                };
+
                 Ok(vec![Effect::TriggerGenesis { card_id: river_id }])
             }
             _ => Ok(vec![]),

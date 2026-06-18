@@ -5,7 +5,7 @@ use crate::{
         DeferredEffect, DrawKind, Effect, EffectReplacementCallback, FightContext, SummonCard,
         TemporaryEffect, TokenType,
     },
-    game::{ActivatedAbility, Direction, UnitAction},
+    game::{ActivatedAbility, CardId, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache},
     state::{Player, PlayerWithDeck, State},
@@ -15,6 +15,7 @@ use std::{collections::HashMap, sync::Arc};
 
 const TEST_HOOK_SOURCE_ID: HookId = 1000;
 const TEST_STRIKE_HOOK_SOURCE_ID: HookId = 1001;
+const TEST_TRIGGER_GENESIS_HOOK_ID: HookId = 1002;
 
 #[derive(Debug, Clone)]
 struct TestHookSource {
@@ -72,6 +73,126 @@ impl Card for TestHookSource {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             TEST_HOOK_SOURCE_ID => Ok(vec![Effect::AdjustMana {
+                player_id: self.get_controller_id(state),
+                amount: 1,
+            }]),
+            _ => Ok(vec![]),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TestGenesisForwarder {
+    card_base: CardBase,
+    target_id: CardId,
+}
+
+impl TestGenesisForwarder {
+    fn new(owner_id: uuid::Uuid, target_id: CardId) -> Self {
+        Self {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                controller_id: owner_id,
+                zone: Zone::Hand,
+                ..Default::default()
+            },
+            target_id,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Card for TestGenesisForwarder {
+    fn get_name(&self) -> &str {
+        "Test Genesis Forwarder"
+    }
+
+    fn get_description(&self) -> &str {
+        ""
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TEST_TRIGGER_GENESIS_HOOK_ID,
+            trigger: EffectQuery::DrawCard { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            TEST_TRIGGER_GENESIS_HOOK_ID => Ok(vec![Effect::TriggerGenesis {
+                card_id: self.target_id,
+            }]),
+            _ => Ok(vec![]),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TestGenesisTarget {
+    card_base: CardBase,
+}
+
+impl TestGenesisTarget {
+    fn new(owner_id: uuid::Uuid) -> Self {
+        Self {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                controller_id: owner_id,
+                zone: Zone::Hand,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Card for TestGenesisTarget {
+    fn get_name(&self) -> &str {
+        "Test Genesis Target"
+    }
+
+    fn get_description(&self) -> &str {
+        ""
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            GENESIS_HOOK_ID => Ok(vec![Effect::AdjustMana {
                 player_id: self.get_controller_id(state),
                 amount: 1,
             }]),
@@ -221,6 +342,30 @@ async fn drain_effects(state: &mut State) {
         .apply_effects_without_log()
         .await
         .expect("effect queue should drain without error");
+}
+
+#[tokio::test]
+async fn test_hook_returned_trigger_genesis_resolves_target_genesis() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+
+    let mut target = TestGenesisTarget::new(player_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.add_card(Box::new(target));
+
+    let mut forwarder = TestGenesisForwarder::new(player_id, target_id);
+    forwarder.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.add_card(Box::new(forwarder));
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Spell,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 1);
 }
 
 // TODO: Fix this test

@@ -28,7 +28,7 @@ impl AtlanteanFate {
     }
 
     fn flooded_site_ids(&self, state: &State) -> Vec<CardId> {
-        let affected_zones = self.get_affected_zones(state);
+        let affected_zones = self.get_affected_locations(state);
         CardQuery::new()
             .sites()
             .rarity(&Rarity::Ordinary)
@@ -103,7 +103,7 @@ impl Card for AtlanteanFate {
         match hook {
             GENESIS_HOOK_ID => {
                 let affected_locations: Vec<Location> = self
-                    .get_affected_zones(state)
+                    .get_affected_locations(state)
                     .into_iter()
                     .filter(|z| z.get_site(state).is_some())
                     .map(|l| l.with_region(Region::Surface))

@@ -48,8 +48,8 @@ impl Aura for Sandstorm {
         Ok(turns_in_play >= 1)
     }
 
-    fn get_affected_zones(&self, state: &State) -> Vec<Location> {
-        self.base_get_affected_zones(state)
+    fn get_affected_locations(&self, state: &State) -> Vec<Location> {
+        self.base_get_affected_locations(state)
             .into_iter()
             .filter(|loc| loc.get_site(state).is_some())
             .collect()

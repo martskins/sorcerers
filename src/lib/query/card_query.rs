@@ -191,7 +191,7 @@ enum SpatialFilter {
     AdjacentVoids(Location),
     NearbyVoids(Location),
     OccupyingSitesNearCard(uuid::Uuid),
-    OccupyingSiteAtLocation(Location),
+    OccupyingSitesAtLocations(Vec<Location>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -216,17 +216,22 @@ impl<'a> PreparedCardQuery<'a> {
             .spatial_filters
             .iter()
             .map(|filter| match filter {
-                SpatialFilter::OccupyingSiteAtLocation(location) => match location {
-                    Location::Square(square, _) => vec![
-                        Location::Square(*square, Region::Surface),
-                        Location::Square(*square, Region::Underwater),
-                        Location::Square(*square, Region::Underground),
-                    ],
-                    Location::Intersection(_, _) => vec![],
-                }
-                .into_iter()
-                .map(Zone::from)
-                .collect(),
+                SpatialFilter::OccupyingSitesAtLocations(locations) => locations
+                    .iter()
+                    .flat_map(|location| {
+                        match location {
+                            Location::Square(square, _) => vec![
+                                Location::Square(*square, Region::Surface),
+                                Location::Square(*square, Region::Underwater),
+                                Location::Square(*square, Region::Underground),
+                            ],
+                            Location::Intersection(_, _) => vec![],
+                        }
+                        .into_iter()
+                        .map(Zone::from)
+                        .collect::<Vec<_>>()
+                    })
+                    .collect(),
                 SpatialFilter::OccupyingSitesNearCard(card_id) => state
                     .get_card(card_id)
                     .get_location()
@@ -323,7 +328,7 @@ impl<'a> PreparedCardQuery<'a> {
                     .map(|card| {
                         card.get_aura()
                             .map(|aura| {
-                                aura.get_affected_zones(state)
+                                aura.get_affected_locations(state)
                                     .iter()
                                     .map(|l| l.clone().into())
                                     .collect()
@@ -814,6 +819,12 @@ impl CardQuery {
         result
     }
 
+    pub fn has_targets(&self, state: &State) -> bool {
+        let prepared = PreparedCardQuery::new(self, state);
+        self.candidate_cards(state)
+            .any(|c| prepared.matches_card(c))
+    }
+
     pub fn all(&self, state: &State) -> Vec<CardId> {
         let prepared = PreparedCardQuery::new(self, state);
         self.candidate_cards(state)
@@ -979,9 +990,15 @@ impl CardQuery {
         self
     }
 
+    pub fn occupying_sites_at_locations(mut self, locations: Vec<Location>) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::OccupyingSitesAtLocations(locations));
+        self
+    }
+
     pub fn occupying_site_at_location(mut self, location: Location) -> Self {
         self.spatial_filters
-            .push(SpatialFilter::OccupyingSiteAtLocation(location));
+            .push(SpatialFilter::OccupyingSitesAtLocations(vec![location]));
         self
     }
 

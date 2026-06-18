@@ -2538,8 +2538,8 @@ pub trait Aura: Card {
         Ok(false)
     }
 
-    fn get_affected_zones(&self, state: &State) -> Vec<Location> {
-        self.base_get_affected_zones(state)
+    fn get_affected_locations(&self, state: &State) -> Vec<Location> {
+        self.base_get_affected_locations(state)
     }
 }
 
@@ -2654,7 +2654,7 @@ impl Damage {
 /// in the `Card` trait, and can call these base methods to get the default behaviour when needed.
 #[async_trait::async_trait]
 pub trait CardBaseMethods: Card {
-    fn base_get_affected_zones(&self, state: &State) -> Vec<Location>;
+    fn base_get_affected_locations(&self, state: &State) -> Vec<Location>;
     fn base_get_power(&self, state: &State) -> Option<u16>;
     fn base_get_abilities(&self, state: &State) -> Vec<Ability>;
     fn base_get_activated_abilities(
@@ -2771,7 +2771,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             .collect()
     }
 
-    fn base_get_affected_zones(&self, _state: &State) -> Vec<Location> {
+    fn base_get_affected_locations(&self, _state: &State) -> Vec<Location> {
         match self.get_location() {
             z @ Location::Square(_, _) => vec![z.clone()],
             Location::Intersection(locs, region) => {

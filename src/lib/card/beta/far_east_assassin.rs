@@ -6,7 +6,7 @@ struct ThrowArtifactAbility;
 #[async_trait::async_trait]
 impl ActivatedAbility for ThrowArtifactAbility {
     fn get_name(&self) -> String {
-        "Throw Artifact".to_string()
+        "Tap -> Throw Artifact".to_string()
     }
 
     fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
@@ -30,15 +30,16 @@ impl ActivatedAbility for ThrowArtifactAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-
-        let carried = CardQuery::new().artifacts().carried_by(card_id).all(state);
-        let artifact_id = pick_card(
-            player_id,
-            &carried,
-            state,
-            "Far East Assassin: Pick an artifact to throw",
-        )
-        .await?;
+        let Some(artifact_id) = CardQuery::new()
+            .artifacts()
+            .carried_by(card_id)
+            .with_source_card(*card_id)
+            .with_prompt("Pick an artifact to throw")
+            .pick(player_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
         let artifact = state.get_card(&artifact_id);
         let damage = artifact
@@ -48,10 +49,10 @@ impl ActivatedAbility for ThrowArtifactAbility {
             .unwrap_or_default() as u16;
 
         let Some(target_id) = CardQuery::new()
-            .minions()
+            .units()
             .adjacent_to(card.get_location())
-            .with_prompt("Pick a target unit in an adjacent zone")
             .with_source_card(*card_id)
+            .with_prompt("Pick a target unit in an adjacent zone")
             .pick(player_id, state)
             .await?
         else {
@@ -68,15 +69,8 @@ impl ActivatedAbility for ThrowArtifactAbility {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: artifact_id,
-                from: (artifact.get_zone().clone())
-                    .location()
-                    .cloned()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_location(
-                    target
-                        .get_location()
-                        .with_region(target.get_region(state).clone()),
-                ),
+                from: artifact.get_location().clone(),
+                to: target.get_location().clone().into(),
                 tap: false,
                 through_path: None,
             },

@@ -67,9 +67,10 @@ impl Card for EvilPresence {
             id: SUMMON_SPIRIT_HOOK,
             trigger: EffectQuery::SummonCard {
                 card: CardQuery::new().minions().minion_type(&MinionType::Spirit),
+                location: Some(self.get_location().clone()),
             },
             timing: HookTiming::After,
-            source_zones: HookSourceZones::Any,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 
@@ -95,6 +96,10 @@ impl Card for EvilPresence {
                         .get_unit_base()
                         .is_none_or(|ub| !ub.types.contains(&MinionType::Spirit))
                     {
+                        continue;
+                    }
+
+                    if sc.player_id != self.get_controller_id(state) {
                         continue;
                     }
 

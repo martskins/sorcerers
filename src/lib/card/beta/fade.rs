@@ -63,7 +63,7 @@ impl Magic for Fade {
             .minions()
             .controlled_by(&controller_id)
             .in_play()
-            .with_prompt("Pick an allied minion to give Stealth")
+            .with_prompt("Pick an allied minion to give Stealth to")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)
             .await?

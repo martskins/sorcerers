@@ -15,7 +15,7 @@ impl EscyllionCyclops {
             unit_base: UnitBase {
                 power: 6,
                 toughness: 6,
-                abilities: vec![Ability::Charge],
+                abilities: vec![],
                 types: vec![MinionType::Monster],
                 tapped: false,
                 ..Default::default()

@@ -120,14 +120,14 @@ impl Card for Enchantress {
                     return Ok(vec![]);
                 }
 
-                let auras = CardQuery::new()
+                let aura_query = CardQuery::new()
                     .auras()
                     .in_play()
                     .can_be_targeted_by_player(&controller_id)
-                    .id_not(spell_id)
-                    .all(state);
-
-                if auras.is_empty() {
+                    .with_source_card(*self.get_id())
+                    .with_prompt("Pick an aura to animate")
+                    .id_not(spell_id);
+                if aura_query.all(state).is_empty() {
                     return Ok(vec![]);
                 }
 
@@ -142,13 +142,10 @@ impl Card for Enchantress {
                     return Ok(vec![]);
                 }
 
-                let aura_id = pick_card(
-                    &controller_id,
-                    &auras,
-                    state,
-                    "Enchantress: Pick an aura to animate",
-                )
-                .await?;
+                let Some(aura_id) = aura_query.pick(&controller_id, state).await? else {
+                    return Ok(vec![]);
+                };
+
                 let aura = state.get_card(&aura_id);
                 let power = aura
                     .get_costs(state)?

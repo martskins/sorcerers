@@ -59,24 +59,18 @@ impl Magic for Extinguish {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let zones = caster.get_locations_within_steps(state, 2);
+        let locations = caster.get_locations_within_steps(state, 2);
+        let location = LocationQuery::from_locations(locations)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a target site")
+            .pick(&self.get_controller_id(state), state)
+            .await?;
 
-        let picked_zone = pick_location(
-            self.get_owner_id(),
-            &zones,
-            state,
-            false,
-            "Extinguish: Pick a target site",
-        )
-        .await?;
-
-        let targets = CardQuery::new()
+        Ok(CardQuery::new()
             .with_affinity(Element::Fire)
             .card_types(vec![CardType::Minion, CardType::Aura])
-            .in_zone(&picked_zone)
-            .all(state);
-
-        Ok(targets
+            .in_location(location)
+            .all(state)
             .into_iter()
             .map(|card_id| Effect::BanishCard { card_id })
             .collect())
