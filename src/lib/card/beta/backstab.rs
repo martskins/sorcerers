@@ -84,10 +84,7 @@ impl Magic for Backstab {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::Strike {
-            striker_id,
-            target_id,
-        }])
+        Ok(vec![Effect::strike(state, striker_id, target_id)?])
     }
 }
 

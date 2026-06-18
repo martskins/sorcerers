@@ -74,17 +74,15 @@ impl Card for WraetannisTitan {
         match hook {
             GENESIS_HOOK_ID => {
                 let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
-                let effects = CardQuery::new()
+                let mut effects = vec![];
+                for id in CardQuery::new()
                     .units()
                     .in_zone(self.get_zone())
                     .controlled_by(&opponent_id)
                     .all(state)
-                    .into_iter()
-                    .map(|id| Effect::Strike {
-                        striker_id: id,
-                        target_id: *self.get_id(),
-                    })
-                    .collect();
+                {
+                    effects.push(Effect::strike(state, id, *self.get_id())?);
+                }
                 Ok(effects)
             }
             _ => Ok(vec![]),

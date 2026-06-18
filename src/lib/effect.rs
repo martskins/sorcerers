@@ -293,6 +293,7 @@ pub enum Effect {
     Strike {
         striker_id: CardId,
         target_id: CardId,
+        damage: Damage,
     },
     DeclareAttack {
         attacker_id: CardId,
@@ -443,6 +444,20 @@ fn projectile_path(
 }
 
 impl Effect {
+    pub fn strike(state: &State, striker_id: CardId, target_id: CardId) -> anyhow::Result<Self> {
+        let striker = state.get_card(&striker_id);
+        Ok(Effect::Strike {
+            striker_id,
+            target_id,
+            damage: Damage::strike(
+                striker
+                    .get_power(state)?
+                    .ok_or(anyhow::anyhow!("striker has no power"))?,
+                false,
+            ),
+        })
+    }
+
     pub async fn affected_cards(&self) -> Option<Vec<CardId>> {
         match self {
             Effect::ShootProjectile { id, .. } => QueryCache::effect_targets(id),
@@ -742,6 +757,7 @@ impl Effect {
             Effect::Strike {
                 striker_id,
                 target_id,
+                ..
             } => Some(format!(
                 "{} strikes {} with {}",
                 player_name(&state.get_card(striker_id).get_controller_id(state), state),
@@ -1720,6 +1736,7 @@ impl Effect {
             Effect::Strike {
                 striker_id,
                 target_id,
+                damage,
             } => {
                 // Striking is an interaction: the striker loses Stealth.
                 state
@@ -1732,15 +1749,10 @@ impl Effect {
                     return Ok(());
                 }
 
-                state.queue_one(Effect::TakeDamage {
+                state.queue_front(Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
-                    damage: Damage::strike(
-                        attacker
-                            .get_power(&snapshot)?
-                            .ok_or(anyhow::anyhow!("attacker has no power"))?,
-                        false,
-                    ),
+                    damage: damage.clone(),
                 });
             }
             Effect::DeclareAttack {
@@ -2012,12 +2024,9 @@ impl Effect {
                             for defending_id in defending_ids {
                                 let damage =
                                     assigned_damage.get(defending_id).copied().unwrap_or(0);
-                                // TODO: Fight should be modelled as strikes, not as TakeDamage.
-                                // This is necessary for on-strike hooks, as they are not triggering
-                                // now on attacks, when they should.
-                                first_strike_effects.push(Effect::TakeDamage {
-                                    card_id: *defending_id,
-                                    from: *attacker_id,
+                                first_strike_effects.push(Effect::Strike {
+                                    striker_id: *attacker_id,
+                                    target_id: *defending_id,
                                     damage: context.damage(damage),
                                 });
                             }
@@ -2029,9 +2038,9 @@ impl Effect {
                                 let defender_power = defender
                                     .get_power(state)?
                                     .ok_or(anyhow::anyhow!("defender has no power"))?;
-                                first_strike_effects.push(Effect::TakeDamage {
-                                    card_id: *attacker_id,
-                                    from: *defending_id,
+                                first_strike_effects.push(Effect::Strike {
+                                    striker_id: *defending_id,
+                                    target_id: *attacker_id,
                                     damage: context.damage(defender_power),
                                 });
                             }
@@ -2055,9 +2064,9 @@ impl Effect {
                                 }
                                 let damage =
                                     assigned_damage.get(defending_id).copied().unwrap_or(0);
-                                effects.push(Effect::TakeDamage {
-                                    card_id: *defending_id,
-                                    from: *attacker_id,
+                                effects.push(Effect::Strike {
+                                    striker_id: *attacker_id,
+                                    target_id: *defending_id,
                                     damage: context.damage(damage),
                                 });
                             }
@@ -2078,9 +2087,9 @@ impl Effect {
                                 let defender_power = defender
                                     .get_power(state)?
                                     .ok_or(anyhow::anyhow!("defender has no power"))?;
-                                effects.push(Effect::TakeDamage {
-                                    card_id: *attacker_id,
-                                    from: *defending_id,
+                                effects.push(Effect::Strike {
+                                    striker_id: *defending_id,
+                                    target_id: *attacker_id,
                                     damage: context.damage(defender_power),
                                 });
                             }
@@ -2088,9 +2097,9 @@ impl Effect {
                     } else {
                         for defending_id in defending_ids {
                             let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
-                            effects.push(Effect::TakeDamage {
-                                card_id: *defending_id,
-                                from: *attacker_id,
+                            effects.push(Effect::Strike {
+                                striker_id: *attacker_id,
+                                target_id: *defending_id,
                                 damage: context.damage(damage),
                             });
                         }
@@ -2101,9 +2110,9 @@ impl Effect {
                                 let defender_power = defender
                                     .get_power(state)?
                                     .ok_or(anyhow::anyhow!("defender has no power"))?;
-                                effects.push(Effect::TakeDamage {
-                                    card_id: *attacker_id,
-                                    from: *defending_id,
+                                effects.push(Effect::Strike {
+                                    striker_id: *defending_id,
+                                    target_id: *attacker_id,
                                     damage: context.damage(defender_power),
                                 });
                             }
@@ -2135,9 +2144,9 @@ impl Effect {
                         let power = first_attacker
                             .get_power(&sim)?
                             .ok_or(anyhow::anyhow!("first attacker has no power"))?;
-                        sim.queue_one(Effect::TakeDamage {
-                            card_id: *first_defender.get_id(),
-                            from: *first_attacker.get_id(),
+                        sim.queue_one(Effect::Strike {
+                            striker_id: *first_attacker.get_id(),
+                            target_id: *first_defender.get_id(),
                             damage: context.damage(power),
                         });
                         Box::pin(sim.apply_effects_without_log()).await?;
@@ -2147,9 +2156,9 @@ impl Effect {
                     let power = first_attacker
                         .get_power(state)?
                         .ok_or(anyhow::anyhow!("first defender has no power"))?;
-                    effects.push(Effect::TakeDamage {
-                        card_id: *first_defender.get_id(),
-                        from: *first_attacker.get_id(),
+                    effects.push(Effect::Strike {
+                        striker_id: *first_attacker.get_id(),
+                        target_id: *first_defender.get_id(),
                         damage: context.damage(power),
                     });
 
@@ -2157,9 +2166,9 @@ impl Effect {
                         let power = first_defender
                             .get_power(state)?
                             .ok_or(anyhow::anyhow!("first attacker has no power"))?;
-                        effects.push(Effect::TakeDamage {
-                            card_id: *first_attacker.get_id(),
-                            from: *first_defender.get_id(),
+                        effects.push(Effect::Strike {
+                            striker_id: *first_defender.get_id(),
+                            target_id: *first_attacker.get_id(),
                             damage: context.damage(power),
                         });
                     }
@@ -2168,9 +2177,9 @@ impl Effect {
                     let attacker_power = attacker
                         .get_power(state)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                    effects.push(Effect::TakeDamage {
-                        card_id: *defender_id,
-                        from: *attacker_id,
+                    effects.push(Effect::Strike {
+                        striker_id: *attacker_id,
+                        target_id: *defender_id,
                         damage: context.damage(attacker_power),
                     });
 
@@ -2178,9 +2187,9 @@ impl Effect {
                         let defender_power = defender
                             .get_power(state)?
                             .ok_or(anyhow::anyhow!("defender has no power"))?;
-                        effects.push(Effect::TakeDamage {
-                            card_id: *attacker_id,
-                            from: *defender_id,
+                        effects.push(Effect::Strike {
+                            striker_id: *defender_id,
+                            target_id: *attacker_id,
                             damage: context.damage(defender_power),
                         });
                     }

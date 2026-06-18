@@ -143,6 +143,7 @@ impl Card for BridgeTroll {
                         effect: DeferredEffect {
                             hook_id: GIVE_MANA_HOOK,
                             card_id: *self.get_id(),
+                            timing: HookTiming::After,
                             trigger_on_effect: EffectQuery::TurnStart {
                                 player_id: Some(my_controller),
                             },

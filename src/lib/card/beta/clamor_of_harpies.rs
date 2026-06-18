@@ -100,10 +100,7 @@ impl Card for ClamorOfHarpies {
                 }];
 
                 if strike {
-                    effects.push(Effect::Strike {
-                        striker_id: *self.get_id(),
-                        target_id: card_id,
-                    });
+                    effects.push(Effect::strike(state, *self.get_id(), card_id)?);
                 }
                 Ok(effects)
             }

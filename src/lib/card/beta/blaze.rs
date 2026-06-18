@@ -142,6 +142,7 @@ impl Magic for Blaze {
                 effect: DeferredEffect {
                     hook_id: ON_MOVE_HOOK,
                     card_id: *self.get_id(),
+                    timing: HookTiming::After,
                     trigger_on_effect: EffectQuery::MoveCard {
                         card: picked_card.into(),
                     },

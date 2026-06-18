@@ -117,10 +117,7 @@ impl Magic for LeapAttack {
         }
 
         for enemy_id in enemies_at_dest {
-            effects.push(Effect::Strike {
-                striker_id: leaper_id,
-                target_id: enemy_id,
-            });
+            effects.push(Effect::strike(state, leaper_id, enemy_id)?);
         }
 
         Ok(effects)

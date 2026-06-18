@@ -162,6 +162,7 @@ impl Magic for WarpSpasm {
                 effect: DeferredEffect {
                     hook_id: ATTACK_AND_KILL_HOOK,
                     card_id: *self.get_id(),
+                    timing: HookTiming::After,
                     trigger_on_effect: EffectQuery::UnitKilled {
                         unit: CardQuery::new().minions(),
                         killer: Some(self.get_id().into()),
@@ -175,6 +176,7 @@ impl Magic for WarpSpasm {
                 effect: DeferredEffect {
                     hook_id: END_OF_TURN_HOOK,
                     card_id: *self.get_id(),
+                    timing: HookTiming::After,
                     trigger_on_effect: EffectQuery::TurnEnd { player_id: None },
                     expires_on_effect: None,
                     trigger_times: Some(1),

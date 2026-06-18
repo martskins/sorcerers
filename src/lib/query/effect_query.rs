@@ -394,6 +394,7 @@ impl EffectQuery {
                 Effect::Strike {
                     striker_id,
                     target_id,
+                    ..
                 },
             ) => {
                 let card_matches = card.matches(target_id, state);

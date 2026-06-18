@@ -62,15 +62,16 @@ impl Card for CriticalStrike {
                 let Effect::Strike {
                     striker_id,
                     target_id,
+                    damage,
                 } = effect
                 else {
                     return Ok(vec![]);
                 };
 
-                // TODO: Double damage here once damage is included in Effect::Strike
                 Ok(vec![Effect::Strike {
                     striker_id: *striker_id,
                     target_id: *target_id,
+                    damage: damage.clone() * 2,
                 }])
             }
             _ => Ok(vec![]),
@@ -92,6 +93,7 @@ impl Magic for CriticalStrike {
             effect: DeferredEffect {
                 hook_id: STRIKE_HOOK,
                 card_id: *self.get_id(),
+                timing: HookTiming::Replace,
                 trigger_on_effect: EffectQuery::StrikeCard {
                     card: CardQuery::new().units(),
                     striker: Some(CardQuery::new().units().controlled_by(&controller_id)),
@@ -110,3 +112,110 @@ static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CriticalStrike::NAME, |owner_id: PlayerId| {
         Box::new(CriticalStrike::new(owner_id))
     });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        card::{BoskTroll, FootSoldier, Sorcerer},
+        deck::Deck,
+        effect::FightContext,
+        state::{Player, PlayerWithDeck},
+    };
+
+    fn make_state() -> (State, async_channel::Receiver<crate::networking::message::ServerMessage>)
+    {
+        let player_one_id = uuid::Uuid::new_v4();
+        let player_two_id = uuid::Uuid::new_v4();
+        let avatar_one = Sorcerer::new(player_one_id);
+        let avatar_one_id = *avatar_one.get_id();
+        let avatar_two = Sorcerer::new(player_two_id);
+        let avatar_two_id = *avatar_two.get_id();
+
+        let player1 = PlayerWithDeck {
+            player: Player {
+                id: player_one_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(
+                &player_one_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                avatar_one_id,
+            ),
+            cards: vec![Box::new(avatar_one)],
+        };
+        let player2 = PlayerWithDeck {
+            player: Player {
+                id: player_two_id,
+                name: "Player 2".to_string(),
+            },
+            deck: Deck::new(
+                &player_two_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                avatar_two_id,
+            ),
+            cards: vec![Box::new(avatar_two)],
+        };
+
+        let (server_tx, server_rx) = async_channel::unbounded();
+        let (_client_tx, client_rx) = async_channel::unbounded();
+        (
+            State::new(
+                uuid::Uuid::new_v4(),
+                vec![player1, player2],
+                server_tx,
+                client_rx,
+            ),
+            server_rx,
+        )
+    }
+
+    #[tokio::test]
+    async fn critical_strike_doubles_attack_fight_strike_damage() {
+        let (mut state, _server_rx) = make_state();
+        let player_id = state.players[0].id;
+        let opponent_id = state.players[1].id;
+
+        let critical_strike = CriticalStrike::new(player_id);
+        state.add_card(Box::new(critical_strike.clone()));
+        let effects = critical_strike
+            .resolve_magic(&state, critical_strike.get_id(), Cost::ZERO)
+            .await
+            .expect("critical strike should resolve");
+        state.queue(effects);
+        state
+            .apply_effects_without_log()
+            .await
+            .expect("modifier should be added");
+
+        let mut striker = FootSoldier::new(player_id);
+        let striker_id = *striker.get_id();
+        striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        state.add_card(Box::new(striker));
+
+        let mut target = BoskTroll::new(opponent_id);
+        let target_id = *target.get_id();
+        target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        target.add_status(CardStatus::Disabled);
+        state.add_card(Box::new(target));
+
+        state.queue_one(Effect::Fight {
+            attacker_id: striker_id,
+            defender_id: target_id,
+            defending_ids: vec![],
+            damage_assignment: None,
+            context: FightContext::Attack,
+        });
+        state
+            .apply_effects_without_log()
+            .await
+            .expect("strike should resolve");
+
+        assert_eq!(state.get_card(&target_id).get_damage_taken().unwrap(), 2);
+        assert!(state.temporary_effects().is_empty());
+    }
+}

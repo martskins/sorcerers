@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, HookId, UnitBase},
+    card::{Ability, HookId, HookTiming, UnitBase},
     effect::Effect,
     game::{CardId, PlayerId},
     query::{CardQuery, EffectQuery},
@@ -21,6 +21,7 @@ pub type EffectReplacementCallback = Arc<
 pub struct DeferredEffect {
     pub hook_id: HookId,
     pub card_id: CardId,
+    pub timing: HookTiming,
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
     pub trigger_times: Option<u8>,
@@ -195,6 +196,8 @@ impl EffectLifecycle {
             }
         }
 
+        Self::process_deferred_effects_with_timing(state, effect, HookTiming::Replace).await?;
+
         Ok(())
     }
 
@@ -205,9 +208,22 @@ impl EffectLifecycle {
     }
 
     async fn process_deferred_effects(state: &mut State, effect: &Effect) -> anyhow::Result<()> {
+        let mut effect = effect.clone();
+        Self::process_deferred_effects_with_timing(state, &mut effect, HookTiming::After).await
+    }
+
+    async fn process_deferred_effects_with_timing(
+        state: &mut State,
+        effect: &mut Effect,
+        timing: HookTiming,
+    ) -> anyhow::Result<()> {
         let mut effects_to_remove = vec![];
         let mut deferred_effects = state.deferred_effects().to_vec();
         for (idx, de) in deferred_effects.iter_mut().enumerate() {
+            if de.timing != timing {
+                continue;
+            }
+
             if de.trigger_on_effect.matches(effect, state).await? {
                 if let Some(v) = de.trigger_times.as_mut() {
                     *v -= 1
@@ -218,7 +234,13 @@ impl EffectLifecycle {
                 };
 
                 let effects = card.resolve_hook(de.hook_id, state, effect).await?;
-                state.queue(effects);
+                if timing == HookTiming::Replace {
+                    if let Some(replacement) = effects.into_iter().next() {
+                        *effect = replacement;
+                    }
+                } else {
+                    state.queue(effects);
+                }
 
                 if de.trigger_times.is_some_and(|tt| tt == 0) {
                     effects_to_remove.push(idx);

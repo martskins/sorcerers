@@ -203,6 +203,7 @@ impl Magic for DreamQuest {
                 effect: DeferredEffect {
                     hook_id: NEXT_TURN_HOOK,
                     card_id: *self.get_id(),
+                    timing: HookTiming::After,
                     trigger_on_effect: EffectQuery::TurnStart {
                         player_id: Some(controller_id),
                     },

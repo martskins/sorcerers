@@ -14,6 +14,7 @@ use crate::{
 use std::{collections::HashMap, sync::Arc};
 
 const TEST_HOOK_SOURCE_ID: HookId = 1000;
+const TEST_STRIKE_HOOK_SOURCE_ID: HookId = 1001;
 
 #[derive(Debug, Clone)]
 struct TestHookSource {
@@ -71,6 +72,71 @@ impl Card for TestHookSource {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             TEST_HOOK_SOURCE_ID => Ok(vec![Effect::AdjustMana {
+                player_id: self.get_controller_id(state),
+                amount: 1,
+            }]),
+            _ => Ok(vec![]),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TestStrikeHookSource {
+    card_base: CardBase,
+}
+
+impl TestStrikeHookSource {
+    fn new(owner_id: uuid::Uuid) -> Self {
+        Self {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                controller_id: owner_id,
+                zone: Zone::Location(Location::Square(1, Region::Surface)),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Card for TestStrikeHookSource {
+    fn get_name(&self) -> &str {
+        "Test Strike Hook Source"
+    }
+
+    fn get_description(&self) -> &str {
+        ""
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TEST_STRIKE_HOOK_SOURCE_ID,
+            trigger: EffectQuery::StrikeCard {
+                card: CardQuery::new().units(),
+                striker: None,
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            TEST_STRIKE_HOOK_SOURCE_ID => Ok(vec![Effect::AdjustMana {
                 player_id: self.get_controller_id(state),
                 amount: 1,
             }]),
@@ -240,10 +306,7 @@ async fn test_plain_strike_does_not_make_target_strike_back() {
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.add_card(Box::new(target));
 
-    state.queue_one(Effect::Strike {
-        striker_id,
-        target_id,
-    });
+    state.queue_one(Effect::strike(&state, striker_id, target_id).unwrap());
     drain_effects(&mut state).await;
 
     assert_eq!(
@@ -275,10 +338,7 @@ async fn test_disabled_unit_cannot_strike() {
     target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.add_card(Box::new(target));
 
-    state.queue_one(Effect::Strike {
-        striker_id,
-        target_id,
-    });
+    state.queue_one(Effect::strike(&state, striker_id, target_id).unwrap());
     drain_effects(&mut state).await;
 
     assert_eq!(
@@ -1008,6 +1068,39 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
         0,
         "a disabled defender should not counterstrike"
     );
+}
+
+#[tokio::test]
+async fn test_attack_fight_emits_strike_effects_for_hooks() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let hook_source = TestStrikeHookSource::new(player_id);
+    state.add_card(Box::new(hook_source));
+
+    let mut attacker = FootSoldier::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.add_card(Box::new(attacker));
+
+    let mut defender = BoskTroll::new(opponent_id);
+    let defender_id = *defender.get_id();
+    defender.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    defender.add_status(CardStatus::Disabled);
+    state.add_card(Box::new(defender));
+
+    state.queue_one(Effect::Fight {
+        attacker_id,
+        defender_id,
+        defending_ids: vec![],
+        damage_assignment: None,
+        context: FightContext::Attack,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 1);
+    assert_eq!(state.get_card(&defender_id).get_damage_taken().unwrap(), 1);
 }
 
 #[tokio::test]
@@ -2055,6 +2148,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
+        timing: HookTiming::After,
         trigger_on_effect: EffectQuery::DrawCard { player_id: None },
         expires_on_effect: None,
         trigger_times: Some(1),
@@ -2082,6 +2176,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
+        timing: HookTiming::After,
         trigger_on_effect: EffectQuery::DrawCard { player_id: None },
         expires_on_effect: None,
         trigger_times: None,
@@ -2114,6 +2209,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
     state.deferred_effects_mut().push(DeferredEffect {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
+        timing: HookTiming::After,
         trigger_on_effect: EffectQuery::TurnStart { player_id: None },
         expires_on_effect: Some(EffectQuery::DrawCard { player_id: None }),
         trigger_times: None,

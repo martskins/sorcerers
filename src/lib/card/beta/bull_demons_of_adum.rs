@@ -52,10 +52,7 @@ impl ActivatedAbility for TapMoveAndStrike {
                         .all(state);
 
                     for target_id in targets {
-                        effects.push(Effect::Strike {
-                            striker_id: *card_id,
-                            target_id,
-                        });
+                        effects.push(Effect::strike(state, *card_id, target_id)?);
                     }
 
                     path.push(next_location.clone());
@@ -174,17 +171,18 @@ impl Card for BullDemonsOfAdum {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            STRIKE_OCCUPANTS_HOOK => Ok(CardQuery::new()
-                .units()
-                .untapped()
-                .in_zone(self.get_zone())
-                .all(state)
-                .into_iter()
-                .map(|target_id| Effect::Strike {
-                    striker_id: *self.get_id(),
-                    target_id,
-                })
-                .collect()),
+            STRIKE_OCCUPANTS_HOOK => {
+                let mut effects = vec![];
+                for target_id in CardQuery::new()
+                    .units()
+                    .untapped()
+                    .in_zone(self.get_zone())
+                    .all(state)
+                {
+                    effects.push(Effect::strike(state, *self.get_id(), target_id)?);
+                }
+                Ok(effects)
+            }
             _ => Ok(vec![]),
         }
     }

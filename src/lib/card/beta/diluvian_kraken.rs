@@ -16,17 +16,15 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let kraken = state.get_card(card_id);
-        let mut effects = CardQuery::new()
+        let mut effects = vec![];
+        for unit_id in CardQuery::new()
             .units()
             .near_to(kraken.get_location())
             .id_not(*kraken.get_id())
             .all(state)
-            .into_iter()
-            .map(|unit_id| Effect::Strike {
-                striker_id: *kraken.get_id(),
-                target_id: unit_id,
-            })
-            .collect::<Vec<Effect>>();
+        {
+            effects.push(Effect::strike(state, *kraken.get_id(), unit_id)?);
+        }
 
         effects.push(Effect::MoveCard {
             player_id: *player_id,
