@@ -132,6 +132,7 @@ impl Card for Seer {
                     state,
                     &format!("Seer: Viewing the top card of your {deck_kind} deck"),
                     "Put it on the bottom of its deck?",
+                    *self.get_id(),
                 )
                 .await?;
                 if !put_on_bottom {

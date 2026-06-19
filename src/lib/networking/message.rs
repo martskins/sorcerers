@@ -63,6 +63,7 @@ pub enum ServerMessage {
         player_id: PlayerId,
         cards: Vec<CardId>,
         prompt: String,
+        source_card_id: Option<CardId>,
         action: Option<String>,
     },
     DistributeDamage {

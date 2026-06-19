@@ -81,6 +81,7 @@ impl Card for RiddleSphinx {
                     state,
                     "Riddle Sphinx: Viewing the top card of your spellbook",
                     "Put it on the bottom of your spellbook?",
+                    *self.get_id(),
                 )
                 .await?;
                 if put_on_bottom {
@@ -97,6 +98,7 @@ impl Card for RiddleSphinx {
                         state,
                         "Riddle Sphinx: You may exchange your opponent's top and bottommost spells",
                         "Exchange them?",
+                        *self.get_id(),
                     )
                     .await?;
                     if exchange {

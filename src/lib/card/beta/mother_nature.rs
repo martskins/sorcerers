@@ -97,6 +97,7 @@ impl Card for MotherNature {
                             "Mother Nature: Seeing the top card of {}'s spellbook",
                             player.name
                         ),
+                        *self.get_id(),
                     )
                     .await?;
 
@@ -108,6 +109,7 @@ impl Card for MotherNature {
                             state,
                             "Mother Nature: Seeing the top card of your spellbook",
                             "Mother Nature: Summon minion here?",
+                            *self.get_id(),
                         )
                         .await?;
 
@@ -120,7 +122,8 @@ impl Card for MotherNature {
                                     to_location: self
                                         .get_zone()
                                         .clone()
-                                        .location().cloned()
+                                        .location()
+                                        .cloned()
                                         .expect("Mother Nature must be in a location"),
                                 }],
                             }]);
@@ -131,6 +134,7 @@ impl Card for MotherNature {
                             &cards,
                             state,
                             "Mother Nature: Seeing the top card of your spellbook",
+                            *self.get_id(),
                         )
                         .await?;
                     }

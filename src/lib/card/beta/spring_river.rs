@@ -87,8 +87,15 @@ impl Card for SpringRiver {
                 if let Some(spell_id) = deck.peek_spell() {
                     let prompt = "Viewing the top card of your spellbook";
                     let action = "Put into the bottom of your spellbook?";
-                    let action =
-                        take_action(&controller_id, &[*spell_id], state, prompt, action).await?;
+                    let action = take_action(
+                        &controller_id,
+                        &[*spell_id],
+                        state,
+                        prompt,
+                        action,
+                        *self.get_id(),
+                    )
+                    .await?;
                     if action {
                         let mut deck = deck.clone();
                         deck.rotate_spells(1);

@@ -42,6 +42,7 @@ impl ActivatedAbility for ReadManuscript {
             &[top_spell_id],
             state,
             "Pnakotic Manuscript: Revealed top spell",
+            *card_id,
         )
         .await?;
         reveal_cards(
@@ -49,6 +50,7 @@ impl ActivatedAbility for ReadManuscript {
             &[top_spell_id],
             state,
             "Pnakotic Manuscript: Revealed top spell",
+            *card_id,
         )
         .await?;
         Ok(vec![

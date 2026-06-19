@@ -21,20 +21,23 @@ impl ActivatedAbility for PickUpWeakerMinion {
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let controller_id = card.get_controller_id(state);
-        let weaker_minions = CardQuery::new()
+        let Some(picked) = CardQuery::new()
             .minions()
             .controlled_by(&controller_id)
             .in_location(card.get_location().clone())
             .power_lt(card.get_power(state)?.unwrap_or_default())
-            .all(state);
-        let picked = pick_cards(player_id, &weaker_minions, state, "Pick minion to carry").await?;
-        Ok(picked
-            .into_iter()
-            .map(|minion_id| Effect::SetBearer {
-                card_id: minion_id,
-                bearer_id: Some(*card_id),
-            })
-            .collect())
+            .with_source_card(*card_id)
+            .with_prompt("Pick minion to carry")
+            .pick(player_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+
+        Ok(vec![Effect::SetBearer {
+            card_id: picked,
+            bearer_id: Some(*card_id),
+        }])
     }
 }
 

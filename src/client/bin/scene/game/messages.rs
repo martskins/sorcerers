@@ -167,6 +167,7 @@ impl Game {
                 cards,
                 action,
                 prompt,
+                source_card_id,
                 ..
             } => {
                 let renderables = self
@@ -175,10 +176,13 @@ impl Game {
                     .iter()
                     .filter(|c| cards.contains(&c.id))
                     .collect();
+                let source_card = source_card_id
+                    .and_then(|id| self.data.cards.iter().find(|c| c.id == id));
                 self.overlay = Some(GameOverlay::Action(ActionOverlay::new(
                     self.client.clone(),
                     &self.game_id,
                     renderables,
+                    source_card,
                     &self.data.player_id,
                     prompt.to_string(),
                     action.clone(),

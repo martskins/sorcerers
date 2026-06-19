@@ -144,6 +144,7 @@ impl Magic for AssortedAnimals {
                 &chosen_ids,
                 state,
                 "Assorted Animals: Revealed Beasts",
+                *self.get_id(),
             )
             .await?;
         }

@@ -271,6 +271,7 @@ pub async fn reveal_cards(
     preview_cards: &[CardId],
     state: &State,
     prompt: &str,
+    source_card_id: CardId,
 ) -> anyhow::Result<()> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -279,6 +280,7 @@ pub async fn reveal_cards(
             prompt: prompt.to_string(),
             player_id: decision_player,
             cards: preview_cards.to_vec(),
+            source_card_id: Some(source_card_id),
             action: None,
         })
         .await?;
@@ -292,6 +294,7 @@ pub async fn take_action(
     state: &State,
     prompt: &str,
     action: &str,
+    source_card_id: CardId,
 ) -> anyhow::Result<bool> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -300,6 +303,7 @@ pub async fn take_action(
             prompt: prompt.to_string(),
             player_id: decision_player,
             cards: preview_cards.to_vec(),
+            source_card_id: Some(source_card_id),
             action: Some(action.to_string()),
         })
         .await?;
