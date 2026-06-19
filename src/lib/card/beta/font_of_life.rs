@@ -59,19 +59,18 @@ impl Magic for FontOfLife {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let owner = caster.get_controller_id(state);
-
+        let controller = caster.get_controller_id(state);
         let ally_units: Vec<CardId> = CardQuery::new()
             .units()
             .in_play()
-            .controlled_by(&owner)
+            .controlled_by(&controller)
             .all(state);
 
         let effects = ally_units
             .into_iter()
             .map(|unit_id| {
                 let unit = state.get_card(&unit_id);
-                let heal_amount = state.get_body_of_water_size(unit.get_location()).max(1);
+                let heal_amount = state.get_body_of_water_size(unit.get_location());
                 Effect::Heal {
                     card_id: unit_id,
                     amount: heal_amount,

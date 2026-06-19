@@ -78,22 +78,19 @@ impl Magic for FlankingManeuver {
             }]);
         }
 
-        let source_zone = pick_location(
-            &controller,
-            &source_locations,
-            state,
-            false,
-            "Flanking Maneuver: Pick a site to teleport allies from",
-        )
-        .await?;
+        let source_location = LocationQuery::from_locations(source_locations)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a site to teleport allies from")
+            .pick(&controller, state)
+            .await?;
 
         let ally_minions_at_source: Vec<CardId> = CardQuery::new()
             .units()
-            .in_zone(&source_zone)
+            .in_zone(&source_location)
             .controlled_by(&controller)
             .all(state);
 
-        let destinations = get_knight_move_locations(&source_zone);
+        let destinations = get_knight_move_locations(&source_location);
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,
@@ -102,22 +99,20 @@ impl Magic for FlankingManeuver {
             }]);
         }
 
-        let dest_zone = pick_location(
-            &controller,
-            &destinations,
-            state,
-            false,
-            "Flanking Maneuver: Pick a knight's move destination",
-        )
-        .await?;
+        let destination = LocationQuery::from_locations(destinations)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a knight's move destination")
+            .pick(&controller, state)
+            .await?;
 
         // Ask how many minions to move.
-        let count = crate::game::pick_amount(
+        // TODO: Change this with a proper amount picker
+        let count = pick_amount(
             &controller,
             0,
             ally_minions_at_source.len() as u8,
             state,
-            "Flanking Maneuver: How many allies to teleport?",
+            "How many allies do you want to teleport?",
         )
         .await?;
 
@@ -127,13 +122,21 @@ impl Magic for FlankingManeuver {
             if remaining.is_empty() {
                 break;
             }
-            let picked =
-                pick_card(&controller, &remaining, state, "Pick an ally to teleport").await?;
+
+            let Some(picked) = CardQuery::new()
+                .with_source_card(*self.get_id())
+                .with_prompt("Pick an ally to teleport")
+                .pick(&controller, state)
+                .await?
+            else {
+                return Ok(vec![]);
+            };
+
             remaining.retain(|id| id != &picked);
             effects.push(Effect::TeleportCard {
                 player_id: controller,
                 card_id: picked,
-                to_location: dest_zone.clone(),
+                to_location: destination.clone(),
             });
         }
 

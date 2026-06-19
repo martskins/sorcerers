@@ -90,7 +90,7 @@ impl Card for FenvaleMuse {
                     .with_source_card(*self.get_id())
                     .with_prompt("Pick a nearby River to trigger")
                     .site_types(vec![SiteType::River]);
-                if !rivers_query.has_targets(state) {
+                if rivers_query.is_empty(state) {
                     return Ok(vec![]);
                 }
 

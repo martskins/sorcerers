@@ -37,25 +37,20 @@ impl ActivatedAbility for FreeCityAttack {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let enemies_here: Vec<CardId> = CardQuery::new()
+        let controller_id = card.get_controller_id(state);
+        let enemies_query = CardQuery::new()
             .units()
-            .in_zone(card.get_zone())
-            .all(state)
-            .into_iter()
-            .filter(|id| &state.get_card(id).get_controller_id(state) != player_id)
-            .collect();
-
-        if enemies_here.is_empty() {
+            .not_controlled_by(&controller_id)
+            .with_source_card(*card_id)
+            .with_prompt("Pick a minion to attack")
+            .in_location(card.get_location().clone());
+        if enemies_query.is_empty(state) {
             return Ok(vec![]);
         }
 
-        let target = pick_card(
-            player_id,
-            &enemies_here,
-            state,
-            "Free City: pick an enemy to attack",
-        )
-        .await?;
+        let Some(target) = enemies_query.pick(&controller_id, state).await? else {
+            return Ok(vec![]);
+        };
 
         Ok(vec![
             Effect::DeclareAttack {

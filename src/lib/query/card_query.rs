@@ -819,10 +819,10 @@ impl CardQuery {
         result
     }
 
-    pub fn has_targets(&self, state: &State) -> bool {
+    pub fn is_empty(&self, state: &State) -> bool {
         let prepared = PreparedCardQuery::new(self, state);
         self.candidate_cards(state)
-            .any(|c| prepared.matches_card(c))
+            .all(|c| !prepared.matches_card(c))
     }
 
     pub fn all(&self, state: &State) -> Vec<CardId> {

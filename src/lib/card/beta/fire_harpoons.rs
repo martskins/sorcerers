@@ -78,7 +78,7 @@ impl Magic for FireHarpoons {
             .with_prompt("Pick a minion to fire at")
             .occupying_sites_at_locations(adjacent_water_sites);
 
-        if !targets.has_targets(state) {
+        if targets.is_empty(state) {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller_id,
                 count: 1,

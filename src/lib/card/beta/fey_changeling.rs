@@ -95,7 +95,7 @@ impl Card for FeyChangeling {
                     .with_source_card(*self.get_id())
                     .with_prompt("Pick a minion to bounce")
                     .id_not(*self.get_id());
-                if !minion_query.has_targets(state) {
+                if minion_query.is_empty(state) {
                     return Ok(vec![]);
                 }
 

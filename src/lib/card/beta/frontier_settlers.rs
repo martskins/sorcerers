@@ -5,14 +5,37 @@ struct SettleAction;
 
 fn adjacent_void_or_rubble(card_id: &CardId, state: &State) -> Vec<Location> {
     let card = state.get_card(card_id);
-    card.get_location()
-        .get_adjacent(state)
+    let mut locations = card
+        .get_location()
+        .get_adjacent_squares()
         .into_iter()
-        .filter(|z| match z.get_site(state) {
+        .filter_map(|location| {
+            location
+                .square()
+                .map(|square| Location::Square(square, Region::Surface))
+        })
+        .filter(|location| match location.get_site(state) {
             None => true,
             Some(site) => site.get_name() == Rubble::NAME,
         })
-        .collect()
+        .collect::<Vec<_>>();
+    locations.sort();
+    locations.dedup();
+    locations
+}
+
+fn valid_settle_locations(
+    card_id: &CardId,
+    site_id: &CardId,
+    _player_id: &PlayerId,
+    state: &State,
+) -> anyhow::Result<Vec<Location>> {
+    let site = state.get_card(site_id);
+    if !site.base_playable_regions(state).contains(&Region::Surface) {
+        return Ok(vec![]);
+    }
+
+    Ok(adjacent_void_or_rubble(card_id, state))
 }
 
 #[async_trait::async_trait]
@@ -31,14 +54,10 @@ impl ActivatedAbility for SettleAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
-        // Needs at least one adjacent void/Rubble zone AND at least one site in the atlas deck.
-        let has_valid_zone = !adjacent_void_or_rubble(card_id, state).is_empty();
-        let has_site = state
-            .decks
-            .get(player_id)
-            .map(|d| !d.sites.is_empty())
-            .unwrap_or(false);
-        Ok(has_valid_zone && has_site)
+        let Some(site_id) = state.get_player_deck(player_id)?.peek_site() else {
+            return Ok(false);
+        };
+        Ok(!valid_settle_locations(card_id, site_id, player_id, state)?.is_empty())
     }
 
     async fn on_select(
@@ -47,32 +66,27 @@ impl ActivatedAbility for SettleAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_locations = adjacent_void_or_rubble(card_id, state);
-        if valid_locations.is_empty() {
-            return Ok(vec![]);
-        }
-
         let site_id = match state.decks.get(player_id).and_then(|d| d.sites.last()) {
             Some(id) => *id,
             None => return Ok(vec![]),
         };
+        let valid_locations = valid_settle_locations(card_id, &site_id, player_id, state)?;
+        if valid_locations.is_empty() {
+            return Ok(vec![]);
+        }
 
-        let chosen_zone = pick_location(
-            player_id,
-            &valid_locations,
-            state,
-            false,
-            "Pick an adjacent void or Rubble zone to settle",
-        )
-        .await?;
-
+        let location = LocationQuery::from_locations(valid_locations)
+            .with_source_card(*card_id)
+            .with_prompt("Pick an adjacent or Rubble zone to settle")
+            .pick(player_id, state)
+            .await?;
         Ok(vec![
             // Move the settlers to their new home.
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card_id,
                 from: state.get_card(card_id).get_location().clone(),
-                to: LocationQuery::from_location(chosen_zone.clone()),
+                to: location.clone().into(),
                 tap: false,
                 through_path: None,
             },
@@ -81,7 +95,7 @@ impl ActivatedAbility for SettleAction {
                     player_id: *player_id,
                     card_id: site_id,
                     from_zone: Zone::Atlasbook,
-                    to_location: chosen_zone,
+                    to_location: location,
                 }],
             },
             Effect::SetCardData {
@@ -184,3 +198,42 @@ static CONSTRUCTOR: (&'static str, CardConstructor) =
     (FrontierSettlers::NAME, |owner_id: PlayerId| {
         Box::new(FrontierSettlers::new(owner_id))
     });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::SimpleVillage;
+
+    #[test]
+    fn frontier_settlers_only_offers_surface_locations_for_top_site() {
+        let mut state = State::new_mock_state([3]);
+        let player_id = state.players[0].id;
+
+        let mut settlers = FrontierSettlers::new(player_id);
+        let settlers_id = *settlers.get_id();
+        settlers.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
+        state.add_card(Box::new(settlers));
+
+        let site = SimpleVillage::new(player_id);
+        let site_id = *site.get_id();
+        state.add_card(Box::new(site));
+        state
+            .get_player_deck_mut(&player_id)
+            .expect("player deck should exist")
+            .sites
+            .push(site_id);
+
+        let locations = valid_settle_locations(&settlers_id, &site_id, &player_id, &state)
+            .expect("settle locations should resolve");
+
+        assert!(!locations.is_empty());
+        assert!(
+            locations
+                .iter()
+                .all(|location| location.region() == &Region::Surface)
+        );
+        assert!(!locations.contains(&Location::Square(2, Region::Underground)));
+        assert!(!locations.contains(&Location::Square(2, Region::Underwater)));
+        assert!(!locations.contains(&Location::Square(2, Region::Void)));
+    }
+}

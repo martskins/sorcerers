@@ -215,9 +215,9 @@ impl Server {
         game.state.add_card(kite_archer);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(FenvaleMuse::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(Geyser::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
-        let card = card::from_name_and_zone(IceLance::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(FlamingSword::NAME, &player_two, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(AdeptIllusionist::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);

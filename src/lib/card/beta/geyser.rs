@@ -62,6 +62,8 @@ impl Magic for Geyser {
         let Some(target_site_id) = CardQuery::new()
             .sites()
             .count(1)
+            .with_source_card(*self.get_id())
+            .with_prompt("Pick a site to flood")
             .pick(&player_id, state)
             .await?
         else {
@@ -71,7 +73,7 @@ impl Magic for Geyser {
         let target_site = state.get_card(&target_site_id);
         let minions_there = CardQuery::new()
             .minions()
-            .in_zone(target_site.get_zone())
+            .occupying_site_at_location(target_site.get_location().clone())
             .all(state);
 
         let mut effects = vec![
@@ -84,9 +86,7 @@ impl Magic for Geyser {
                 effect: TemporaryEffect::GrantAbility {
                     ability: Ability::Flooded,
                     affected_cards: target_site_id.into(),
-                    expires_on_effect: EffectQuery::TurnEnd {
-                        player_id: Some(player_id),
-                    },
+                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
                 },
             },
         ];
@@ -97,9 +97,7 @@ impl Magic for Geyser {
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     ability: Ability::Airborne,
-                    expires_on_effect: Some(EffectQuery::TurnEnd {
-                        player_id: Some(player_id),
-                    }),
+                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             });
         }

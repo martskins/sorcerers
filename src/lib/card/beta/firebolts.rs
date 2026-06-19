@@ -59,7 +59,7 @@ impl Magic for Firebolts {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let prompt = "Pick a direction to cast the spell";
+        let prompt = "Pick a direction to shoot the projectile";
         let direction = pick_direction(
             self.get_owner_id(),
             &CARDINAL_DIRECTIONS,

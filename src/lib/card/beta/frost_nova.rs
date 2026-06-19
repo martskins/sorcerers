@@ -59,11 +59,10 @@ impl Magic for FrostNova {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&controller_id)?;
         let nearby_enemies = CardQuery::new()
             .minions()
             .near_to(self.get_location())
-            .controlled_by(&opponent_id)
+            .not_controlled_by(&controller_id)
             .all(state);
         Ok(nearby_enemies
             .into_iter()

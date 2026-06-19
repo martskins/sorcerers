@@ -2753,7 +2753,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         if self.has_ability(state, &Ability::Submerge) {
             regions.push(Region::Underwater);
         }
-        if self.has_ability(state, &Ability::Voidwalk) || self.is_site() {
+        if self.has_ability(state, &Ability::Voidwalk) {
             regions.push(Region::Void);
         }
         regions.sort();

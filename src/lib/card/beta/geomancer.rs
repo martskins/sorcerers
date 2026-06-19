@@ -335,7 +335,7 @@ mod tests {
             .unwrap();
         let replace_rubble = abilities
             .iter()
-            .find(|ability| ability.get_name() == "Replace Rubble")
+            .find(|ability| ability.get_name() == GeomancerAbility::ReplaceRubble.get_name())
             .expect("Geomancer to have Replace Rubble");
         assert!(
             !replace_rubble
@@ -350,7 +350,7 @@ mod tests {
             .unwrap();
         let replace_rubble = abilities
             .iter()
-            .find(|ability| ability.get_name() == "Replace Rubble")
+            .find(|ability| ability.get_name() == GeomancerAbility::ReplaceRubble.get_name())
             .expect("Geomancer to have Replace Rubble");
         assert!(
             replace_rubble
@@ -363,17 +363,22 @@ mod tests {
     fn geomancer_custom_abilities_have_tap_costs() {
         let (mut state, player_id, geomancer_id) = setup_geomancer_state(true, true);
 
-        for ability_name in ["Play Site", "Draw Site", "Replace Rubble"] {
+        for ability in [
+            GeomancerAbility::PlaySite,
+            GeomancerAbility::DrawSite,
+            GeomancerAbility::ReplaceRubble,
+        ] {
             state.get_card_mut(&geomancer_id).set_tapped(false);
             let abilities = state
                 .get_card(&geomancer_id)
                 .get_activated_abilities(&state)
                 .unwrap();
-            let ability = abilities
+            let ability_name = ability.get_name();
+            let actual_ability = abilities
                 .iter()
                 .find(|ability| ability.get_name() == ability_name)
                 .unwrap_or_else(|| panic!("Geomancer to have {ability_name}"));
-            let cost = ability.get_cost(&geomancer_id, &state).unwrap();
+            let cost = actual_ability.get_cost(&geomancer_id, &state).unwrap();
             assert!(
                 cost.can_afford(&state, player_id).unwrap(),
                 "{ability_name} should be payable while Geomancer is untapped"

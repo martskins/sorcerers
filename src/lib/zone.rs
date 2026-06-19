@@ -440,6 +440,20 @@ impl Location {
         None
     }
 
+    pub fn get_adjacent_squares(&self) -> Vec<Self> {
+        self.get_adjacent_unchecked()
+            .into_iter()
+            .flat_map(|loc| match loc {
+                Location::Square(square, _) => Region::iter()
+                    .map(|r| Location::Square(square, r))
+                    .collect::<Vec<_>>(),
+                Location::Intersection(squares, _) => Region::iter()
+                    .map(|r| Location::Intersection(squares.to_vec(), r))
+                    .collect::<Vec<_>>(),
+            })
+            .collect()
+    }
+
     pub fn get_nearby_squares(&self) -> Vec<Self> {
         self.get_nearby_unchecked()
             .into_iter()
@@ -625,8 +639,9 @@ impl Location {
                     CardType::Site => {
                         let avatar_id = state.get_player_avatar_id(player_id)?;
                         let avatar = state.get_card(&avatar_id);
-                        let avatar_location = avatar.get_location();
-                        if avatar_location.get_site(state).is_none() {
+                        if let Some(avatar_location) = avatar.get_zone().location()
+                            && avatar_location.get_site(state).is_none()
+                        {
                             return Ok(avatar_location == self);
                         }
 
@@ -639,6 +654,11 @@ impl Location {
                             .into_iter()
                             .map(|cid| state.get_card(&cid).get_location())
                             .flat_map(|l| l.with_region(Region::Void).get_adjacent(state))
+                            .filter_map(|location| {
+                                location
+                                    .square()
+                                    .map(|square| Location::Square(square, Region::Surface))
+                            })
                             .collect();
 
                         Ok(empty_adjacent_zones.contains(self))
