@@ -2694,6 +2694,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
+            if state
+                .mandatory_avatar_site_play_location(&self.get_controller_id(state))?
+                .is_some()
+            {
+                return Ok(abilities);
+            }
             if !state.card_has_special_abilities_removed(self.get_id()) {
                 abilities.extend(self.get_additional_activated_abilities(state)?);
             }
@@ -3125,16 +3131,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         // Avatars in the void MUST play a site if they can.
-        if self.get_location().get_site(state).is_none() {
-            let sites_in_hand = !CardQuery::new()
-                .sites()
-                .in_zone(Zone::Hand)
-                .owned_by(&self.get_controller_id(state))
-                .all(state)
-                .is_empty();
-            if sites_in_hand {
-                return Ok(vec![Box::new(AvatarAction::PlaySite)]);
-            }
+        if state
+            .mandatory_avatar_site_play_location(&self.get_controller_id(state))?
+            .is_some()
+        {
+            return Ok(vec![Box::new(AvatarAction::PlaySite)]);
         }
 
         let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =

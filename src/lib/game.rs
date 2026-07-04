@@ -1125,11 +1125,25 @@ impl ActivatedAbility for AvatarAction {
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             AvatarAction::PlaySite => {
-                let cards = CardQuery::new()
+                let mut cards = CardQuery::new()
                     .sites()
                     .in_zone(Zone::Hand)
                     .controlled_by(player_id)
                     .all(state);
+                if let Some(mandatory_location) =
+                    state.mandatory_avatar_site_play_location(player_id)?
+                {
+                    let avatar_id = state.get_player_avatar_id(player_id)?;
+                    cards.retain(|card_id| {
+                        mandatory_location
+                            .is_valid_play_location_for(state, card_id, player_id)
+                            .unwrap_or_default()
+                            && state
+                                .get_card(card_id)
+                                .is_affordable(state, player_id, &avatar_id)
+                                .unwrap_or_default()
+                    });
+                }
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
@@ -1526,6 +1540,12 @@ impl Game {
 
         let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
         let card_type = card.get_card_type();
+        let mandatory_site_location = self
+            .state
+            .mandatory_avatar_site_play_location(&acting_player)?;
+        if mandatory_site_location.is_some() && card_type != CardType::Site {
+            return Ok(None);
+        }
         let locations = match card_type {
             CardType::Site => {
                 let avatar = self.state.get_card(&avatar_id);
@@ -1540,7 +1560,12 @@ impl Game {
                     return Ok(None);
                 }
 
-                card.get_valid_play_locations(&self.state, &acting_player, &avatar_id)?
+                let mut locations =
+                    card.get_valid_play_locations(&self.state, &acting_player, &avatar_id)?;
+                if let Some(mandatory_location) = mandatory_site_location {
+                    locations.retain(|location| location == &mandatory_location);
+                }
+                locations
             }
             CardType::Artifact | CardType::Minion | CardType::Aura => {
                 let avatar = self.state.get_card(&avatar_id);
@@ -1706,6 +1731,13 @@ impl Game {
                     if card.get_controller_id(&self.state) != acting_player {
                         return Ok(());
                     }
+                    if let Some(_) = self
+                        .state
+                        .mandatory_avatar_site_play_location(&acting_player)?
+                        && card.get_id() != &self.state.get_player_avatar_id(&acting_player)?
+                    {
+                        return Ok(());
+                    }
 
                     let unit_disabled =
                         card.has_status(&self.state, &CardStatus::SummoningSickness);
@@ -1757,6 +1789,14 @@ impl Game {
                 }
 
                 let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
+                if self
+                    .state
+                    .mandatory_avatar_site_play_location(&acting_player)?
+                    .is_some()
+                    && card.get_card_type() != CardType::Site
+                {
+                    return Ok(());
+                }
                 if card.get_card_type() == CardType::Site {
                     let Some(playable) = self.playable_hand_card(player_id, card_id)? else {
                         return Ok(());

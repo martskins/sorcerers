@@ -977,6 +977,41 @@ impl State {
         self.cards.values().map(|card| &**card)
     }
 
+    pub fn mandatory_avatar_site_play_location(
+        &self,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Option<Location>> {
+        let avatar_id = self.get_player_avatar_id(player_id)?;
+        let avatar = self.get_card(&avatar_id);
+        let Some(avatar_location) = avatar.get_zone().location() else {
+            return Ok(None);
+        };
+        if avatar_location.get_site(self).is_some() {
+            return Ok(None);
+        }
+
+        let Some(square) = avatar_location.square() else {
+            return Ok(None);
+        };
+        let play_location = Location::Square(square, Region::Surface);
+        let sites_in_hand = CardQuery::new()
+            .sites()
+            .in_zone(Zone::Hand)
+            .owned_by(player_id)
+            .all(self);
+        let has_playable_site = sites_in_hand.into_iter().any(|site_id| {
+            play_location
+                .is_valid_play_location_for(self, &site_id, player_id)
+                .unwrap_or_default()
+                && self
+                    .get_card(&site_id)
+                    .is_affordable(self, player_id, &avatar_id)
+                    .unwrap_or_default()
+        });
+
+        Ok(has_playable_site.then_some(play_location))
+    }
+
     pub fn add_card(&mut self, card: Box<dyn Card>) {
         self.cards.insert(*card.get_id(), card);
         self.invalidate_runtime_caches();

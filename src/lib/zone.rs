@@ -642,7 +642,8 @@ impl Location {
                         if let Some(avatar_location) = avatar.get_zone().location()
                             && avatar_location.get_site(state).is_none()
                         {
-                            return Ok(avatar_location == self);
+                            return Ok(self.region() == &Region::Surface
+                                && avatar_location.square() == self.square());
                         }
 
                         let empty_adjacent_zones: Vec<Location> = CardQuery::new()

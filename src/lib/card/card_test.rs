@@ -569,6 +569,78 @@ fn test_get_valid_play_locations_site_second_site() {
 }
 
 #[test]
+fn test_avatar_in_void_can_play_site_under_avatar() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(8, Region::Void)));
+
+    let mut site = AridDesert::new(player_id);
+    site.set_zone(Zone::Hand);
+    state.add_card(Box::new(site.clone()));
+
+    let locations = site
+        .get_valid_play_locations(&state, &player_id, &avatar_id)
+        .expect("locations to be computed");
+
+    assert_eq!(locations, vec![Location::Square(8, Region::Surface)]);
+}
+
+#[test]
+fn test_avatar_in_void_must_use_play_site_ability_when_site_can_be_played() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(8, Region::Void)));
+
+    let mut site = AridDesert::new(player_id);
+    site.set_zone(Zone::Hand);
+    state.add_card(Box::new(site));
+
+    let ability_names = state
+        .get_card(&avatar_id)
+        .get_activated_abilities(&state)
+        .expect("abilities to be computed")
+        .into_iter()
+        .map(|ability| ability.get_name())
+        .collect::<Vec<_>>();
+
+    assert_eq!(ability_names, vec!["Play Site".to_string()]);
+}
+
+#[test]
+fn test_avatar_in_void_without_site_in_hand_is_not_forced_to_draw_site() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(8, Region::Void)));
+
+    let ability_names = state
+        .get_card(&avatar_id)
+        .get_activated_abilities(&state)
+        .expect("abilities to be computed")
+        .into_iter()
+        .map(|ability| ability.get_name())
+        .collect::<Vec<_>>();
+
+    assert!(ability_names.contains(&"Draw Site".to_string()));
+    assert!(ability_names.contains(&"Draw Spell".to_string()));
+    assert!(!matches!(ability_names.as_slice(), [only] if only == "Play Site"));
+}
+
+#[test]
 fn test_burrowing_minion_can_be_played_surface_or_underground() {
     let mut state = State::new_mock_state(vec![]);
     let player_id = state.players[0].id;
