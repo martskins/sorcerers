@@ -73,17 +73,14 @@ impl ActivatedAbility for ShootProjectile {
                 through_path: None,
             });
             let target_name = state.get_card(&target).get_name().to_string();
-            let options = [BaseOption::Yes, BaseOption::No];
-            let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
-            let picked_option = pick_option(
+            let fight = yes_or_no(
                 player_id,
-                &option_labels,
                 state,
-                format!("Pudge Butcher: Fight {}?", target_name),
-                false,
+                format!("Fight {}?", target_name),
+                *card_id,
             )
             .await?;
-            if options[picked_option] == BaseOption::Yes {
+            if fight {
                 effects.push(Effect::Fight {
                     attacker_id: *card_id,
                     defender_id: target,

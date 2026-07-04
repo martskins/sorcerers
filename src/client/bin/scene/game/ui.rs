@@ -332,8 +332,8 @@ impl Game {
         let card =
             source_card_id.and_then(|id| self.data.cards.iter().find(|c| c.id == id).cloned());
         let has_card = card.is_some();
-        let panel_w = (if has_card { 560.0_f32 } else { 380.0_f32 }).min(sr.width() - 32.0);
-        let panel_h = (if has_card { 210.0_f32 } else { 168.0_f32 }).min(sr.height() - 32.0);
+        let panel_w = (if has_card { 620.0_f32 } else { 380.0_f32 }).min(sr.width() - 32.0);
+        let panel_h = (if has_card { 190.0_f32 } else { 168.0_f32 }).min(sr.height() - 32.0);
         let origin = pos2(sr.center().x - panel_w / 2.0, sr.center().y - panel_h / 2.0);
         let mut picked: Option<usize> = None;
 
@@ -347,41 +347,49 @@ impl Game {
                     .corner_radius(8.0)
                     .inner_margin(egui::Margin::same(16))
                     .show(ui, |ui| {
-                        ui.set_min_width(panel_w - 32.0);
+                        ui.set_min_size(vec2(panel_w - 32.0, panel_h - 32.0));
                         ui.horizontal(|ui| {
                             if let Some(card) = &card {
-                                let image_size = vec2(112.0, 112.0 / CARD_ASPECT_RATIO);
-                                let (image_rect, _) =
-                                    ui.allocate_exact_size(image_size, egui::Sense::hover());
+                                let source_box = vec2(132.0, 132.0);
+                                let (image_rect, _) = ui.allocate_exact_size(
+                                    source_box,
+                                    egui::Sense::hover(),
+                                );
+                                ui.painter().rect_filled(
+                                    image_rect,
+                                    5.0,
+                                    Color32::from_rgb(24, 29, 42),
+                                );
                                 if let Some(tex) =
                                     TextureCache::get_card_texture_blocking(card, ui.ctx())
                                 {
-                                    let mut draw_rect = image_rect;
-                                    if tex.aspect_ratio() > 1.0 {
-                                        draw_rect = Rect::from_min_size(
-                                            image_rect.min,
-                                            vec2(image_size.x, image_size.x * CARD_ASPECT_RATIO),
-                                        );
-                                    }
+                                    let texture_size = tex.size_vec2();
+                                    let scale = (image_rect.width() / texture_size.x)
+                                        .min(image_rect.height() / texture_size.y);
+                                    let draw_rect = Rect::from_center_size(
+                                        image_rect.center(),
+                                        texture_size * scale,
+                                    );
                                     ui.painter().image(
                                         tex.id(),
                                         draw_rect,
                                         Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                                         Color32::WHITE,
                                     );
-                                } else {
-                                    ui.painter().rect_filled(
-                                        image_rect,
-                                        4.0,
-                                        Color32::from_rgb(42, 48, 68),
-                                    );
                                 }
+                                ui.painter().rect_stroke(
+                                    image_rect,
+                                    5.0,
+                                    egui::Stroke::new(1.0, Color32::from_rgb(58, 157, 190)),
+                                    egui::StrokeKind::Outside,
+                                );
                                 ui.add_space(16.0);
                             }
 
                             let text_w = ui.available_width();
                             ui.vertical(|ui| {
                                 ui.set_width(text_w);
+                                ui.set_min_height(panel_h - 32.0);
                                 ui.label(
                                     RichText::new(
                                         card.as_ref()
@@ -408,7 +416,7 @@ impl Game {
                                     )
                                     .wrap(),
                                 );
-                                ui.add_space(18.0);
+                                ui.add_space((ui.available_height() - 38.0).max(18.0));
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {

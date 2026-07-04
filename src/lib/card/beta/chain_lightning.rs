@@ -105,17 +105,14 @@ impl Magic for ChainLightning {
                 break;
             }
 
-            let options = [BaseOption::Yes, BaseOption::No];
-            let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-            let picked_option = pick_option(
+            let chain = yes_or_no(
                 &self.get_controller_id(state),
-                &option_labels,
                 state,
-                "Chain Lightning: Pay 2 to deal an additional 2 damage to another unit?",
-                false,
+                "Pay 2 to deal an additional 2 damage to another unit?",
+                *self.get_id(),
             )
             .await?;
-            if options[picked_option] == BaseOption::No {
+            if !chain {
                 break;
             }
 

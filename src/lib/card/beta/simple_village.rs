@@ -82,17 +82,14 @@ impl Card for SimpleVillage {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let options = [BaseOption::Yes, BaseOption::No];
-                let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
-                let picked_option = pick_option(
+                let summon_token = yes_or_no(
                     self.get_controller_id(state),
-                    &option_labels,
                     state,
-                    "Humble Village: Pay 1 to summon a foot soldier?",
-                    false,
+                    "Pay 1 to summon a foot soldier?",
+                    *self.get_id(),
                 )
                 .await?;
-                if options[picked_option] == BaseOption::No {
+                if !summon_token {
                     return Ok(vec![]);
                 }
 

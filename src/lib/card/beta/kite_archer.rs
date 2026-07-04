@@ -83,17 +83,14 @@ impl Card for KiteArcher {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             RANGED_STRIKE_HOOK => {
-                let options = [BaseOption::Yes, BaseOption::No];
-                let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-                let picked_action = pick_option(
+                let take_step = yes_or_no(
                     self.get_controller_id(state),
-                    &option_labels,
                     state,
                     "Take Step",
-                    false,
+                    *self.get_id(),
                 )
                 .await?;
-                if options[picked_action] == BaseOption::No {
+                if !take_step {
                     return Ok(vec![]);
                 }
 

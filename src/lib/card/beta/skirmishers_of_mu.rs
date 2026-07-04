@@ -100,17 +100,9 @@ impl Card for SkirmishersOfMu {
                     path = through_path.to_vec();
                 }
 
-                let options = [BaseOption::Yes, BaseOption::No];
-                let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-                let picked_option = pick_option(
-                    controller_id,
-                    &option_labels,
-                    state,
-                    "Ranged strike?",
-                    false,
-                )
-                .await?;
-                if options[picked_option] == BaseOption::No {
+                let strike =
+                    yes_or_no(controller_id, state, "Ranged strike?", *self.get_id()).await?;
+                if !strike {
                     return Ok(vec![]);
                 }
 
