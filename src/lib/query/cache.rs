@@ -98,6 +98,7 @@ impl QueryCache {
             }
         }
 
+        let decision_player = qry.decision_player_id.unwrap_or(*player_id);
         let zone = if let Some(zone) = &qry.zone {
             zone.clone()
         } else if qry.random {
@@ -110,7 +111,7 @@ impl QueryCache {
         } else if let Some(options) = &qry.options {
             Zone::Location(
                 pick_location_source(
-                    player_id,
+                    &decision_player,
                     &options
                         .iter()
                         .filter_map(Zone::location)
@@ -131,7 +132,7 @@ impl QueryCache {
             let sites = query.all_map(state, |card| card.get_location().clone());
             Zone::Location(
                 pick_location_source(
-                    player_id,
+                    &decision_player,
                     &sites,
                     state,
                     false,
@@ -143,7 +144,7 @@ impl QueryCache {
         } else {
             Zone::Location(
                 pick_location_source(
-                    player_id,
+                    &decision_player,
                     &Location::all_in_region(Region::Surface),
                     state,
                     false,

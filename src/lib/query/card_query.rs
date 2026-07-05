@@ -45,6 +45,7 @@ pub struct CardQuery {
     spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
     source_card_id: Option<CardId>,
+    decision_player_id: Option<PlayerId>,
     allow_modifiers: bool,
     bearer_of: Option<CardId>,
 }
@@ -84,6 +85,7 @@ impl Default for CardQuery {
             spatial_filters: Vec::new(),
             prompt: None,
             source_card_id: None,
+            decision_player_id: None,
             allow_modifiers: true,
             bearer_of: None,
         }
@@ -771,8 +773,9 @@ impl CardQuery {
                 .prompt
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
+            let decision_player = effective_query.decision_player_id.unwrap_or(*player_id);
             pick_card_source(
-                player_id,
+                &decision_player,
                 &card_ids,
                 state,
                 &prompt,
@@ -843,6 +846,13 @@ impl CardQuery {
     pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
+            ..self
+        }
+    }
+
+    pub fn with_decision_player(self, player_id: PlayerId) -> Self {
+        Self {
+            decision_player_id: Some(player_id),
             ..self
         }
     }

@@ -9,6 +9,8 @@ pub struct KytheraMechanism {
 impl KytheraMechanism {
     pub const NAME: &'static str = "Kythera Mechanism";
     pub const DESCRIPTION: &'static str = "Bearer's controller determines all random outcomes.";
+    const CARD_PROMPT: &'static str = "Choose a card to override random decision";
+    const ZONE_PROMPT: &'static str = "Choose a zone to override random decision";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -64,18 +66,44 @@ impl Card for KytheraMechanism {
         Some(self)
     }
 
-    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        let Some(bearer_id) = self.get_bearer()? else {
+            return Ok(vec![]);
+        };
+        let decision_player = state.get_card(&bearer_id).get_controller_id(state);
+        let id = *self.get_id();
         Ok(vec![
-            OngoingEffect::choose_from_random_card_options(
-                *self.get_id(),
-                "Kythera Mechanism: Choose a card to override random decision",
-                usize::MAX,
-            ),
-            OngoingEffect::choose_from_random_zone_options(
-                *self.get_id(),
-                "Kythera Mechanism: Choose a zone to override random decision",
-                usize::MAX,
-            ),
+            OngoingEffect::ModifyCardQuery {
+                description: Self::CARD_PROMPT.to_string(),
+                modifier: Arc::new(move |state, _player_id, query| {
+                    if !query.is_randomised() {
+                        return Ok(None);
+                    }
+
+                    let options = query.all(state);
+                    Ok(Some(
+                        CardQuery::from_ids(options)
+                            .with_prompt(Self::CARD_PROMPT)
+                            .with_source_card(id)
+                            .with_decision_player(decision_player),
+                    ))
+                }),
+            },
+            OngoingEffect::ModifyZoneQuery {
+                description: Self::ZONE_PROMPT.to_string(),
+                modifier: Arc::new(move |state, _player_id, query| {
+                    if !query.is_randomised() {
+                        return Ok(None);
+                    }
+
+                    let options = query.options(state);
+                    Ok(Some(
+                        ZoneQuery::from_options(options, Some(Self::ZONE_PROMPT.to_string()))
+                            .with_source_card(id)
+                            .with_decision_player(decision_player),
+                    ))
+                }),
+            },
         ])
     }
 }

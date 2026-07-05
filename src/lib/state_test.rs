@@ -1,10 +1,10 @@
 use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus, CauldronCrones,
-        CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity,
-        HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region, RimlandNomads,
-        Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase,
-        from_name_and_zone,
+        CourtJester, CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood, FootSoldier,
+        FreeCity, HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region,
+        RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
+        SneakThief, UnitBase, from_name_and_zone,
     },
     deck::Deck,
     effect::{Effect, FightContext},
@@ -204,9 +204,17 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
     let player_id = state.players[0].id;
     let game_id = state.game_id;
 
+    let bearer_id = insert_realm_card(
+        &mut state,
+        Box::new(FootSoldier::new(player_id)),
+        Zone::Location(Location::Square(1, Region::Surface)),
+    )
+    .await;
+    let mut kythera = KytheraMechanism::new(player_id);
+    kythera.set_bearer_id(Some(bearer_id));
     insert_realm_card(
         &mut state,
-        Box::new(KytheraMechanism::new(player_id)),
+        Box::new(kythera),
         Zone::Location(Location::Square(1, Region::Surface)),
     )
     .await;
@@ -291,6 +299,160 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
     .await
     .unwrap();
     assert!(zones.contains(&picked_zone));
+}
+
+#[tokio::test]
+async fn test_kythera_mechanism_lets_bearer_controller_choose_court_jester_discard() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let game_id = state.game_id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state
+        .get_card_mut(&opponent_avatar_id)
+        .set_zone(Zone::Location(Location::Square(3, Region::Surface)));
+
+    let mut first_card = FootSoldier::new(opponent_id);
+    let first_card_id = *first_card.get_id();
+    first_card.set_zone(Zone::Hand);
+    state.add_card(Box::new(first_card));
+
+    let mut chosen_card = FootSoldier::new(opponent_id);
+    let chosen_card_id = *chosen_card.get_id();
+    chosen_card.set_zone(Zone::Hand);
+    state.add_card(Box::new(chosen_card));
+
+    let mut jester = CourtJester::new(player_id);
+    jester.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.add_card(Box::new(jester.clone()));
+
+    let mut kythera = KytheraMechanism::new(player_id);
+    let kythera_id = *kythera.get_id();
+    kythera.set_zone(Zone::Hand);
+    state.add_card(Box::new(kythera));
+    state.queue(vec![
+        Effect::SetBearer {
+            card_id: kythera_id,
+            bearer_id: Some(avatar_id),
+        },
+        Effect::PlayCard {
+            player_id,
+            card_id: kythera_id,
+            location: Location::Square(1, Region::Surface),
+            spellcaster: avatar_id,
+        },
+    ]);
+    state.apply_effects_without_log().await.unwrap();
+
+    let expected_decision_player_id = player_id;
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            if let ServerMessage::PickCard {
+                player_id, cards, ..
+            } = message
+            {
+                assert_eq!(player_id, expected_decision_player_id);
+                assert!(cards.contains(&first_card_id));
+                assert!(cards.contains(&chosen_card_id));
+                client_tx
+                    .send(ClientMessage::PickCard {
+                        game_id,
+                        player_id,
+                        card_id: chosen_card_id,
+                    })
+                    .await
+                    .unwrap();
+            }
+        }
+    });
+
+    let effects = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        jester.resolve_hook(1, &state, &Effect::EndTurn { player_id }),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert!(matches!(
+        effects.as_slice(),
+        [Effect::DiscardCard { card_id, .. }] if *card_id == chosen_card_id
+    ));
+    assert_eq!(state.get_card(&first_card_id).get_zone(), &Zone::Hand);
+    assert_eq!(state.get_card(&chosen_card_id).get_zone(), &Zone::Hand);
+}
+
+#[tokio::test]
+async fn test_kythera_mechanism_casting_prompts_for_unit_or_site() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let game_id = state.game_id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+
+    let mut kythera = KytheraMechanism::new(player_id);
+    let kythera_id = *kythera.get_id();
+    kythera.set_zone(Zone::Hand);
+    state.add_card(Box::new(kythera.clone()));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickAction {
+                    player_id,
+                    actions,
+                    ..
+                } => {
+                    assert_eq!(actions, vec!["Equip to unit", "Play atop site"]);
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickCard {
+                    player_id, cards, ..
+                } => {
+                    assert!(!cards.is_empty());
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: cards[0],
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    let effects = kythera
+        .play_mechanic(&state, &player_id, &avatar_id)
+        .await
+        .unwrap();
+
+    assert_eq!(effects.len(), 2);
+    assert!(matches!(
+        effects.as_slice(),
+        [Effect::SetBearer {
+            card_id,
+            bearer_id: Some(_),
+        }, Effect::PlayCard {
+            card_id: played_card_id,
+            ..
+        }] if *card_id == kythera_id && *played_card_id == kythera_id
+    ));
 }
 
 #[tokio::test]

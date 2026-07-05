@@ -2490,6 +2490,9 @@ impl Effect {
                 if let Some(target) = state.try_get_card_mut(card_id) {
                     target.set_bearer_id(*bearer_id);
                     state.invalidate_runtime_caches();
+                    state
+                        .add_passive_ongoing_effects_for_source(card_id)
+                        .await?;
                 }
             }
             Effect::ShuffleDeck { player_id } => {

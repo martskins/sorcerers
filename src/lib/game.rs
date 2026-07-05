@@ -1618,42 +1618,139 @@ impl Game {
             return Ok(());
         }
 
-        if playable.card_type == CardType::Site {
-            let avatar = self.state.get_card(&playable.spellcaster_id);
-            let Some(avatar) = avatar.get_avatar() else {
-                return Ok(());
-            };
-            let Some(action) = avatar.get_play_site_ability() else {
-                return Ok(());
-            };
-            if !action.can_activate(&playable.spellcaster_id, &playable.player_id, &self.state)? {
-                return Ok(());
+        match playable.card_type {
+            CardType::Site => {
+                let avatar = self.state.get_card(&playable.spellcaster_id);
+                let Some(avatar) = avatar.get_avatar() else {
+                    return Ok(());
+                };
+                let Some(action) = avatar.get_play_site_ability() else {
+                    return Ok(());
+                };
+                if !action.can_activate(&playable.spellcaster_id, &playable.player_id, &self.state)?
+                {
+                    return Ok(());
+                }
+                let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
+                if !cost.can_afford(&self.state, playable.player_id)? {
+                    return Ok(());
+                }
+                cost.pay(&mut self.state, &playable.player_id).await?;
+                let effects = self
+                    .state
+                    .get_card(&playable.spellcaster_id)
+                    .get_avatar()
+                    .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
+                    .play_site_at_square(
+                        &self.state,
+                        &playable.player_id,
+                        &playable.card_id,
+                        zone.location().and_then(Location::get_square).unwrap(),
+                    )
+                    .await?;
+                self.state.queue(effects);
             }
-            let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
-            if !cost.can_afford(&self.state, playable.player_id)? {
-                return Ok(());
+            CardType::Artifact => {
+                let (can_be_carried, units, card_name) = {
+                    let card = self.state.get_card(&playable.card_id);
+                    let artifact = card
+                        .get_artifact()
+                        .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?;
+                    let zone = Zone::Location(location.clone());
+                    let units = artifact
+                        .get_valid_attach_targets(&self.state)
+                        .into_iter()
+                        .filter(|card_id| self.state.get_card(card_id).occupies_zone(&self.state, &zone))
+                        .collect::<Vec<_>>();
+
+                    (artifact.can_be_carried(), units, card.get_name().to_string())
+                };
+
+                if !can_be_carried {
+                    self.state.queue_one(Effect::PlayCard {
+                        player_id: playable.player_id,
+                        card_id: playable.card_id,
+                        location: location.clone(),
+                        spellcaster: playable.spellcaster_id,
+                    });
+                    return Ok(());
+                }
+
+                const EQUIP_TO_UNIT: &str = "Equip to unit";
+                const PLAY_ATOP_SITE: &str = "Play atop site";
+                let site_id = location.get_site(&self.state).map(|site| *site.get_id());
+                let mut options = vec![];
+                if !units.is_empty() {
+                    options.push(EQUIP_TO_UNIT.to_string());
+                }
+                if site_id.is_some() {
+                    options.push(PLAY_ATOP_SITE.to_string());
+                }
+
+                if options.is_empty() {
+                    return Err(anyhow::anyhow!("expected at least one valid placement for artifact"));
+                }
+
+                let picked_option_idx = if options.len() > 1 {
+                    pick_option(
+                        &playable.player_id,
+                        &options,
+                        &self.state,
+                        "Choose how to play artifact",
+                        false,
+                    )
+                    .await?
+                } else {
+                    0
+                };
+
+                let effects = match options[picked_option_idx].as_str() {
+                    EQUIP_TO_UNIT => {
+                        let picked_card_id = pick_card(
+                            playable.player_id,
+                            &units,
+                            &self.state,
+                            format!("Pick a unit to attach {} to", card_name).as_str(),
+                        )
+                        .await?;
+                        let picked_card = self.state.get_card(&picked_card_id);
+                        vec![
+                            Effect::SetBearer {
+                                card_id: playable.card_id,
+                                bearer_id: Some(picked_card_id),
+                            },
+                            Effect::PlayCard {
+                                player_id: playable.player_id,
+                                card_id: playable.card_id,
+                                location: picked_card.get_location().clone(),
+                                spellcaster: playable.spellcaster_id,
+                            },
+                        ]
+                    }
+                    PLAY_ATOP_SITE => {
+                        let Some(_) = site_id else {
+                            return Err(anyhow::anyhow!("expected a site at artifact drop location"));
+                        };
+                        vec![Effect::PlayCard {
+                            player_id: playable.player_id,
+                            card_id: playable.card_id,
+                            location: location.clone(),
+                            spellcaster: playable.spellcaster_id,
+                        }]
+                    }
+                    _ => unreachable!(),
+                };
+
+                self.state.queue(effects);
             }
-            cost.pay(&mut self.state, &playable.player_id).await?;
-            let effects = self
-                .state
-                .get_card(&playable.spellcaster_id)
-                .get_avatar()
-                .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
-                .play_site_at_square(
-                    &self.state,
-                    &playable.player_id,
-                    &playable.card_id,
-                    zone.location().and_then(Location::get_square).unwrap(),
-                )
-                .await?;
-            self.state.queue(effects);
-        } else {
-            self.state.queue_one(Effect::PlayCard {
-                player_id: playable.player_id,
-                card_id: playable.card_id,
-                location: zone.location().cloned().unwrap(),
-                spellcaster: playable.spellcaster_id,
-            });
+            _ => {
+                self.state.queue_one(Effect::PlayCard {
+                    player_id: playable.player_id,
+                    card_id: playable.card_id,
+                    location: zone.location().cloned().unwrap(),
+                    spellcaster: playable.spellcaster_id,
+                });
+            }
         }
 
         Ok(())
@@ -2111,5 +2208,147 @@ impl Game {
             return Ok(());
         }
         EffectEngine::drain_with_log(self).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        card::{AridDesert, FootSoldier, KytheraMechanism, Sorcerer},
+        deck::Deck,
+        state::Player,
+    };
+
+    #[tokio::test]
+    async fn test_dragging_carriable_artifact_uses_artifact_play_choices() {
+        QueryCache::init();
+
+        let player_id = uuid::Uuid::new_v4();
+        let opponent_id = uuid::Uuid::new_v4();
+        let mut avatar = Sorcerer::new(player_id);
+        let avatar_id = *avatar.get_id();
+        avatar.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        let opponent_avatar = Sorcerer::new(opponent_id);
+        let opponent_avatar_id = *opponent_avatar.get_id();
+
+        let player = PlayerWithDeck {
+            player: Player {
+                id: player_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(&player_id, "Test Deck".to_string(), vec![], vec![], avatar_id),
+            cards: vec![Box::new(avatar)],
+        };
+        let opponent = PlayerWithDeck {
+            player: Player {
+                id: opponent_id,
+                name: "Player 2".to_string(),
+            },
+            deck: Deck::new(
+                &opponent_id,
+                "Opponent Deck".to_string(),
+                vec![],
+                vec![],
+                opponent_avatar_id,
+            ),
+            cards: vec![Box::new(opponent_avatar)],
+        };
+
+        let (server_tx, server_rx) = async_channel::unbounded();
+        let (client_tx, client_rx) = async_channel::unbounded();
+        let game_id = uuid::Uuid::new_v4();
+        let mut state = State::new(game_id, vec![player, opponent], server_tx, client_rx.clone());
+        state.phase = Phase::Main;
+        *state.get_player_mana_mut(&player_id) = 1;
+
+        let mut site = AridDesert::new(player_id);
+        site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        state.add_card(Box::new(site));
+
+        let mut bearer_on_drop_zone = FootSoldier::new(player_id);
+        let bearer_on_drop_zone_id = *bearer_on_drop_zone.get_id();
+        bearer_on_drop_zone.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        state.add_card(Box::new(bearer_on_drop_zone));
+
+        let mut bearer_elsewhere = FootSoldier::new(player_id);
+        let bearer_elsewhere_id = *bearer_elsewhere.get_id();
+        bearer_elsewhere.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        state.add_card(Box::new(bearer_elsewhere));
+
+        let mut kythera = KytheraMechanism::new(player_id);
+        let kythera_id = *kythera.get_id();
+        kythera.set_zone(Zone::Hand);
+        state.add_card(Box::new(kythera));
+
+        let (_unused_server_tx, unused_server_rx) = async_channel::unbounded();
+        let mut game = Game {
+            id: game_id,
+            state,
+            streams: HashMap::new(),
+            client_receiver: client_rx,
+            server_receiver: unused_server_rx,
+        };
+
+        tokio::spawn(async move {
+            while let Ok(message) = server_rx.recv().await {
+                match message {
+                    ServerMessage::PickAction {
+                        player_id,
+                        actions,
+                        ..
+                    } => {
+                        assert_eq!(actions, vec!["Equip to unit", "Play atop site"]);
+                        client_tx
+                            .send(ClientMessage::PickAction {
+                                game_id,
+                                player_id,
+                                action_idx: 0,
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    ServerMessage::PickCard {
+                        player_id, cards, ..
+                    } => {
+                        assert!(cards.contains(&avatar_id));
+                        assert!(cards.contains(&bearer_on_drop_zone_id));
+                        assert!(!cards.contains(&bearer_elsewhere_id));
+                        client_tx
+                            .send(ClientMessage::PickCard {
+                                game_id,
+                                player_id,
+                                card_id: bearer_on_drop_zone_id,
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    _ => {}
+                }
+            }
+        });
+
+        game.handle_message(&ClientMessage::PlayCardAtLocation {
+            game_id,
+            player_id,
+            card_id: kythera_id,
+            location: Location::Square(1, Region::Surface),
+        })
+        .await
+        .unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::SetBearer {
+                card_id,
+                bearer_id: Some(effect_bearer_id),
+            }, Effect::PlayCard {
+                card_id: played_card_id,
+                ..
+            }] if *card_id == kythera_id
+                && *effect_bearer_id == bearer_on_drop_zone_id
+                && *played_card_id == kythera_id
+        ));
     }
 }

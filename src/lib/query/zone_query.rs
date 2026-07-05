@@ -32,6 +32,7 @@ pub struct ZoneQuery {
     pub(super) controlled_by: Option<PlayerId>,
     pub(super) prompt: Option<String>,
     pub(super) source_card_id: Option<CardId>,
+    pub(super) decision_player_id: Option<PlayerId>,
     pub(super) allow_modifiers: bool,
     pub(super) spatial_filters: Vec<ZoneSpatialFilter>,
 }
@@ -48,6 +49,7 @@ impl Default for ZoneQuery {
             controlled_by: None,
             prompt: None,
             source_card_id: None,
+            decision_player_id: None,
             allow_modifiers: true,
             spatial_filters: vec![],
         }
@@ -164,6 +166,13 @@ impl ZoneQuery {
     pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
+            ..self
+        }
+    }
+
+    pub fn with_decision_player(self, player_id: PlayerId) -> Self {
+        Self {
+            decision_player_id: Some(player_id),
             ..self
         }
     }
