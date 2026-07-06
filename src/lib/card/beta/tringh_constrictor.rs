@@ -82,10 +82,10 @@ impl ActivatedAbility for Constrict {
         let constrictor_id = *card_id;
         effects.push(Effect::AddTemporaryEffect {
             effect: TemporaryEffect::ModifyEffect {
-                trigger_on_effect: EffectQuery::UntapCard {
+                trigger_on_effect: Box::new(EffectQuery::UntapCard {
                     card: CardQuery::from_id(constrictor_id),
-                },
-                expires_on_effect: EffectQuery::OneOf(vec![
+                }),
+                expires_on_effect: Box::new(EffectQuery::OneOf(vec![
                     EffectQuery::UntapCard {
                         card: CardQuery::from_id(constrictor_id),
                     },
@@ -95,7 +95,7 @@ impl ActivatedAbility for Constrict {
                     EffectQuery::BuryCard {
                         card: CardQuery::from_id(constrictor_id),
                     },
-                ]),
+                ])),
                 on_effect: Arc::new(move |state: &State, effect: &mut Effect| {
                     Box::pin(async move {
                         if state

@@ -86,7 +86,7 @@ impl Magic for Geyser {
                 effect: TemporaryEffect::GrantAbility {
                     ability: Ability::Flooded,
                     affected_cards: target_site_id.into(),
-                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                    expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
         ];

@@ -72,12 +72,12 @@ impl ActivatedAbility for WaveshaperFlood {
         for tapped_minion_id in tapped_minions {
             effects.push(Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::ModifyEffect {
-                    trigger_on_effect: EffectQuery::UntapCard {
+                    trigger_on_effect: Box::new(EffectQuery::UntapCard {
                         card: CardQuery::from_id(tapped_minion_id),
-                    },
-                    expires_on_effect: EffectQuery::UntapCard {
+                    }),
+                    expires_on_effect: Box::new(EffectQuery::UntapCard {
                         card: CardQuery::from_id(tapped_minion_id),
-                    },
+                    }),
                     on_effect: Arc::new(move |_state: &State, effect: &mut Effect| {
                         Box::pin(async move {
                             *effect = Effect::Noop;

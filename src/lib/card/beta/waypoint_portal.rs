@@ -86,7 +86,7 @@ impl Magic for WaypointPortal {
             effect: TemporaryEffect::ConnectSites {
                 sites: vec![first_zone, second_zone],
                 affected_cards: CardQuery::new().units(),
-                expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
             },
         }])
     }

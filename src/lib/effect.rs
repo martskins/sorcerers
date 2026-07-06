@@ -2396,7 +2396,7 @@ impl Effect {
                     .push(TemporaryEffect::Animate {
                         card_id: *card_id,
                         unit_base: unit_base.clone(),
-                        expires_on_effect: expires_on_effect.clone(),
+                        expires_on_effect: Box::new(expires_on_effect.clone()),
                     });
                 state.queue(location_survival_effects_for_realm(state));
             }

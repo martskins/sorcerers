@@ -108,14 +108,14 @@ impl Card for SeaRaider {
                     Effect::AddTemporaryEffect {
                         effect: TemporaryEffect::MakePlayable {
                             affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
-                            expires_on_effect: expires_on_effect.clone(),
+                            expires_on_effect: Box::new(expires_on_effect.clone()),
                             by_player: player_id,
                         },
                     },
                     Effect::AddTemporaryEffect {
                         effect: TemporaryEffect::IgnoreCostThresholds {
                             affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
-                            expires_on_effect,
+                            expires_on_effect: Box::new(expires_on_effect),
                             for_player: player_id,
                         },
                     },

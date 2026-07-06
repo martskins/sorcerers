@@ -1329,7 +1329,7 @@ async fn test_get_effective_costs_ignoring_thresholds() {
         .push(TemporaryEffect::IgnoreCostThresholds {
             affected_cards: std::convert::Into::<CardQuery>::into(cauldron_crones.get_id())
                 .including_not_in_play(),
-            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
             for_player: player_id,
         });
     let costs = state

@@ -90,10 +90,10 @@ impl Card for AlbespinePikemen {
                     effect: TemporaryEffect::GrantAbility {
                         ability: Ability::FirstStrike,
                         affected_cards: self.get_id().into(),
-                        expires_on_effect: EffectQuery::Fight {
+                        expires_on_effect: Box::new(EffectQuery::Fight {
                             attacker: self.get_id().into(),
                             defender: Some(target_id.into()),
-                        },
+                        }),
                     },
                 }])
             }

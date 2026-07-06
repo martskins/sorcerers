@@ -102,7 +102,7 @@ impl Magic for WrathOfTheSea {
             effect: TemporaryEffect::GrantAbility {
                 ability: Ability::Flooded,
                 affected_cards: sites,
-                expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
             },
         });
         Ok(effects)

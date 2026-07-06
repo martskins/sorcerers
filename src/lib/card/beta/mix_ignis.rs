@@ -25,13 +25,13 @@ impl ActivatedAbility for SacrificeForFireSpell {
             Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::IgnoreCostThresholds {
                     affected_cards: fire_spells,
-                    expires_on_effect: EffectQuery::PlayCard {
+                    expires_on_effect: Box::new(EffectQuery::PlayCard {
                         card: CardQuery::new()
                             .with_element(Element::Fire)
                             .card_types(vec![CardType::Magic])
                             .including_not_in_play(),
                         spellcaster: None,
-                    },
+                    }),
                     for_player: *player_id,
                 },
             },

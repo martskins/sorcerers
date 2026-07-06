@@ -25,7 +25,7 @@ impl ActivatedAbility for FloodAdjacentSite {
                         .adjacent_to(card.get_location())
                         .with_prompt("Pick an adjacent site to flood")
                         .with_source_card(*card_id),
-                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                    expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
             Effect::SetCardData {

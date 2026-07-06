@@ -2068,7 +2068,7 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
         effect: TemporaryEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: CardQuery::new().sites(),
-            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
         },
     });
     drain_effects(&mut state).await;
@@ -2236,7 +2236,7 @@ async fn test_temporary_effect_grants_ability() {
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::FirstStrike,
             affected_cards: CardQuery::from_id(unit_id).including_not_in_play(),
-            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
         });
 
     let has_first_strike = unit.has_ability(&state, &Ability::FirstStrike);
@@ -2263,8 +2263,8 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
     state
         .temporary_effects_mut()
         .push(TemporaryEffect::ModifyEffect {
-            trigger_on_effect: draw_query.clone(),
-            expires_on_effect: draw_query,
+            trigger_on_effect: Box::new(draw_query.clone()),
+            expires_on_effect: Box::new(draw_query),
             on_effect: convert_draw_to_mana,
         });
 
@@ -2384,7 +2384,7 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: CardQuery::from_id(site_id),
-            expires_on_effect: EffectQuery::DrawCard { player_id: None },
+            expires_on_effect: Box::new(EffectQuery::DrawCard { player_id: None }),
         });
 
     state.queue_one(Effect::DrawCard {
@@ -3162,9 +3162,9 @@ async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifi
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::Airborne,
             affected_cards: CardQuery::new().units().in_play(),
-            expires_on_effect: EffectQuery::TurnStart {
+            expires_on_effect: Box::new(EffectQuery::TurnStart {
                 player_id: Some(player_id),
-            },
+            }),
         });
 
     let units = CardQuery::new().units().in_play().all(&state);

@@ -80,9 +80,9 @@ impl Magic for MinecartMadness {
             effect: TemporaryEffect::ConnectSites {
                 sites: span,
                 affected_cards: CardQuery::new().units().controlled_by(&controller_id),
-                expires_on_effect: EffectQuery::TurnEnd {
+                expires_on_effect: Box::new(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
-                },
+                }),
             },
         }])
     }
