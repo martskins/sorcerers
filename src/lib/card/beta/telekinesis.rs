@@ -80,13 +80,14 @@ impl Magic for Telekinesis {
             return Ok(vec![]);
         }
 
-        let artifact_id = pick_card(
-            &controller_id,
-            &carryable_artifacts,
-            state,
-            "Telekinesis: Pick a nearby artifact to carry",
-        )
-        .await?;
+        let Some(artifact_id) = CardQuery::from_ids(carryable_artifacts)
+            .with_prompt("Pick a nearby artifact to carry")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
         Ok(vec![Effect::SetBearer {
             card_id: artifact_id,

@@ -64,14 +64,15 @@ impl Magic for Craterize {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let sites = CardQuery::new().sites().all(state);
-        let picked_site_id = pick_card(
-            &self.get_controller_id(state),
-            &sites,
-            state,
-            "Craterize: Pick a site to destroy",
-        )
-        .await?;
+        let Some(picked_site_id) = CardQuery::new()
+            .sites()
+            .with_prompt("Pick a site to destroy")
+            .with_source_card(*self.get_id())
+            .pick(&self.get_controller_id(state), state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
         let picked_site = state.get_card(&picked_site_id);
 
         let mut effects = vec![Effect::BuryCard {

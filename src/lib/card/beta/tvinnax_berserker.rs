@@ -122,13 +122,14 @@ impl Card for TvinnaxBerserker {
                 }
 
                 let player_id = self.get_controller_id(state);
-                let picked_card_id = pick_card(
-                    player_id,
-                    &valid_targets,
-                    state,
-                    "Tvinnax Berserker: Choose a unit to attack",
-                )
-                .await?;
+                let Some(picked_card_id) = CardQuery::from_ids(valid_targets)
+                    .with_prompt("Choose a unit to attack")
+                    .with_source_card(*self.get_id())
+                    .pick(&player_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 Ok(vec![Effect::DeclareAttack {
                     attacker_id: *self.get_id(),
                     target_id: picked_card_id,

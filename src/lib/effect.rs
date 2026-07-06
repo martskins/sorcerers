@@ -6,7 +6,7 @@ use crate::{
     },
     game::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, distribute_damage,
-        pick_card, pick_cards, pick_option, resume, wait_for_opponent, yes_or_no,
+        pick_cards, pick_option, resume, wait_for_opponent, yes_or_no,
     },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache},
@@ -1270,6 +1270,8 @@ impl Effect {
                             let mut units_query = CardQuery::new()
                                 .units()
                                 .in_location(location.clone())
+                                .with_prompt("Pick a unit to shoot")
+                                .with_source_card(*shooter)
                                 .can_be_targeted_by_player(player_id);
                             // Allied units in the starting location are ignored by projectiles.
                             if is_starting_location {
@@ -1281,17 +1283,17 @@ impl Effect {
                             match units.len() {
                                 0 => None,
                                 1 => Some(units[0]),
-                                _ => {
-                                    let prompt = "Pick a unit to shoot";
-                                    let picked_unit_id =
-                                        pick_card(player_id, &units, state, prompt).await?;
-                                    QueryCache::store_effect_targets(
-                                        state.game_id,
-                                        *id,
-                                        vec![picked_unit_id],
-                                    );
-                                    Some(picked_unit_id)
-                                }
+                                _ => match units_query.pick(player_id, state).await? {
+                                    Some(picked_unit_id) => {
+                                        QueryCache::store_effect_targets(
+                                            state.game_id,
+                                            *id,
+                                            vec![picked_unit_id],
+                                        );
+                                        Some(picked_unit_id)
+                                    }
+                                    None => None,
+                                },
                             }
                         }
                     };

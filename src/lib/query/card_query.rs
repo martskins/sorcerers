@@ -4,7 +4,7 @@ use crate::{
     card::{
         Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType,
     },
-    game::{CardId, Direction, Element, PlayerId, pick_card_source},
+    game::{CardId, Direction, Element, PlayerId, pick_card},
     query::QueryCache,
     state::State,
     zone::{Location, Zone},
@@ -774,7 +774,7 @@ impl CardQuery {
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
             let decision_player = effective_query.decision_player_id.unwrap_or(*player_id);
-            pick_card_source(
+            pick_card(
                 &decision_player,
                 &card_ids,
                 state,

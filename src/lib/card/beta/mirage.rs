@@ -83,10 +83,9 @@ impl Card for Mirage {
             .sites()
             .controlled_by(player_id)
             .in_play()
-            .id_not(*self.get_id())
-            .all(state);
+            .id_not(*self.get_id());
 
-        if !other_sites.is_empty()
+        if !other_sites.is_empty(state)
             && yes_or_no(
                 player_id,
                 state,
@@ -95,13 +94,14 @@ impl Card for Mirage {
             )
             .await?
         {
-            let other_site_id = pick_card(
-                player_id,
-                &other_sites,
-                state,
-                "Mirage: Pick a site to return to your hand",
-            )
-            .await?;
+            let Some(other_site_id) = other_sites
+                .with_prompt("Pick a site to return to your hand")
+                .with_source_card(*self.get_id())
+                .pick(player_id, state)
+                .await?
+            else {
+                return Ok(vec![]);
+            };
             let other_zone = state.get_card(&other_site_id).get_zone().clone();
             return Ok(vec![
                 Effect::SetCardZone {

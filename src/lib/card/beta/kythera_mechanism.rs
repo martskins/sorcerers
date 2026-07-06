@@ -75,14 +75,14 @@ impl Card for KytheraMechanism {
         Ok(vec![
             OngoingEffect::ModifyCardQuery {
                 description: Self::CARD_PROMPT.to_string(),
-                modifier: Arc::new(move |state, _player_id, query| {
+                modifier: Arc::new(move |_state, _player_id, query| {
                     if !query.is_randomised() {
                         return Ok(None);
                     }
 
-                    let options = query.all(state);
                     Ok(Some(
-                        CardQuery::from_ids(options)
+                        query
+                            .clone()
                             .with_prompt(Self::CARD_PROMPT)
                             .with_source_card(id)
                             .with_decision_player(decision_player),

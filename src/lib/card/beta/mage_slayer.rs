@@ -82,22 +82,17 @@ impl Card for MageSlayer {
                     Ability::Spellcaster(Some(Element::Water)),
                 ];
 
-                let spellcasters = CardQuery::new()
+                let Some(chosen) = CardQuery::new()
                     .minions()
                     .with_any_ability(spellcaster_abilities)
                     .nearby_to_card(self.get_id())
-                    .all(state);
-                if spellcasters.is_empty() {
+                    .with_prompt("Pick a nearby enemy Spellcaster to kill")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
                     return Ok(vec![]);
-                }
-
-                let chosen = pick_card(
-                    &controller_id,
-                    &spellcasters,
-                    state,
-                    "Mage Slayer: Pick a nearby enemy Spellcaster to kill",
-                )
-                .await?;
+                };
 
                 Ok(vec![Effect::KillMinion {
                     card_id: chosen,

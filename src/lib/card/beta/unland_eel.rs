@@ -80,12 +80,11 @@ impl Card for UnlandEel {
         match hook_id {
             SUBMERGE_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                let other_minions = CardQuery::new()
+                let target_query = CardQuery::new()
                     .minions()
                     .in_zone(self.get_zone())
-                    .id_not(*self.get_id())
-                    .all(state);
-                if other_minions.is_empty() {
+                    .id_not(*self.get_id());
+                if target_query.is_empty(state) {
                     return Ok(vec![]);
                 }
 
@@ -100,13 +99,14 @@ impl Card for UnlandEel {
                     return Ok(vec![]);
                 }
 
-                let target_id = pick_card(
-                    &controller_id,
-                    &other_minions,
-                    state,
-                    "Unland Eel: Pick another minion here to drag down",
-                )
-                .await?;
+                let Some(target_id) = target_query
+                    .with_prompt("Pick another minion here to drag down")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 let target = state.get_card(&target_id);
 
                 let mut effects = vec![];

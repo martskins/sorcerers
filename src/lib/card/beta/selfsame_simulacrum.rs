@@ -82,22 +82,17 @@ impl Card for SelfsameSimulacrum {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let targets = CardQuery::new()
+                let Some(chosen_id) = CardQuery::new()
                     .minions()
                     .near_to(self.get_location())
                     .id_not(*self.get_id())
-                    .all(state);
-                if targets.is_empty() {
+                    .with_prompt("Pick a nearby minion to copy")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
                     return Ok(vec![]);
-                }
-
-                let chosen_id = pick_card(
-                    &controller_id,
-                    &targets,
-                    state,
-                    "Selfsame Simulacrum: Pick a nearby minion to copy",
-                )
-                .await?;
+                };
                 let mut copied = state
                     .get_card(&chosen_id)
                     .get_unit_base()

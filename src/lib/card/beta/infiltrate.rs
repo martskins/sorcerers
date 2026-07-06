@@ -61,19 +61,10 @@ impl Magic for Infiltrate {
         let caster = state.get_card(caster_id);
         let caster_location = caster.get_location().clone();
 
-        let enemy_minions: Vec<CardId> = CardQuery::new()
+        let Some(target_id) = CardQuery::new()
             .minions()
             .near_to(&caster_location)
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .collect();
-
-        if enemy_minions.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let Some(target_id) = CardQuery::from_ids(enemy_minions)
+            .not_controlled_by(&controller_id)
             .with_prompt("Pick target enemy minion")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)

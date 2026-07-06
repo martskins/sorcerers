@@ -102,8 +102,8 @@ impl Card for WindSylph {
         match hook {
             PUSH_UNIT_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                let units_here = CardQuery::new().units().in_zone(self.get_zone()).all(state);
-                if units_here.is_empty()
+                let units_here = CardQuery::new().units().in_zone(self.get_zone());
+                if units_here.is_empty(state)
                     || !yes_or_no(
                         &controller_id,
                         state,
@@ -115,13 +115,14 @@ impl Card for WindSylph {
                     return Ok(vec![]);
                 }
 
-                let unit_id = pick_card(
-                    &controller_id,
-                    &units_here,
-                    state,
-                    "Wind Sylph: Pick a unit here to push",
-                )
-                .await?;
+                let Some(unit_id) = units_here
+                    .with_prompt("Pick a unit here to push")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 let unit = state.get_card(&unit_id);
                 let mut valid_locations = vec![];
                 for dir in &PUSH_DIRECTIONS {

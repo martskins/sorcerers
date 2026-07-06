@@ -76,12 +76,11 @@ impl Card for VileImp {
                 let controller_id = self.get_controller_id(state);
                 let imp_id = *self.get_id();
 
-                let targets = CardQuery::new()
+                let target_query = CardQuery::new()
                     .units()
                     .adjacent_to(self.get_location())
-                    .id_not_in(vec![imp_id])
-                    .all(state);
-                if targets.is_empty() {
+                    .id_not_in(vec![imp_id]);
+                if target_query.is_empty(state) {
                     return Ok(vec![]);
                 }
 
@@ -96,14 +95,14 @@ impl Card for VileImp {
                     return Ok(vec![]);
                 };
 
-                let target_id = pick_card_source(
-                    &controller_id,
-                    &targets,
-                    state,
-                    "Vile Imp: Pick an adjacent unit",
-                    Some(*self.get_id()),
-                )
-                .await?;
+                let Some(target_id) = target_query
+                    .with_prompt("Pick an adjacent unit")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
                 Ok(vec![Effect::TakeDamage {
                     card_id: target_id,

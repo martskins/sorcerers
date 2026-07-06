@@ -57,22 +57,17 @@ impl Magic for Replication {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let artifacts = CardQuery::new()
+        let player_id = self.get_controller_id(state);
+        let Some(picked_artifact_id) = CardQuery::new()
             .artifacts()
             .carried_by(caster_id)
-            .all(state);
-        if artifacts.is_empty() {
+            .with_prompt("Pick an artifact to replicate")
+            .with_source_card(*self.get_id())
+            .pick(&player_id, state)
+            .await?
+        else {
             return Ok(vec![]);
-        }
-
-        let player_id = self.get_controller_id(state);
-        let picked_artifact_id = pick_card(
-            player_id,
-            &artifacts,
-            state,
-            "Replication: Pick an artifact to replicate",
-        )
-        .await?;
+        };
 
         Ok(vec![Effect::CopyArtifact {
             player_id,

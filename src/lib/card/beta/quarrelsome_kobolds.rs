@@ -97,14 +97,14 @@ impl Card for QuarrelsomeKobolds {
                 }
 
                 let prompt = "Pick a unit to deal damage to";
-                let picked_unit = pick_card_source(
-                    self.get_controller_id(state),
-                    &units,
-                    state,
-                    prompt,
-                    Some(*self.get_id()),
-                )
-                .await?;
+                let Some(picked_unit) = CardQuery::from_ids(units)
+                    .with_prompt(prompt)
+                    .with_source_card(*self.get_id())
+                    .pick(&self.get_controller_id(state), state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 Ok(vec![Effect::TakeDamage {
                     card_id: picked_unit,
                     from: *self.get_id(),

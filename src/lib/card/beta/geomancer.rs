@@ -50,13 +50,18 @@ impl ActivatedAbility for GeomancerAbility {
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             GeomancerAbility::PlaySite => {
-                let cards = CardQuery::new()
+                let prompt = "Pick a site to play";
+                let Some(picked_card_id) = CardQuery::new()
                     .sites()
                     .in_zone(Zone::Hand)
                     .controlled_by(player_id)
-                    .all(state);
-                let prompt = "Pick a site to play";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 let picked_card = state.get_card(&picked_card_id);
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 // we pass avatar_id as the caster just to comply with the required parameters, but
@@ -83,17 +88,16 @@ impl ActivatedAbility for GeomancerAbility {
                 .await?),
             GeomancerAbility::ReplaceRubble => {
                 let card = state.get_card(card_id);
-                let cards = CardQuery::new()
+                let Some(picked_rubble) = CardQuery::new()
                     .named(Rubble::NAME.to_string())
                     .adjacent_to(card.get_location())
-                    .all(state);
-                let picked_rubble = pick_card(
-                    card.get_controller_id(state),
-                    &cards,
-                    state,
-                    "Geomancer: Pick a rubble to replace with a site",
-                )
-                .await?;
+                    .with_prompt("Pick a rubble to replace with a site")
+                    .with_source_card(*card_id)
+                    .pick(&card.get_controller_id(state), state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
                 let rubble = state.get_card(&picked_rubble);
                 let deck = state.decks.get(&card.get_controller_id(state)).unwrap();

@@ -98,13 +98,18 @@ impl Card for Observatory {
                         1 => "on the top",
                         _ => unreachable!(),
                     };
-                    let picked_card_id = pick_card_with_preview(
-                        self.get_controller_id(state),
-                        &cards,
-                        state,
-                        &format!("Pick a spell to put back into your spellbook, {}", position),
-                    )
-                    .await?;
+
+                    let Some(picked_card_id) = CardQuery::from_ids(cards.clone())
+                        .with_source_card(*self.get_id())
+                        .with_prompt(&format!(
+                            "Pick a spell to put back into your spellbook, {}",
+                            position
+                        ))
+                        .pick(&self.get_controller_id(state), state)
+                        .await?
+                    else {
+                        break;
+                    };
                     spells.push(picked_card_id);
 
                     let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();

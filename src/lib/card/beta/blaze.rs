@@ -112,19 +112,17 @@ impl Magic for Blaze {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let units = CardQuery::new()
+        let prompt = "Pick an ally";
+        let Some(picked_card) = CardQuery::new()
             .units()
             .controlled_by(&self.get_controller_id(state))
-            .all(state);
-        let prompt = "Pick an ally";
-        let picked_card = pick_card_source(
-            self.get_controller_id(state),
-            &units,
-            state,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
+            .with_prompt(prompt)
+            .with_source_card(*self.get_id())
+            .pick(&self.get_controller_id(state), state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
         Ok(vec![
             Effect::AddAbilityCounter {
                 card_id: picked_card,

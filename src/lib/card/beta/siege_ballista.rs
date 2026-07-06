@@ -41,14 +41,16 @@ impl ActivatedAbility for TapToDealDamage {
         if let Some(bearer_id) = card.get_bearer()? {
             let bearer = state.get_card(&bearer_id);
             let zones = bearer.get_locations_within_steps(state, 2);
-            let valid_targets = CardQuery::new().units().in_locations(&zones).all(state);
-            let picked_unit_id = pick_card(
-                card.get_controller_id(state),
-                &valid_targets,
-                state,
-                "Siege Ballista: Pick a unit to deal 3 damage to",
-            )
-            .await?;
+            let Some(picked_unit_id) = CardQuery::new()
+                .units()
+                .in_locations(&zones)
+                .with_prompt("Pick a unit to deal 3 damage to")
+                .with_source_card(*card_id)
+                .pick(&card.get_controller_id(state), state)
+                .await?
+            else {
+                return Ok(vec![]);
+            };
 
             return Ok(vec![Effect::TakeDamage {
                 card_id: picked_unit_id,

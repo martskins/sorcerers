@@ -73,12 +73,11 @@ impl Card for BaneWidow {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let targets = CardQuery::new()
+                let target_query = CardQuery::new()
                     .minions()
                     .in_location(self.get_location().clone())
-                    .id_not_in(vec![*self.get_id()])
-                    .all(state);
-                if targets.is_empty() {
+                    .id_not_in(vec![*self.get_id()]);
+                if target_query.is_empty(state) {
                     return Ok(vec![]);
                 }
 
@@ -93,14 +92,14 @@ impl Card for BaneWidow {
                     return Ok(vec![]);
                 };
 
-                let minion_id = pick_card_source(
-                    &controller_id,
-                    &targets,
-                    state,
-                    "Bane Widow: Pick a minion to kill",
-                    Some(*self.get_id()),
-                )
-                .await?;
+                let Some(minion_id) = target_query
+                    .with_prompt("Pick a minion to kill")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
                 Ok(vec![Effect::KillMinion {
                     card_id: minion_id,

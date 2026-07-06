@@ -51,13 +51,14 @@ impl ActivatedAbility for RamStrike {
             return Ok(vec![]);
         }
 
-        let picked = pick_card(
-            player_id,
-            &targets,
-            state,
-            "Battering Ram: Pick a wall or monument to destroy",
-        )
-        .await?;
+        let Some(picked) = CardQuery::from_ids(targets)
+            .with_prompt("Pick a wall or monument to destroy")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
         Ok(vec![Effect::BuryCard { card_id: picked }])
     }
 

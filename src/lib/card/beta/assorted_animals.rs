@@ -116,15 +116,14 @@ impl Magic for AssortedAnimals {
                 break;
             }
 
-            let picked_id = pick_card_with_options(
-                &controller_id,
-                &display_card_ids,
-                &affordable.iter().map(|(_, id, _)| *id).collect::<Vec<_>>(),
-                false,
-                state,
-                "Assorted Animals: Pick a Beast to put into your hand",
-            )
-            .await?;
+            let Some(picked_id) = CardQuery::from_ids(display_card_ids.clone())
+                .with_prompt("Pick a Beast to put into your hand")
+                .with_source_card(*self.get_id())
+                .pick(&controller_id, state)
+                .await?
+            else {
+                break;
+            };
 
             let picked = beasts
                 .iter()

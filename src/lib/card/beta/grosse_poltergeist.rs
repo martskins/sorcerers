@@ -34,21 +34,16 @@ impl ActivatedAbility for PossessArtifact {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let nearby_artifacts = CardQuery::new()
+        let Some(picked_artifact_id) = CardQuery::new()
             .artifacts()
             .near_to(card.get_location())
-            .all(state);
-        if nearby_artifacts.is_empty() {
+            .with_prompt("Pick a nearby artifact to possess")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?
+        else {
             return Ok(vec![]);
-        }
-
-        let picked_artifact_id = crate::game::pick_card(
-            player_id,
-            &nearby_artifacts,
-            state,
-            "Grösse Poltergeist: Pick a nearby artifact to possess",
-        )
-        .await?;
+        };
 
         Ok(vec![Effect::SetCardData {
             card_id: *card_id,

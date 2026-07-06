@@ -64,13 +64,17 @@ impl Magic for MadDash {
         }];
 
         let controller_id = self.get_controller_id(state);
-        let cards = CardQuery::new()
+        let prompt = "Pick a unit to gain Movement +1";
+        let Some(picked_card_id) = CardQuery::new()
             .units()
             .controlled_by(&controller_id)
-            .all(state);
-        let prompt = "Pick a unit to gain Movement +1";
-        let picked_card_id =
-            pick_card_source(controller_id, &cards, state, prompt, Some(*self.get_id())).await?;
+            .with_prompt(prompt)
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
         effects.push(Effect::AddAbilityCounter {
             card_id: picked_card_id,
             counter: AbilityCounter {

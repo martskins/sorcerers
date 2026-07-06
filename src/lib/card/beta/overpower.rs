@@ -57,17 +57,16 @@ impl Magic for Overpower {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let allies = CardQuery::new()
+        let Some(picked_ally_id) = CardQuery::new()
             .units()
             .controlled_by(&self.get_controller_id(state))
-            .all(state);
-        let picked_ally_id = pick_card(
-            self.get_controller_id(state),
-            &allies,
-            state,
-            "Overpower: Pick an ally to give +2 power to",
-        )
-        .await?;
+            .with_prompt("Pick an ally to give +2 power to")
+            .with_source_card(*self.get_id())
+            .pick(&self.get_controller_id(state), state)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
         Ok(vec![Effect::AddCounter {
             card_id: picked_ally_id,

@@ -100,16 +100,15 @@ impl Card for ImperialRoad {
                 let mut effects = vec![];
 
                 for player_id in [opponent_id, controller_id] {
-                    let sites_in_atlasbook = CardQuery::new()
+                    let site_query = CardQuery::new()
                         .sites()
                         .in_zone(Zone::Atlasbook)
-                        .owned_by(&player_id)
-                        .all(state);
-                    if sites_in_atlasbook.is_empty() {
+                        .owned_by(&player_id);
+                    if site_query.is_empty(state) {
                         continue;
                     }
 
-                    let Some(chosen_site) = CardQuery::from_ids(sites_in_atlasbook)
+                    let Some(chosen_site) = site_query
                         .with_prompt("Play an adjacent site?")
                         .with_source_card(*self.get_id())
                         .pick(&player_id, state)

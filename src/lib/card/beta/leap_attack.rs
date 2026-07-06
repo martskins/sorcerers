@@ -60,23 +60,17 @@ impl Magic for LeapAttack {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
 
-        let allies: Vec<CardId> = CardQuery::new()
+        let Some(leaper_id) = CardQuery::new()
             .minions()
             .controlled_by(&controller_id)
             .in_play()
-            .all(state);
-
-        if allies.is_empty() {
+            .with_prompt("Pick an ally to leap")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?
+        else {
             return Ok(vec![]);
-        }
-
-        let leaper_id = pick_card(
-            &controller_id,
-            &allies,
-            state,
-            "Leap Attack: Pick an ally to leap",
-        )
-        .await?;
+        };
 
         let leaper = state.get_card(&leaper_id);
         let current_location = leaper.get_location().clone();

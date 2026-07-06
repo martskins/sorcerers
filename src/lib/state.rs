@@ -62,10 +62,6 @@ impl AbilityRemoval {
         Self::Exact(vec![ability])
     }
 
-    pub fn is_silence(&self) -> bool {
-        matches!(self, Self::SpecialAbilities)
-    }
-
     pub fn removes_special_abilities(&self) -> bool {
         matches!(
             self,
@@ -836,13 +832,6 @@ impl TurnIterator {
 
     pub fn override_next(&mut self, value: Turn) {
         self.overrides.push_front(value);
-    }
-
-    pub fn override_upcoming<I>(&mut self, values: I)
-    where
-        I: IntoIterator<Item = Turn>,
-    {
-        self.overrides.extend(values);
     }
 
     pub fn skip_next_for(&mut self, player_id: &PlayerId) {

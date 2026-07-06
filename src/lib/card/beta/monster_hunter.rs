@@ -73,23 +73,18 @@ impl Card for MonsterHunter {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let nearby_monsters = CardQuery::new()
+                let Some(chosen) = CardQuery::new()
                     .minions()
                     .controlled_by(&controller_id)
                     .nearby_to_card(self.get_id())
                     .minion_type(&MinionType::Monster)
-                    .all(state);
-                if nearby_monsters.is_empty() {
+                    .with_prompt("Pick a nearby Monster to kill")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
                     return Ok(vec![]);
-                }
-
-                let chosen = pick_card(
-                    &controller_id,
-                    &nearby_monsters,
-                    state,
-                    "Monster Hunter: Pick a nearby Monster to kill",
-                )
-                .await?;
+                };
 
                 Ok(vec![Effect::KillMinion {
                     card_id: chosen,

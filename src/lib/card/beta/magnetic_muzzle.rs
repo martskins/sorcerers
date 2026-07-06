@@ -88,22 +88,17 @@ impl Card for MagneticMuzzle {
                     return Ok(vec![]);
                 }
 
-                let nearby_minions = CardQuery::new()
+                let player_id = state.current_player();
+                let Some(target_id) = CardQuery::new()
                     .minions()
                     .near_to(self.get_location())
-                    .all(state);
-                if nearby_minions.is_empty() {
+                    .with_prompt("Pick a nearby minion to attach")
+                    .with_source_card(*self.get_id())
+                    .pick(&player_id, state)
+                    .await?
+                else {
                     return Ok(vec![]);
-                }
-
-                let player_id = state.current_player();
-                let target_id = pick_card(
-                    &player_id,
-                    &nearby_minions,
-                    state,
-                    "Pick a nearby minion to attach",
-                )
-                .await?;
+                };
                 let target = state.get_card(&target_id);
                 Ok(vec![
                     Effect::MoveCard {

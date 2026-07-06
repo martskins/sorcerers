@@ -16,7 +16,7 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
         ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
-        UnitAction, pick_amount, pick_card, pick_option,
+        UnitAction, pick_amount, pick_option,
     },
     query::{CardQuery, LocationQuery},
     state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
@@ -361,10 +361,6 @@ impl PayableCost {
         self
     }
 
-    pub fn payable_mana_cost(&self) -> &ManaCost {
-        &self.mana
-    }
-
     pub fn payable_mana_value(&self) -> Option<u8> {
         self.mana.fixed_value()
     }
@@ -455,13 +451,13 @@ impl PayableCost {
                     }
                 }
                 _ => {
-                    let card_id = pick_card(
-                        player_id,
-                        &options,
-                        state,
-                        "Choose a card to tap for additional cost",
-                    )
-                    .await?;
+                    let Some(card_id) = query
+                        .with_prompt("Choose a card to tap for additional cost")
+                        .pick(player_id, state)
+                        .await?
+                    else {
+                        anyhow::bail!("No card selected for additional cost");
+                    };
                     match ac.action {
                         CostAction::Tap => Effect::SetTapped {
                             card_id,
@@ -1869,14 +1865,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                         match options[picked_option_idx].as_str() {
                             EQUIP_TO_UNIT => {
-                                let picked_card_id = pick_card(
-                                    *player_id,
-                                    &units,
-                                    state,
-                                    format!("Pick a unit to attach {} to", self.get_name())
-                                        .as_str(),
-                                )
-                                .await?;
+                                let Some(picked_card_id) = CardQuery::from_ids(units)
+                                    .with_prompt("Pick a unit to attach to")
+                                    .with_source_card(*card_id)
+                                    .pick(player_id, state)
+                                    .await?
+                                else {
+                                    return Ok(vec![]);
+                                };
                                 let picked_card = state.get_card(&picked_card_id);
                                 Ok(vec![
                                     Effect::SetBearer {
@@ -1892,14 +1888,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 ])
                             }
                             PLAY_ATOP_SITE => {
-                                let picked_site_id = pick_card(
-                                    *player_id,
-                                    &valid_play_locations,
-                                    state,
-                                    format!("Pick a site to play {} onto", self.get_name())
-                                        .as_str(),
-                                )
-                                .await?;
+                                let Some(picked_site_id) =
+                                    CardQuery::from_ids(valid_play_locations)
+                                        .with_prompt("Pick a site to play onto")
+                                        .with_source_card(*card_id)
+                                        .pick(player_id, state)
+                                        .await?
+                                else {
+                                    return Ok(vec![]);
+                                };
                                 let picked_site = state.get_card(&picked_site_id);
                                 Ok(vec![Effect::PlayCard {
                                     player_id: *player_id,

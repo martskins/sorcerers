@@ -56,13 +56,15 @@ impl ActivatedAbility for StealArtifact {
         let artifact_id = if carried_artifacts.len() == 1 {
             carried_artifacts[0]
         } else {
-            pick_card(
-                player_id,
-                &carried_artifacts,
-                state,
-                "Sneak Thief: Choose an artifact to steal",
-            )
-            .await?
+            let Some(artifact_id) = CardQuery::from_ids(carried_artifacts)
+                .with_prompt("Choose an artifact to steal")
+                .with_source_card(*card_id)
+                .pick(player_id, state)
+                .await?
+            else {
+                return Ok(vec![]);
+            };
+            artifact_id
         };
 
         Ok(vec![

@@ -155,34 +155,43 @@ impl Magic for MeteorShower {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let first_site_id = pick_card(
-            &controller_id,
-            &Self::sites_that_share_no_borders_with(state, &[]),
+        let Some(first_site_id) = CardQuery::from_ids(Self::sites_that_share_no_borders_with(
             state,
-            "Meteor Shower: Pick the center site for the 7-damage impact",
-        )
-        .await?;
+            &[],
+        ))
+        .with_prompt("Pick the center site for the 7-damage impact")
+        .with_source_card(*self.get_id())
+        .pick(&controller_id, state)
+        .await?
+        else {
+            return Ok(vec![]);
+        };
         let first_location = state.get_card(&first_site_id).get_location().clone();
 
-        let second_site_id = pick_card(
-            &controller_id,
-            &Self::sites_that_share_no_borders_with(state, std::slice::from_ref(&first_location)),
+        let Some(second_site_id) = CardQuery::from_ids(Self::sites_that_share_no_borders_with(
             state,
-            "Meteor Shower: Pick the center site for the 4-damage impact",
-        )
-        .await?;
+            std::slice::from_ref(&first_location),
+        ))
+        .with_prompt("Pick the center site for the 4-damage impact")
+        .with_source_card(*self.get_id())
+        .pick(&controller_id, state)
+        .await?
+        else {
+            return Ok(vec![]);
+        };
         let second_location = state.get_card(&second_site_id).get_location().clone();
 
-        let third_site_id = pick_card(
-            &controller_id,
-            &Self::sites_that_share_no_borders_with(
+        let Some(third_site_id) = CardQuery::from_ids(Self::sites_that_share_no_borders_with(
                 state,
                 &[first_location.clone(), second_location.clone()],
-            ),
-            state,
-            "Meteor Shower: Pick the site for the 3-damage impact",
-        )
-        .await?;
+        ))
+        .with_prompt("Pick the site for the 3-damage impact")
+        .with_source_card(*self.get_id())
+        .pick(&controller_id, state)
+        .await?
+        else {
+            return Ok(vec![]);
+        };
         let third_location = state.get_card(&third_site_id).get_location().clone();
 
         let impacts = vec![

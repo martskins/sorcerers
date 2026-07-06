@@ -74,26 +74,20 @@ impl Card for HighlandFalconer {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
 
-                let targets = CardQuery::new()
+                let Some(chosen) = CardQuery::new()
                     .minions()
                     .in_zones(&[Zone::Hand, Zone::Spellbook])
                     .controlled_by(&controller_id)
                     .with_abilities(vec![Ability::Airborne])
                     .minion_type(&crate::card::MinionType::Beast)
                     .mana_cost_lte(2)
-                    .all(state);
-
-                if targets.is_empty() {
+                    .with_prompt("Summon a Beast with Airborne and mana cost 2 or less")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?
+                else {
                     return Ok(vec![]);
-                }
-
-                let chosen = pick_card(
-                    &controller_id,
-                    &targets,
-                    state,
-                    "Highland Falconer: Summon a Beast with Airborne and mana cost 2 or less",
-                )
-                .await?;
+                };
                 let from_zone = state.get_card(&chosen).get_zone().clone();
                 let mut effects = vec![Effect::SummonCards {
                     summoned_cards: vec![SummonCard {

@@ -99,78 +99,6 @@ pub const CARDINAL_DIRECTIONS: [Direction; 4] = [
     Direction::Right,
 ];
 
-pub async fn pick_card_with_preview(
-    player_id: impl AsRef<PlayerId>,
-    card_ids: &[CardId],
-    state: &State,
-    prompt: &str,
-) -> anyhow::Result<uuid::Uuid> {
-    pick_card_with_options(player_id, card_ids, card_ids, false, state, prompt).await
-}
-
-pub async fn pick_card_with_options(
-    player_id: impl AsRef<PlayerId>,
-    card_ids: &[CardId],
-    pickable_card_ids: &[CardId],
-    block_opponent: bool,
-    state: &State,
-    prompt: &str,
-) -> anyhow::Result<uuid::Uuid> {
-    pick_card_with_options_source(
-        player_id,
-        card_ids,
-        pickable_card_ids,
-        block_opponent,
-        state,
-        prompt,
-        None,
-    )
-    .await
-}
-
-pub async fn pick_card_with_options_source(
-    player_id: impl AsRef<PlayerId>,
-    card_ids: &[CardId],
-    pickable_card_ids: &[CardId],
-    block_opponent: bool,
-    state: &State,
-    prompt: &str,
-    source_card_id: Option<CardId>,
-) -> anyhow::Result<uuid::Uuid> {
-    let decision_player = state.decision_player(player_id.as_ref());
-    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
-    if block_opponent {
-        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
-    }
-
-    state
-        .get_sender()
-        .send(ServerMessage::PickCard {
-            prompt: prompt.to_string(),
-            source_card_id,
-            player_id: decision_player,
-            cards: card_ids.to_vec(),
-            pickable_cards: pickable_card_ids.to_vec(),
-            preview: true,
-        })
-        .await?;
-
-    let msg = state.get_receiver().recv().await?;
-    let card = match msg {
-        ClientMessage::PickCard { card_id, .. } => Ok(card_id),
-        ClientMessage::PlayerDisconnected { player_id, .. } => {
-            Err(GameError::PlayerDisconnected(player_id).into())
-        }
-        _ => unreachable!(),
-    };
-
-    if block_opponent {
-        resume(&opponent_id, state).await?;
-    }
-
-    card
-}
-
 pub async fn distribute_damage(
     player_id: impl AsRef<PlayerId>,
     attacker: &CardId,
@@ -317,16 +245,8 @@ pub async fn take_action(
         n => unreachable!("expected ResolveAction, got {:?}", n),
     }
 }
-pub async fn pick_card(
-    player_id: impl AsRef<PlayerId>,
-    card_ids: &[CardId],
-    state: &State,
-    prompt: &str,
-) -> anyhow::Result<uuid::Uuid> {
-    pick_card_source(player_id, card_ids, state, prompt, None).await
-}
 
-pub async fn pick_card_source(
+pub async fn pick_card(
     player_id: impl AsRef<PlayerId>,
     card_ids: &[CardId],
     state: &State,
@@ -1059,7 +979,7 @@ impl ActivatedAbility for AvatarAction {
 
     async fn on_select(
         &self,
-        _card_id: &CardId,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -1085,7 +1005,14 @@ impl ActivatedAbility for AvatarAction {
                     });
                 }
                 let prompt = "Pick a site to play";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                let Some(picked_card_id) = CardQuery::from_ids(cards)
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 let picked_card = state.get_card(&picked_card_id);
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 // we pass avatar_id as the caster just to comply with the required parameters, but
@@ -1202,7 +1129,14 @@ impl ActivatedAbility for UnitAction {
                 let attacker = state.get_card(card_id);
                 let cards = attacker.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                let Some(picked_card_id) = CardQuery::from_ids(cards)
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
                 Ok(vec![Effect::DeclareAttack {
                     attacker_id: *card_id,
                     target_id: picked_card_id,
@@ -1602,7 +1536,7 @@ impl Game {
                 self.state.queue(effects);
             }
             CardType::Artifact => {
-                let (can_be_carried, units, card_name) = {
+                let (can_be_carried, units) = {
                     let card = self.state.get_card(&playable.card_id);
                     let artifact = card
                         .get_artifact()
@@ -1618,11 +1552,7 @@ impl Game {
                         })
                         .collect::<Vec<_>>();
 
-                    (
-                        artifact.can_be_carried(),
-                        units,
-                        card.get_name().to_string(),
-                    )
+                    (artifact.can_be_carried(), units)
                 };
 
                 if !can_be_carried {
@@ -1667,13 +1597,14 @@ impl Game {
 
                 let effects = match options[picked_option_idx].as_str() {
                     EQUIP_TO_UNIT => {
-                        let picked_card_id = pick_card(
-                            playable.player_id,
-                            &units,
-                            &self.state,
-                            format!("Pick a unit to attach {} to", card_name).as_str(),
-                        )
-                        .await?;
+                        let Some(picked_card_id) = CardQuery::from_ids(units)
+                            .with_prompt("Pick a unit to attach to")
+                            .with_source_card(playable.card_id)
+                            .pick(&playable.player_id, &self.state)
+                            .await?
+                        else {
+                            return Ok(());
+                        };
                         let picked_card = self.state.get_card(&picked_card_id);
                         vec![
                             Effect::SetBearer {
@@ -1899,9 +1830,15 @@ impl Game {
                         let mut caster_id = avatar_id;
                         if card.get_base().needs_explicit_spellcaster && spellcasters.len() > 1 {
                             let prompt = "Pick a spellcaster to cast the spell";
-                            caster_id =
-                                pick_card(&acting_player, &spellcasters, &self.state, prompt)
-                                    .await?;
+                            let Some(picked_caster_id) = CardQuery::from_ids(spellcasters.clone())
+                                .with_prompt(prompt)
+                                .with_source_card(*card_id)
+                                .pick(&acting_player, &self.state)
+                                .await?
+                            else {
+                                return Ok(());
+                            };
+                            caster_id = picked_caster_id;
                         }
 
                         let effects = card
@@ -1913,9 +1850,15 @@ impl Game {
                         let mut caster_id = avatar_id;
                         if spellcasters.len() > 1 {
                             let prompt = "Pick a spellcaster to cast the spell";
-                            caster_id =
-                                pick_card(&acting_player, &spellcasters, &self.state, prompt)
-                                    .await?;
+                            let Some(picked_caster_id) = CardQuery::from_ids(spellcasters)
+                                .with_prompt(prompt)
+                                .with_source_card(*card_id)
+                                .pick(&acting_player, &self.state)
+                                .await?
+                            else {
+                                return Ok(());
+                            };
+                            caster_id = picked_caster_id;
                         }
 
                         let caster = self.state.get_card(&caster_id);

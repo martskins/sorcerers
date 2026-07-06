@@ -102,15 +102,14 @@ impl Card for DreamQuest {
 
                 let deck = state.get_player_deck(&controller_id)?.clone();
                 if !deck.spells.is_empty() {
-                    let chosen = pick_card_with_options(
-                        &controller_id,
-                        &deck.spells,
-                        &deck.spells,
-                        false,
-                        state,
-                        "Choose a card to put into your hand",
-                    )
-                    .await?;
+                    let Some(chosen) = CardQuery::from_ids(deck.spells.clone())
+                        .with_prompt("Choose a card to put into your hand")
+                        .with_source_card(*self.get_id())
+                        .pick(&controller_id, state)
+                        .await?
+                    else {
+                        return Ok(effects);
+                    };
                     let mut spells = deck.spells.clone();
                     spells.retain(|id| id != &chosen);
                     effects = vec![
@@ -148,33 +147,21 @@ impl Magic for DreamQuest {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        // Find all allied Spellcaster minions in play.
-        let all_minions = CardQuery::new()
+        let spellcaster_abilities = [
+            Some(Element::Fire),
+            Some(Element::Water),
+            Some(Element::Earth),
+            Some(Element::Air),
+            None,
+        ]
+        .into_iter()
+        .map(Ability::Spellcaster)
+        .collect();
+        let Some(minion_id) = CardQuery::new()
             .controlled_by(&controller_id)
             .minions()
             .in_play()
-            .all(state);
-        let spellcasters: Vec<CardId> = all_minions
-            .into_iter()
-            .filter(|id| {
-                let card = state.get_card(id);
-                [
-                    Some(Element::Fire),
-                    Some(Element::Water),
-                    Some(Element::Earth),
-                    Some(Element::Air),
-                    None,
-                ]
-                .iter()
-                .any(|e| card.has_ability(state, &Ability::Spellcaster(e.clone())))
-            })
-            .collect();
-
-        if spellcasters.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let Some(minion_id) = CardQuery::from_ids(spellcasters)
+            .with_any_ability(spellcaster_abilities)
             .with_prompt("Pick an allied Spellcaster to send on a dream quest")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)

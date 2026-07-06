@@ -215,7 +215,7 @@ impl Server {
         game.state.add_card(kite_archer);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(LavaSalamander::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(Observatory::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(CourtJester::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);

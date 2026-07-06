@@ -28,9 +28,8 @@ pub(crate) mod prelude {
     pub use crate::game::{
         ActivatedAbility, AvatarAction, CARDINAL_DIRECTIONS, CardId, Direction, Element,
         NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync, get_knight_move_locations,
-        pick_amount, pick_card, pick_card_source, pick_card_with_options, pick_card_with_preview,
-        pick_cards, pick_direction, pick_option, pick_zone_group, pick_zone_group_source,
-        reveal_cards, take_action, yes_or_no,
+        pick_amount, pick_cards, pick_direction, pick_option, pick_zone_group,
+        pick_zone_group_source, reveal_cards, take_action, yes_or_no,
     };
     pub use crate::query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery};
     pub use crate::state::{
