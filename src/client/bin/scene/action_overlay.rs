@@ -14,7 +14,9 @@ use sorcerers::{
 
 #[derive(Debug)]
 pub struct ActionOverlay {
-    source_card_rect: Option<CardRect>,
+    // We use a Box in this field to try and keep the size of this overlay similar to the others, so
+    // as not to have too disimilar enum variants on GameOverlay.
+    source_card_rect: Option<Box<CardRect>>,
     card_rects: Vec<CardRect>,
     prompt: String,
     player_id: PlayerId,
@@ -79,11 +81,13 @@ impl ActionOverlay {
             })
             .collect();
         let source_size = Self::portrait_card_size(0.58);
-        let source_card_rect = source_card.map(|card| CardRect {
-            rect: Rect::from_min_size(pos2(0.0, 0.0), source_size),
-            card: card.clone(),
-            image: None,
-            is_selected: false,
+        let source_card_rect = source_card.map(|card| {
+            Box::new(CardRect {
+                rect: Rect::from_min_size(pos2(0.0, 0.0), source_size),
+                card: card.clone(),
+                image: None,
+                is_selected: false,
+            })
         });
 
         Self {
@@ -182,7 +186,11 @@ impl Component for ActionOverlay {
                 )
             })
         });
-        let prompt_y_offset = if self.source_card_rect.is_some() { 44.0 } else { 32.0 };
+        let prompt_y_offset = if self.source_card_rect.is_some() {
+            44.0
+        } else {
+            32.0
+        };
         let text_h = prompt_y_offset
             + prompt_galley.size().y
             + action_galley
@@ -321,10 +329,9 @@ impl Component for ActionOverlay {
                 pos2(button_x + button_width + 16.0, button_y),
                 vec2(button_width, button_height),
             );
-            let yes = egui::Button::new(
-                egui::RichText::new("Yes").size(18.0).color(Color32::WHITE),
-            )
-            .fill(Color32::from_rgb(36, 51, 77));
+            let yes =
+                egui::Button::new(egui::RichText::new("Yes").size(18.0).color(Color32::WHITE))
+                    .fill(Color32::from_rgb(36, 51, 77));
             if ui.put(yes_rect, yes).clicked() {
                 client
                     .send(ClientMessage::ResolveAction {
@@ -335,10 +342,8 @@ impl Component for ActionOverlay {
                     .ok();
                 should_close = true;
             }
-            let no = egui::Button::new(
-                egui::RichText::new("No").size(18.0).color(Color32::WHITE),
-            )
-            .fill(Color32::from_rgb(36, 51, 77));
+            let no = egui::Button::new(egui::RichText::new("No").size(18.0).color(Color32::WHITE))
+                .fill(Color32::from_rgb(36, 51, 77));
             if ui.put(no_rect, no).clicked() {
                 client
                     .send(ClientMessage::ResolveAction {
@@ -353,10 +358,8 @@ impl Component for ActionOverlay {
             let button_x = modal_rect.center().x - button_width / 2.0;
             let ok_rect =
                 Rect::from_min_size(pos2(button_x, button_y), vec2(button_width, button_height));
-            let ok = egui::Button::new(
-                egui::RichText::new("Ok").size(18.0).color(Color32::WHITE),
-            )
-            .fill(Color32::from_rgb(36, 51, 77));
+            let ok = egui::Button::new(egui::RichText::new("Ok").size(18.0).color(Color32::WHITE))
+                .fill(Color32::from_rgb(36, 51, 77));
             if ui.put(ok_rect, ok).clicked() {
                 should_close = true;
             }
