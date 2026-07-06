@@ -60,15 +60,11 @@ impl Magic for MajorExplosion {
         let caster = state.get_card(caster_id);
         let locations = caster.get_locations_within_steps(state, 2);
         let prompt = "Pick a location to center the explosion";
-        let location = pick_location_source(
-            self.get_owner_id(),
-            &locations,
-            state,
-            false,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
+        let location = LocationQuery::from_locations(locations)
+            .with_prompt(prompt)
+            .with_source_card(*self.get_id())
+            .pick(self.get_owner_id(), state)
+            .await?;
         let location_dmg: Vec<(Option<Location>, u16)> = vec![
             (Some(location.clone()), 7),
             (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),

@@ -16,14 +16,11 @@ impl ActivatedAbility for ShootPayload {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let zones = state.get_card(card_id).get_locations_within_steps(state, 3);
-        let picked_zone = pick_location(
-            player_id,
-            &zones,
-            state,
-            false,
-            "Pick a zone to shoot the payload at",
-        )
-        .await?;
+        let picked_zone = LocationQuery::from_locations(zones)
+            .with_prompt("Pick a zone to shoot the payload at")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
         let units = CardQuery::new().units().in_zone(&picked_zone).all(state);
         let mana_cost = state
             .effect_log()

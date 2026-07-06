@@ -21,14 +21,11 @@ impl ActivatedAbility for ArtilleryBarrage {
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let locations = card.get_locations_within_steps(state, 3);
-        let target_location = pick_location(
-            player_id,
-            &locations,
-            state,
-            false,
-            "Midland Army: Pick a location to bombard (up to 3 steps away)",
-        )
-        .await?;
+        let target_location = LocationQuery::from_locations(locations)
+            .with_prompt("Pick a location to bombard (up to 3 steps away)")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
 
         let effects = CardQuery::new()
             .units()

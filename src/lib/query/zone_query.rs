@@ -33,6 +33,7 @@ pub struct ZoneQuery {
     pub(super) prompt: Option<String>,
     pub(super) source_card_id: Option<CardId>,
     pub(super) decision_player_id: Option<PlayerId>,
+    pub(super) block_opponent: bool,
     pub(super) allow_modifiers: bool,
     pub(super) spatial_filters: Vec<ZoneSpatialFilter>,
 }
@@ -50,6 +51,7 @@ impl Default for ZoneQuery {
             prompt: None,
             source_card_id: None,
             decision_player_id: None,
+            block_opponent: false,
             allow_modifiers: true,
             spatial_filters: vec![],
         }
@@ -173,6 +175,13 @@ impl ZoneQuery {
     pub fn with_decision_player(self, player_id: PlayerId) -> Self {
         Self {
             decision_player_id: Some(player_id),
+            ..self
+        }
+    }
+
+    pub fn with_block_opponent(self, block_opponent: bool) -> Self {
+        Self {
+            block_opponent,
             ..self
         }
     }
@@ -364,6 +373,26 @@ impl LocationQuery {
                 ..zone_query
             },
         }
+    }
+
+    pub fn with_block_opponent(self, block_opponent: bool) -> Self {
+        let zone_query = self.zone_query;
+        Self {
+            zone_query: ZoneQuery {
+                block_opponent,
+                ..zone_query
+            },
+        }
+    }
+
+    pub fn adjacent_to(mut self, zone: &Zone) -> Self {
+        self.zone_query = self.zone_query.adjacent_to(zone);
+        self
+    }
+
+    pub fn near(mut self, zone: &Zone) -> Self {
+        self.zone_query = self.zone_query.near(zone);
+        self
     }
 
     pub fn random(options: Vec<Location>) -> Self {

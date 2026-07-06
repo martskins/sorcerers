@@ -95,14 +95,11 @@ impl Card for KiteArcher {
                 }
 
                 let locations = self.get_location().get_adjacent(state);
-                let picked_zone = pick_location(
-                    self.get_owner_id(),
-                    &locations,
-                    state,
-                    false,
-                    "Choose to step to",
-                )
-                .await?;
+                let picked_zone = LocationQuery::from_locations(locations)
+                    .with_prompt("Choose to step to")
+                    .with_source_card(*self.get_id())
+                    .pick(self.get_owner_id(), state)
+                    .await?;
                 Ok(vec![Effect::MoveCard {
                     player_id: *self.get_owner_id(),
                     card_id: *self.get_id(),

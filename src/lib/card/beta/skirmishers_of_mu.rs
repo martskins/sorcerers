@@ -106,14 +106,11 @@ impl Card for SkirmishersOfMu {
                     return Ok(vec![]);
                 }
 
-                let picked_zone = pick_location(
-                    controller_id,
-                    &path,
-                    state,
-                    false,
-                    "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
-                )
-                .await?;
+                let picked_zone = LocationQuery::from_locations(path)
+                    .with_prompt("Pick a zone to perform a ranged strike from")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?;
 
                 let direction = pick_direction(
                     controller_id,

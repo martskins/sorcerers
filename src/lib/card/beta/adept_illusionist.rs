@@ -36,14 +36,12 @@ impl ActivatedAbility for AdeptIllusionistAction {
         };
 
         let card = state.get_card(card_id);
-        let location = pick_location_near(
-            player_id,
-            card.get_location(),
-            state,
-            false,
-            "Pick a zone to summon the Adept Illusionist",
-        )
-        .await?;
+        let location = LocationQuery::new()
+            .near(&Zone::Location(card.get_location().clone()))
+            .with_prompt("Pick a zone to summon")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
 
         Ok(vec![
             Effect::SummonCards {

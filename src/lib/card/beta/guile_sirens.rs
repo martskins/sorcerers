@@ -124,17 +124,15 @@ impl Card for GuileSirens {
                     let picked_location = if closest_locations.len() == 1 {
                         closest_locations.first().unwrap().clone()
                     } else {
-                        pick_location(
-                            &opponent_id,
-                            closest_locations,
-                            state,
-                            true,
-                            &format!(
-                                "Guile Sirens: Pick a location to move {} to",
+                        LocationQuery::from_locations(closest_locations.clone())
+                            .with_block_opponent(true)
+                            .with_prompt(format!(
+                                "Pick a location to move {} to",
                                 picked_card.get_name()
-                            ),
-                        )
-                        .await?
+                            ))
+                            .with_source_card(*self.get_id())
+                            .pick(&opponent_id, state)
+                            .await?
                     };
 
                     return Ok(vec![Effect::MoveCard {

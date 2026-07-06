@@ -82,17 +82,14 @@ impl Card for UltimateHorror {
                     .all(state);
                 let mut effects = Vec::new();
                 for card_id in dead_voidwalkers {
-                    let zone = pick_location(
-                        &controller_id,
-                        &nearby_locations,
-                        state,
-                        false,
-                        &format!(
-                            "Ultimate Horror: Pick a nearby site or void for {}",
+                    let zone = LocationQuery::from_locations(nearby_locations.clone())
+                        .with_prompt(format!(
+                            "Pick a nearby site or void for {}",
                             state.get_card(&card_id).get_name()
-                        ),
-                    )
-                    .await?;
+                        ))
+                        .with_source_card(*self.get_id())
+                        .pick(&controller_id, state)
+                        .await?;
                     effects.push(Effect::SummonCards {
                         summoned_cards: vec![SummonCard {
                             player_id: controller_id,

@@ -55,14 +55,11 @@ impl ActivatedAbility for PathfinderSitewalk {
             return Ok(vec![]);
         }
 
-        let zone = pick_location(
-            player_id,
-            &locations,
-            state,
-            false,
-            "Pathfinder: Pick an adjacent location for your top site",
-        )
-        .await?;
+        let zone = LocationQuery::from_locations(locations)
+            .with_prompt("Pick an adjacent location for your top site")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
 
         Ok(vec![
             Effect::RearrangeDeck {

@@ -118,14 +118,11 @@ impl Card for Mirage {
         }
 
         let locations = self.base_get_valid_play_locations(state, player_id, caster_id)?;
-        let zone = pick_location(
-            player_id,
-            &locations,
-            state,
-            false,
-            "Pick a zone to play the site",
-        )
-        .await?;
+        let zone = LocationQuery::from_locations(locations)
+            .with_prompt("Pick a zone to play the site")
+            .with_source_card(*self.get_id())
+            .pick(player_id, state)
+            .await?;
         Ok(vec![Effect::PlayCard {
             player_id: *player_id,
             card_id: *self.get_id(),

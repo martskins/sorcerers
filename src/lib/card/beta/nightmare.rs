@@ -119,14 +119,11 @@ impl Card for Nightmare {
                         continue;
                     }
 
-                    let target_zone = pick_location(
-                        &controller_id,
-                        &adjacent_locations,
-                        state,
-                        false,
-                        "Nightmare: Choose adjacent location to push enemy minion",
-                    )
-                    .await?;
+                    let target_zone = LocationQuery::from_locations(adjacent_locations.clone())
+                        .with_prompt("Choose adjacent location to push enemy minion")
+                        .with_source_card(*self.get_id())
+                        .pick(&controller_id, state)
+                        .await?;
 
                     let region = state.get_card(&minion_id).get_region(state).clone();
                     effects.push(Effect::MoveCard {

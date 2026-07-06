@@ -73,14 +73,11 @@ impl Magic for StarSeedsOfUhr {
 
         let mut effects = vec![];
         while !locations.is_empty() && effects.len() < 13 {
-            let zone = pick_location(
-                &controller_id,
-                &locations,
-                state,
-                false,
-                "Star-seeds of Uhr: Pick a void to fill with Rubble",
-            )
-            .await?;
+            let zone = LocationQuery::from_locations(locations.clone())
+                .with_prompt("Pick a void to fill with Rubble")
+                .with_source_card(*self.get_id())
+                .pick(&controller_id, state)
+                .await?;
             effects.push(Effect::SummonToken {
                 player_id: controller_id,
                 token_type: TokenType::Rubble,

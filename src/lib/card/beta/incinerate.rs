@@ -67,15 +67,11 @@ impl Magic for Incinerate {
         locations.push(caster.get_location().clone());
 
         let prompt = "Pick a zone to deal 4 damage to all other units in that zone";
-        let picked_location = pick_location_source(
-            self.get_owner_id(),
-            &locations,
-            state,
-            false,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
+        let picked_location = LocationQuery::from_locations(locations)
+            .with_prompt(prompt)
+            .with_source_card(*self.get_id())
+            .pick(self.get_owner_id(), state)
+            .await?;
         Ok(CardQuery::new()
             .units()
             .id_not(*self.get_id())

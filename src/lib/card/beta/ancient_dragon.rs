@@ -20,14 +20,12 @@ impl ActivatedAbility for AncientDragonAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let picked_location = pick_location_near(
-            player_id,
-            card.get_location(),
-            state,
-            false,
-            "Pick a zone to deal damage in",
-        )
-        .await?;
+        let picked_location = LocationQuery::new()
+            .near(&Zone::Location(card.get_location().clone()))
+            .with_prompt("Pick a zone to deal damage in")
+            .with_source_card(*card_id)
+            .pick(player_id, state)
+            .await?;
         let unit_ids = CardQuery::new()
             .units()
             .in_location(picked_location)

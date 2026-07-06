@@ -155,14 +155,11 @@ impl Card for WindSylph {
                     return Ok(vec![]);
                 }
 
-                let target_zone = pick_location(
-                    &controller_id,
-                    &valid_locations,
-                    state,
-                    false,
-                    "Wind Sylph: Pick a zone to push that unit to",
-                )
-                .await?;
+                let target_zone = LocationQuery::from_locations(valid_locations)
+                    .with_prompt("Pick a zone to push that unit to")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?;
                 Ok(vec![Effect::MoveCard {
                     player_id: controller_id,
                     card_id: unit_id,

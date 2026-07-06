@@ -16,9 +16,9 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
         ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
-        UnitAction, pick_amount, pick_card, pick_location, pick_option,
+        UnitAction, pick_amount, pick_card, pick_option,
     },
-    query::CardQuery,
+    query::{CardQuery, LocationQuery},
     state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
 };
 use linkme::distributed_slice;
@@ -1805,7 +1805,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Minion => {
                 let locations = self.get_valid_play_locations(state, player_id, caster_id)?;
                 let prompt = "Pick a zone to play the card";
-                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
+                let zone = LocationQuery::from_locations(locations)
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
@@ -1910,14 +1914,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     false => {
                         let locations =
                             self.get_valid_play_locations(state, player_id, caster_id)?;
-                        let picked_zone = pick_location(
-                            player_id,
-                            &locations,
-                            state,
-                            false,
-                            "Pick a zone to play the artifact",
-                        )
-                        .await?;
+                        let picked_zone = LocationQuery::from_locations(locations)
+                            .with_prompt("Pick a zone to play the artifact")
+                            .with_source_card(*card_id)
+                            .pick(player_id, state)
+                            .await?;
                         Ok(vec![Effect::PlayCard {
                             player_id: *player_id,
                             card_id: *card_id,
@@ -1930,7 +1931,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Aura => {
                 let locations = self.get_valid_play_locations(state, player_id, caster_id)?;
                 let prompt = "Pick a zone to play the aura";
-                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
+                let zone = LocationQuery::from_locations(locations)
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),

@@ -117,20 +117,22 @@ impl Card for Maelström {
                     });
 
                     let prompt = format!(
-                        "Maelström: Pick a zone to move {}({}) to, or pick its current zone to not move it",
+                        "Pick a zone to move {}({}) to, or pick its current zone to not move it",
                         minion.get_name(),
                         minion.get_location().get_square().unwrap_or_default()
                     );
-                    let picked_zone =
-                        pick_location(controller_id, &zones, state, true, &prompt).await?;
+                    let picked_zone = LocationQuery::from_locations(zones)
+                        .with_prompt(&prompt)
+                        .with_block_opponent(true)
+                        .with_source_card(*self.get_id())
+                        .pick(&controller_id, state)
+                        .await?;
                     if picked_zone != *minion.get_location() {
                         effects.push(Effect::MoveCard {
                             card_id: minion_id,
                             player_id: controller_id,
                             from: minion.get_location().clone(),
-                            to: LocationQuery::from_location(
-                                (picked_zone).with_region(minion.get_region(state).clone()),
-                            ),
+                            to: picked_zone.into(),
                             tap: false,
                             through_path: None,
                         });

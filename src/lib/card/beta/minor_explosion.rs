@@ -61,15 +61,11 @@ impl Magic for MinorExplosion {
         let caster = state.get_card(caster_id);
         let valid_zones = caster.get_locations_within_steps(state, 2);
         let prompt = "Pick a zone to center the explosion";
-        let zone = pick_location_source(
-            self.get_owner_id(),
-            &valid_zones,
-            state,
-            false,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
+        let zone = LocationQuery::from_locations(valid_zones)
+            .with_prompt(prompt)
+            .with_source_card(*self.get_id())
+            .pick(self.get_owner_id(), state)
+            .await?;
         Ok(CardQuery::new()
             .units()
             .in_zone(&zone)

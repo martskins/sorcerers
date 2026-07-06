@@ -78,14 +78,11 @@ impl Magic for WhirlingBlades {
         destinations.push(from_location.clone());
         destinations.sort();
         destinations.dedup();
-        let destination = pick_location(
-            &controller_id,
-            &destinations,
-            state,
-            false,
-            "Whirling Blades: Pick where the ally moves",
-        )
-        .await?;
+        let destination = LocationQuery::from_locations(destinations)
+            .with_prompt("Pick where the ally moves")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?;
 
         let mut path_zones = vec![from_location.clone().into(), destination.clone().into()];
         path_zones.sort();

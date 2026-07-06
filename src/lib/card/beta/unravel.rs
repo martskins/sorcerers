@@ -62,14 +62,11 @@ impl Magic for Unravel {
         let caster = state.get_card(caster_id);
         let zones = caster.get_locations_within_steps(state, 2);
 
-        let picked_zone = pick_location(
-            &controller_id,
-            &zones,
-            state,
-            false,
-            "Unravel: Pick a location up to two steps away",
-        )
-        .await?;
+        let picked_zone = LocationQuery::from_locations(zones)
+            .with_prompt("Pick a location up to two steps away")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?;
 
         let artifacts = CardQuery::new()
             .artifacts()

@@ -99,14 +99,11 @@ impl Card for Undertow {
                 };
                 let unit = state.get_card(&unit_id);
                 let zones = unit.get_locations_within_steps(state, 1);
-                let picked_zone = pick_location(
-                    player_id,
-                    &zones,
-                    state,
-                    false,
-                    "Undertow: Choose a zone to move the unit to",
-                )
-                .await?;
+                let picked_zone = LocationQuery::from_locations(zones)
+                    .with_prompt("Choose a zone to move the unit to")
+                    .with_source_card(*self.get_id())
+                    .pick(&player_id, state)
+                    .await?;
                 Ok(vec![Effect::MoveCard {
                     card_id: unit_id,
                     to: LocationQuery::from_location(

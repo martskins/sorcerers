@@ -64,7 +64,11 @@ impl ActivatedAbility for GeomancerAbility {
                 let locations =
                     picked_card.get_valid_play_locations(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
+                let zone = LocationQuery::from_locations(locations)
+                    .with_prompt(prompt)
+                    .with_source_card(picked_card_id)
+                    .pick(player_id, state)
+                    .await?;
                 geomancer_play_site_effects(
                     card_id,
                     player_id,
@@ -143,14 +147,11 @@ async fn geomancer_play_site_effects(
             .filter(|location| location.get_square().unwrap_or_default() != square)
             .collect::<Vec<Location>>();
         if !locations.is_empty() {
-            let picked_zone = pick_location(
-                player_id,
-                &locations,
-                state,
-                false,
-                "Geomancer: Pick a void to fill with a rubble",
-            )
-            .await?;
+            let picked_zone = LocationQuery::from_locations(locations)
+                .with_prompt("Pick a void to fill with a rubble")
+                .with_source_card(*geomancer_id)
+                .pick(player_id, state)
+                .await?;
             effects.push(Effect::SummonToken {
                 player_id: geomancer.get_controller_id(state),
                 token_type: TokenType::Rubble,

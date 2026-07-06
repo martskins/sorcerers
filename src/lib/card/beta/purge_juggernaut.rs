@@ -91,14 +91,11 @@ impl Card for PurgeJuggernaut {
                     return Ok(vec![]);
                 }
 
-                let target_zone = pick_location(
-                    &controller_id,
-                    &adjacent_locations,
-                    state,
-                    false,
-                    "Purge Juggernaut: Pick an adjacent location",
-                )
-                .await?;
+                let target_zone = LocationQuery::from_locations(adjacent_locations)
+                    .with_prompt("Pick an adjacent location")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state)
+                    .await?;
                 let killed_units: Vec<Effect> = CardQuery::new()
                     .units()
                     .in_zone(&target_zone)

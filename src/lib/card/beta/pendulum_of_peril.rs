@@ -99,14 +99,13 @@ impl Card for PendulumOfPeril {
                     None
                 } else {
                     Some(
-                        pick_location(
-                            &current_player,
-                            &adjacent_locations,
-                            state,
-                            false,
-                            "Pendulum of Peril: Pick an adjacent location to destroy all minions",
-                        )
-                        .await?,
+                        LocationQuery::from_locations(adjacent_locations)
+                            .with_prompt(
+                                "Pick an adjacent location to destroy all minions",
+                            )
+                            .with_source_card(*self.get_id())
+                            .pick(&current_player, state)
+                            .await?,
                     )
                 };
 

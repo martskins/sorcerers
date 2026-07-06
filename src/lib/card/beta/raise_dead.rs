@@ -69,8 +69,11 @@ impl Magic for RaiseDead {
         let minion = state.get_card(&minion_id);
         let player_id = state.get_card(caster_id).get_controller_id(state);
         let locations = minion.get_valid_play_locations(state, &player_id, caster_id)?;
-        let picked_zone =
-            pick_location(self.get_owner_id(), &locations, state, false, &prompt).await?;
+        let picked_zone = LocationQuery::from_locations(locations)
+            .with_prompt(&prompt)
+            .with_source_card(*self.get_id())
+            .pick(self.get_owner_id(), state)
+            .await?;
         Ok(vec![Effect::SummonCards {
             summoned_cards: vec![SummonCard {
                 player_id: *self.get_owner_id(),

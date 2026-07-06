@@ -85,14 +85,11 @@ impl Magic for LeapAttack {
             one_step_zones.push(current_location.clone());
         }
 
-        let dest_zone = pick_location(
-            &controller_id,
-            &one_step_zones,
-            state,
-            false,
-            "Leap Attack: Pick a zone to leap to, or pick the current zone to stay put",
-        )
-        .await?;
+        let dest_zone = LocationQuery::from_locations(one_step_zones)
+            .with_prompt("Pick a zone to leap to, or pick the current zone to stay put")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?;
 
         let enemies_at_dest: Vec<CardId> = CardQuery::new()
             .minions()
@@ -108,9 +105,7 @@ impl Magic for LeapAttack {
                 player_id: controller_id,
                 card_id: leaper_id,
                 from: current_location,
-                to: LocationQuery::from_location(
-                    (dest_zone.clone()).with_region(leaper.get_region(state).clone()),
-                ),
+                to: dest_zone.into(),
                 tap: false,
                 through_path: None,
             });

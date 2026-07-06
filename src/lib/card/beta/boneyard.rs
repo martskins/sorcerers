@@ -116,15 +116,11 @@ impl Card for Boneyard {
                     let to_location = if locations.len() == 1 {
                         locations[0].clone()
                     } else {
-                        pick_location_source(
-                            player_id,
-                            &locations,
-                            state,
-                            false,
-                            "Pick where to summon your minion in Boneyard",
-                            Some(*self.get_id()),
-                        )
-                        .await?
+                        LocationQuery::from_locations(locations)
+                            .with_prompt("Pick where to summon your minion")
+                            .with_source_card(*self.get_id())
+                            .pick(&player_id, state)
+                            .await?
                     };
 
                     cards.push(SummonCard {

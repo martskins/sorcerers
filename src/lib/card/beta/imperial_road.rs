@@ -124,14 +124,12 @@ impl Card for ImperialRoad {
                         continue;
                     }
 
-                    let zone = pick_location(
-                        &player_id,
-                        &valid_locations,
-                        state,
-                        true,
-                        "Imperial Road: Pick adjacent zone to place site",
-                    )
-                    .await?;
+                    let zone = LocationQuery::from_locations(valid_locations)
+                        .with_prompt("Pick adjacent zone to place site")
+                        .with_block_opponent(true)
+                        .with_source_card(*self.get_id())
+                        .pick(&player_id, state)
+                        .await?;
 
                     let avatar_id = state.get_player_avatar_id(&player_id)?;
                     effects.push(Effect::PlayCard {

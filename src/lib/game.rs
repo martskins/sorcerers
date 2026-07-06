@@ -617,67 +617,7 @@ pub async fn pick_zone_group_source(
     zone
 }
 
-pub async fn pick_location_near(
-    player_id: impl AsRef<PlayerId>,
-    location: &Location,
-    state: &State,
-    block_opponent: bool,
-    prompt: &str,
-) -> anyhow::Result<Location> {
-    pick_location_near_source(player_id, location, state, block_opponent, prompt, None).await
-}
-
-pub async fn pick_location_near_source(
-    player_id: impl AsRef<PlayerId>,
-    location: &Location,
-    state: &State,
-    block_opponent: bool,
-    prompt: &str,
-    source_card_id: Option<CardId>,
-) -> anyhow::Result<Location> {
-    let decision_player = state.decision_player(player_id.as_ref());
-    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
-    if block_opponent {
-        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
-    }
-
-    state
-        .get_sender()
-        .send(ServerMessage::PickLocation {
-            prompt: prompt.to_string(),
-            source_card_id,
-            player_id: decision_player,
-            locations: location.get_nearby(state),
-        })
-        .await?;
-
-    let msg = state.get_receiver().recv().await?;
-    let location = match msg {
-        ClientMessage::PickLocation { location, .. } => Ok(location),
-        ClientMessage::PlayerDisconnected { player_id, .. } => {
-            Err(GameError::PlayerDisconnected(player_id).into())
-        }
-        _ => panic!("expected PickSquare, got {:?}", msg),
-    };
-
-    if block_opponent {
-        resume(&opponent_id, state).await?;
-    }
-
-    location
-}
-
 pub async fn pick_location(
-    player_id: impl AsRef<PlayerId>,
-    locations: &[Location],
-    state: &State,
-    block_opponent: bool,
-    prompt: &str,
-) -> anyhow::Result<Location> {
-    pick_location_source(player_id, locations, state, block_opponent, prompt, None).await
-}
-
-pub async fn pick_location_source(
     player_id: impl AsRef<PlayerId>,
     locations: &[Location],
     state: &State,
@@ -1153,7 +1093,11 @@ impl ActivatedAbility for AvatarAction {
                 let locations =
                     picked_card.get_valid_play_locations(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
+                let zone = LocationQuery::from_locations(locations)
+                    .with_prompt(prompt)
+                    .with_source_card(picked_card_id)
+                    .pick(player_id, state)
+                    .await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: picked_card_id,
@@ -1268,7 +1212,11 @@ impl ActivatedAbility for UnitAction {
                 let card = state.get_card(card_id);
                 let zones = card.get_valid_move_locations(state).await?;
                 let prompt = "Pick a zone to move to";
-                let zone = pick_location(player_id, &zones, state, false, prompt).await?;
+                let zone = LocationQuery::from_locations(zones)
+                    .with_prompt(prompt)
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?;
                 let paths = card.get_valid_move_paths(state, &zone).await?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
@@ -1627,8 +1575,11 @@ impl Game {
                 let Some(action) = avatar.get_play_site_ability() else {
                     return Ok(());
                 };
-                if !action.can_activate(&playable.spellcaster_id, &playable.player_id, &self.state)?
-                {
+                if !action.can_activate(
+                    &playable.spellcaster_id,
+                    &playable.player_id,
+                    &self.state,
+                )? {
                     return Ok(());
                 }
                 let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
@@ -1660,10 +1611,18 @@ impl Game {
                     let units = artifact
                         .get_valid_attach_targets(&self.state)
                         .into_iter()
-                        .filter(|card_id| self.state.get_card(card_id).occupies_zone(&self.state, &zone))
+                        .filter(|card_id| {
+                            self.state
+                                .get_card(card_id)
+                                .occupies_zone(&self.state, &zone)
+                        })
                         .collect::<Vec<_>>();
 
-                    (artifact.can_be_carried(), units, card.get_name().to_string())
+                    (
+                        artifact.can_be_carried(),
+                        units,
+                        card.get_name().to_string(),
+                    )
                 };
 
                 if !can_be_carried {
@@ -1688,7 +1647,9 @@ impl Game {
                 }
 
                 if options.is_empty() {
-                    return Err(anyhow::anyhow!("expected at least one valid placement for artifact"));
+                    return Err(anyhow::anyhow!(
+                        "expected at least one valid placement for artifact"
+                    ));
                 }
 
                 let picked_option_idx = if options.len() > 1 {
@@ -1729,7 +1690,9 @@ impl Game {
                     }
                     PLAY_ATOP_SITE => {
                         let Some(_) = site_id else {
-                            return Err(anyhow::anyhow!("expected a site at artifact drop location"));
+                            return Err(anyhow::anyhow!(
+                                "expected a site at artifact drop location"
+                            ));
                         };
                         vec![Effect::PlayCard {
                             player_id: playable.player_id,
@@ -1900,14 +1863,11 @@ impl Game {
                     };
 
                     let prompt = "Pick a zone to play the site";
-                    let zone = pick_location(
-                        &acting_player,
-                        &playable.locations,
-                        &self.state,
-                        false,
-                        prompt,
-                    )
-                    .await?;
+                    let zone = LocationQuery::from_locations(playable.locations)
+                        .with_prompt(prompt)
+                        .with_source_card(*card_id)
+                        .pick(&acting_player, &self.state)
+                        .await?;
                     let zone = Zone::Location(zone);
                     self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
                         .await?;
@@ -2237,7 +2197,13 @@ mod tests {
                 id: player_id,
                 name: "Player 1".to_string(),
             },
-            deck: Deck::new(&player_id, "Test Deck".to_string(), vec![], vec![], avatar_id),
+            deck: Deck::new(
+                &player_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                avatar_id,
+            ),
             cards: vec![Box::new(avatar)],
         };
         let opponent = PlayerWithDeck {
@@ -2258,7 +2224,12 @@ mod tests {
         let (server_tx, server_rx) = async_channel::unbounded();
         let (client_tx, client_rx) = async_channel::unbounded();
         let game_id = uuid::Uuid::new_v4();
-        let mut state = State::new(game_id, vec![player, opponent], server_tx, client_rx.clone());
+        let mut state = State::new(
+            game_id,
+            vec![player, opponent],
+            server_tx,
+            client_rx.clone(),
+        );
         state.phase = Phase::Main;
         *state.get_player_mana_mut(&player_id) = 1;
 
@@ -2294,9 +2265,7 @@ mod tests {
             while let Ok(message) = server_rx.recv().await {
                 match message {
                     ServerMessage::PickAction {
-                        player_id,
-                        actions,
-                        ..
+                        player_id, actions, ..
                     } => {
                         assert_eq!(actions, vec!["Equip to unit", "Play atop site"]);
                         client_tx

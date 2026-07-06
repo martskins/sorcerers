@@ -29,14 +29,11 @@ impl ActivatedAbility for Constrict {
             let mut zones = constrictor.get_locations_within_steps_of(state, 1, &current_location);
             zones.retain(|zone| zone != &current_location);
             if !zones.is_empty() {
-                let picked_zone = pick_location(
-                    player_id,
-                    &zones,
-                    state,
-                    false,
-                    "Tringh Constrictor: Pick a location to step to",
-                )
-                .await?;
+                let picked_zone = LocationQuery::from_locations(zones)
+                    .with_prompt("Pick a location to step to")
+                    .with_source_card(*card_id)
+                    .pick(player_id, state)
+                    .await?;
                 effects.push(Effect::MoveCard {
                     player_id: *player_id,
                     card_id: *card_id,
