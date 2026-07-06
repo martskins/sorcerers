@@ -76,14 +76,13 @@ impl Card for LandDeed {
 
         let bearer = state.get_card(&bearer_id);
         let bearer_location = bearer.get_location();
-        let site_id = match bearer_location.get_site(state) {
-            Some(site) => *site.get_id(),
-            None => return Ok(vec![]),
+        let Some(site) = bearer_location.get_site(state) else {
+            return Ok(vec![]);
         };
 
         Ok(vec![OngoingEffect::ControllerOverride {
             controller_id: bearer.get_controller_id(state),
-            affected_cards: site_id.into(),
+            affected_cards: site.get_id().into(),
         }])
     }
 }
