@@ -68,11 +68,11 @@ impl Card for FlamingSword {
         Ok(vec![
             OngoingEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
+                affected_cards: Box::new(CardQuery::new().bearer_of_card(self.get_id())),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::SplashDamage,
-                affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
+                affected_cards: Box::new(CardQuery::new().bearer_of_card(self.get_id())),
             },
         ])
     }

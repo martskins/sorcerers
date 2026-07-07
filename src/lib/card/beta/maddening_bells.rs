@@ -87,7 +87,7 @@ impl Card for MaddeningBells {
         // TODO: Missing spellcaster filter
         Ok(vec![OngoingEffect::ModifyManaCost {
             mana_diff: 2,
-            affected_cards: CardQuery::new().magics(),
+            affected_cards: Box::new(CardQuery::new().magics()),
             zones: None,
         }])
     }

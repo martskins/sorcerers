@@ -139,7 +139,7 @@ impl Card for GrossePoltergeist {
 
         Ok(vec![OngoingEffect::ControllerOverride {
             controller_id: self.get_controller_id(state),
-            affected_cards: CardQuery::from_id(artifact_id),
+            affected_cards: Box::new(CardQuery::from_id(artifact_id)),
         }])
     }
 }

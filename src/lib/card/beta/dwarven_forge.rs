@@ -77,18 +77,18 @@ impl Card for DwarvenForge {
         Ok(vec![
             OngoingEffect::ModifyManaCost {
                 mana_diff: -1,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
-                    .including_not_in_play(),
+                    .including_not_in_play()),
                 zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
             OngoingEffect::OverrideValidPlayZone {
                 affected_locations: LocationQuery::new().zone_of_card(self.get_id()),
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
-                    .including_not_in_play(),
+                    .including_not_in_play()),
             },
         ])
     }

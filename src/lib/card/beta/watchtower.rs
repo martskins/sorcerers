@@ -76,11 +76,11 @@ impl Card for Watchtower {
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::Exact(vec![Ability::Stealth]),
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
                 .not_controlled_by(&self.get_controller_id(state))
                 .near_to(&self.get_location().with_region(Region::Surface))
-                .with_ability(Ability::Stealth),
+                .with_ability(Ability::Stealth)),
         }])
     }
 }

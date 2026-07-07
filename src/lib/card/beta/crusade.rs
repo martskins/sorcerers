@@ -64,18 +64,18 @@ impl Card for Crusade {
         Ok(vec![
             OngoingEffect::OverrideValidPlayZone {
                 affected_locations: LocationQuery::new().affected_zones_of_card(self.get_id()),
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .minions()
                     .with_affinity(Element::Earth)
-                    .including_not_in_play(),
+                    .including_not_in_play()),
             },
             OngoingEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .in_affected_zones_of_card(self.get_id())
                     .controlled_by(&controller_id)
                     .minions()
-                    .with_affinity(Element::Earth),
+                    .with_affinity(Element::Earth)),
             },
         ])
     }

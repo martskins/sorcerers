@@ -110,7 +110,7 @@ async fn test_location_direction_wraps_when_edges_are_connected() {
 
     state.ongoing_effects.push(TimedOngoingEffect {
         effect: OngoingEffect::ConnectTopBottomEdges {
-            affected_cards: CardQuery::new().in_play(),
+            affected_cards: Box::new(CardQuery::new().in_play()),
         },
         source: None,
         timestamp: 1,
@@ -1528,7 +1528,7 @@ async fn test_loses_all_abilities_keeps_disabled_status() {
     state.ongoing_effects.push(TimedOngoingEffect {
         effect: OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::AllAbilities,
-            affected_cards: CardQuery::from_id(target_id),
+            affected_cards: Box::new(CardQuery::from_id(target_id)),
         },
         source: None,
         timestamp: 1,
@@ -1718,7 +1718,7 @@ async fn test_flood_grants_flooded_ability() {
     state.ongoing_effects.push(TimedOngoingEffect {
         effect: OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::from_id(site_id),
+            affected_cards: Box::new(CardQuery::from_id(site_id)),
         },
         source: None,
         timestamp: 1,
@@ -1751,7 +1751,7 @@ async fn test_removing_abilities_removes_flooded() {
     state.ongoing_effects.push(TimedOngoingEffect {
         effect: OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::from_id(site_id),
+            affected_cards: Box::new(CardQuery::from_id(site_id)),
         },
         source: None,
         timestamp: 1,
@@ -1759,7 +1759,7 @@ async fn test_removing_abilities_removes_flooded() {
     state.ongoing_effects.push(TimedOngoingEffect {
         effect: OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::AllAbilities,
-            affected_cards: CardQuery::from_id(site_id),
+            affected_cards: Box::new(CardQuery::from_id(site_id)),
         },
         source: None,
         timestamp: 2,

@@ -72,14 +72,14 @@ impl Card for Jihad {
         Ok(vec![
             OngoingEffect::OverrideValidPlayZone {
                 affected_locations: LocationQuery::new().affected_zones_of_card(self.get_id()),
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .minions()
                     .with_affinity(Element::Fire)
-                    .including_not_in_play(),
+                    .including_not_in_play()),
             },
             OngoingEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: affected_minions,
+                affected_cards: Box::new(affected_minions),
             },
         ])
     }

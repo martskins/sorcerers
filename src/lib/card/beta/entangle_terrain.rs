@@ -79,11 +79,11 @@ impl Card for EntangleTerrain {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Immobile,
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::RemoveAbilities {
                 removal: AbilityRemoval::exact(Ability::Airborne),
-                affected_cards,
+                affected_cards: Box::new(affected_cards),
             },
         ])
     }

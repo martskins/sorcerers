@@ -69,7 +69,7 @@ impl Card for TideNaiads {
             .cloned();
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: site_id.as_ref().unwrap().into(),
+            affected_cards: Box::new(site_id.as_ref().unwrap().into()),
         }])
     }
 }

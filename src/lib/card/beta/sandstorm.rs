@@ -94,21 +94,21 @@ impl Card for Sandstorm {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .sites()
-                    .in_affected_zones_of_card(self.get_id()),
+                    .in_affected_zones_of_card(self.get_id())),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .units()
-                    .in_affected_zones_of_card(self.get_id()),
+                    .in_affected_zones_of_card(self.get_id())),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Uninterceptable,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .units()
-                    .in_affected_zones_of_card(self.get_id()),
+                    .in_affected_zones_of_card(self.get_id())),
             },
         ])
     }

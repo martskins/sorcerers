@@ -66,16 +66,16 @@ impl Card for KingOfTheRealm {
         Ok(vec![
             OngoingEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .minion_types(vec![MinionType::Mortal])
                     .in_play()
-                    .id_not_in(vec![*self.get_id()]),
+                    .id_not_in(vec![*self.get_id()])),
             },
             OngoingEffect::ControllerOverride {
                 controller_id: self.get_controller_id(state),
-                affected_cards: CardQuery::new()
+                affected_cards: Box::new(CardQuery::new()
                     .minion_types(vec![MinionType::Mortal])
-                    .in_play(),
+                    .in_play()),
             },
         ])
     }

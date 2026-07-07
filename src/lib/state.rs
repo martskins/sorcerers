@@ -341,94 +341,94 @@ impl StateRuntimeCache {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
+// Fields are boxed to keep the variants relatively small and similarly sized.
 #[derive(Clone)]
 pub enum OngoingEffect {
     ControllerOverride {
         controller_id: PlayerId,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ModifyPower {
         power_diff: i16,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ModifyPowerForEach {
         power_per_card: i16,
-        affected_cards: CardQuery,
-        matching_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
+        matching_cards: Box<CardQuery>,
     },
     MakeZoneUnvisitable {
         location: Location,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     DoubleDamageTaken {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
         except_strikes: bool,
     },
     ReduceDamageTaken {
         amount: u16,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     PreventDamageFromMagic {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     RestrictMoveToZones {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
         allowed_locations: Vec<Location>,
     },
     BlockMovementThrough {
         border: Location,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ConnectTopBottomEdges {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ConnectLeftRightEdges {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ConnectZones {
         connected_locations: Vec<Location>,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ChangeSiteType {
         site_type: SiteType,
-        affected_sites: CardQuery,
+        affected_sites: Box<CardQuery>,
     },
     GrantAbility {
         ability: Ability,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     GrantStatus {
         status: CardStatus,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     RemoveAbilities {
         removal: AbilityRemoval,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     GrantActivatedAbility {
         ability: Box<dyn ActivatedAbility>,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     GrantCounter {
         counter: Counter,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ModifyProvidedAffinities {
         modifier: AffinityModifier,
-        affected_sites: CardQuery,
+        affected_sites: Box<CardQuery>,
     },
     ModifyProvidedMana {
         mana_diff: i8,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     OverrideValidPlayZone {
         affected_locations: LocationQuery,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
     },
     ModifyManaCost {
         mana_diff: i8,
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
         zones: Option<ZoneQuery>,
     },
     ModifyCardQuery {
@@ -444,7 +444,7 @@ pub enum OngoingEffect {
         restriction: CardTargetRestriction,
     },
     GrantHook {
-        affected_cards: CardQuery,
+        affected_cards: Box<CardQuery>,
         hook_resolver: CardId,
         hook: Hook,
     },

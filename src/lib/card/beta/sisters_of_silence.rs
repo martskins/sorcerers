@@ -62,10 +62,10 @@ impl Card for SistersOfSilence {
 
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .minions()
                 .nearby_to_card(self.get_id())
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

@@ -63,11 +63,11 @@ impl Card for WingsOfInvention {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Airborne,
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Movement(1),
-                affected_cards,
+                affected_cards: Box::new(affected_cards),
             },
         ])
     }

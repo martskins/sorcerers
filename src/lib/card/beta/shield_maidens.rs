@@ -62,10 +62,10 @@ impl Card for ShieldMaidens {
 
         Ok(vec![OngoingEffect::ReduceDamageTaken {
             amount: 1,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .minions()
                 .controlled_by(&self.get_controller_id(state))
-                .nearby_locations_to_card(self.get_id()),
+                .nearby_locations_to_card(self.get_id())),
         }])
     }
 }

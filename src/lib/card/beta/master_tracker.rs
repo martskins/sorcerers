@@ -65,9 +65,9 @@ impl Card for MasterTracker {
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Stealth),
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .in_play()
-                .not_controlled_by(&self.get_controller_id(state)),
+                .not_controlled_by(&self.get_controller_id(state))),
         }])
     }
 }

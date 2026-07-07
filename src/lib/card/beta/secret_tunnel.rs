@@ -80,11 +80,11 @@ impl Card for SecretTunnel {
 
         Ok(vec![OngoingEffect::ConnectZones {
             connected_locations,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
                 .in_zone_of_card(self.get_id())
                 .controlled_by(&self.get_controller_id(state))
-                .in_region(Region::Underground),
+                .in_region(Region::Underground)),
         }])
     }
 }

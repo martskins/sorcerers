@@ -67,12 +67,12 @@ impl Card for GreyWolves {
 
         Ok(vec![OngoingEffect::ModifyPowerForEach {
             power_per_card: 1,
-            affected_cards: self.get_id().into(),
-            matching_cards: CardQuery::new()
+            affected_cards: Box::new(self.get_id().into()),
+            matching_cards: Box::new(CardQuery::new()
                 .minions()
                 .named(Self::NAME.to_string())
                 .nearby_locations_to_card(self.get_id())
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

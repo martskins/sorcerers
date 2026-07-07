@@ -119,7 +119,7 @@ impl Card for PuppetMaster {
 
         Ok(vec![OngoingEffect::ControllerOverride {
             controller_id,
-            affected_cards: CardQuery::from_ids(self.data.controlled_minions.clone()),
+            affected_cards: Box::new(CardQuery::from_ids(self.data.controlled_minions.clone())),
         }])
     }
 }

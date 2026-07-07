@@ -131,7 +131,7 @@ impl Card for BrobdingnagBullfrog {
         if let Some(swallowed_minion) = self.swallowed_minion {
             Ok(vec![OngoingEffect::GrantStatus {
                 status: CardStatus::Disabled,
-                affected_cards: swallowed_minion.into(),
+                affected_cards: Box::new(swallowed_minion.into()),
             }])
         } else {
             Ok(vec![])

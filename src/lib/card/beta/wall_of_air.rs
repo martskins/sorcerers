@@ -84,7 +84,7 @@ impl Card for WallOfAir {
 
         Ok(vec![OngoingEffect::BlockMovementThrough {
             border: self.get_location().clone(),
-            affected_cards: CardQuery::from_ids(affected_minions),
+            affected_cards: Box::new(CardQuery::from_ids(affected_minions)),
         }])
     }
 }

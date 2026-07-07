@@ -73,10 +73,10 @@ impl Card for SmokestacksOfGnaak {
 
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .sites()
                 .nearby_to_card(self.get_id())
-                .id_not_in(vec![*self.get_id()]),
+                .id_not_in(vec![*self.get_id()])),
         }])
     }
 }

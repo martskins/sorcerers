@@ -77,12 +77,12 @@ impl Card for DomeOfOsiros {
             // The site itself cannot be attacked.
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: self.get_id().into(),
+                affected_cards: Box::new(self.get_id().into()),
             },
             // Minions here cannot be attacked.
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new().in_zone_of_card(self.get_id()).minions(),
+                affected_cards: Box::new(CardQuery::new().in_zone_of_card(self.get_id()).minions()),
             },
         ])
     }

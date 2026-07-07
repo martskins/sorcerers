@@ -65,15 +65,15 @@ impl Card for AllTerrainVestments {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Burrowing,
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Submerge,
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Voidwalk,
-                affected_cards,
+                affected_cards: Box::new(affected_cards),
             },
         ])
     }

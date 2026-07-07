@@ -65,10 +65,10 @@ impl Card for HillockBasilisk {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
                 .in_zone_and_direction_from_card(self.get_id(), Direction::Up, 1, true)
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

@@ -67,10 +67,10 @@ impl Card for MagellanGlobe {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
             OngoingEffect::ConnectTopBottomEdges {
-                affected_cards: CardQuery::new().in_play(),
+                affected_cards: Box::new(CardQuery::new().in_play()),
             },
             OngoingEffect::ConnectLeftRightEdges {
-                affected_cards: CardQuery::new().in_play(),
+                affected_cards: Box::new(CardQuery::new().in_play()),
             },
         ])
     }

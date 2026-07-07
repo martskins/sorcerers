@@ -258,7 +258,7 @@ impl Card for FreeCity {
 
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::CannotDefend,
-            affected_cards: CardQuery::from_id(*self.get_id()),
+            affected_cards: Box::new(CardQuery::from_id(*self.get_id())),
         }])
     }
 }

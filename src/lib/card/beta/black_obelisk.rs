@@ -69,9 +69,9 @@ impl Card for BlackObelisk {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantHook {
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .sites()
-                .in_location(self.get_location().with_region(Region::Surface)),
+                .in_location(self.get_location().with_region(Region::Surface))),
             hook: Hook {
                 id: TURN_START_HOOK,
                 trigger: EffectQuery::TurnStart { player_id: None },

@@ -69,15 +69,15 @@ impl Card for WickerManikin {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Spellcaster(Some(Element::Air)),
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Spellcaster(Some(Element::Earth)),
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Spellcaster(Some(Element::Water)),
-                affected_cards,
+                affected_cards: Box::new(affected_cards),
             },
         ])
     }

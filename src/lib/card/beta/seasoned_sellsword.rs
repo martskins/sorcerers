@@ -86,7 +86,7 @@ impl Card for SeasonedSellsword {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(DiscardToGainControlAbility),
-            affected_cards: CardQuery::new().avatars().in_play(),
+            affected_cards: Box::new(CardQuery::new().avatars().in_play()),
         }])
     }
 }

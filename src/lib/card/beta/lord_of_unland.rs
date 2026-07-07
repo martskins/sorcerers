@@ -118,7 +118,7 @@ impl Card for LordOfUnland {
 
         Ok(vec![OngoingEffect::ModifyPower {
             power_diff: 1,
-            affected_cards: CardQuery::from_ids(allies),
+            affected_cards: Box::new(CardQuery::from_ids(allies)),
         }])
     }
 }

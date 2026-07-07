@@ -62,10 +62,10 @@ impl Card for WickedWitch {
         }
         Ok(vec![OngoingEffect::GrantCounter {
             counter: Counter::new(-2, 0, None),
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .minions()
                 .nearby_to_card(self.get_id())
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

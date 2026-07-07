@@ -68,11 +68,11 @@ impl Card for TruesightCrossbow {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Ranged(1),
-                affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
+                affected_cards: Box::new(CardQuery::new().bearer_of_card(self.get_id())),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::CanSeeStealthed,
-                affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
+                affected_cards: Box::new(CardQuery::new().bearer_of_card(self.get_id())),
             },
         ])
     }

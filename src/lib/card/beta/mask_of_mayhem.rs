@@ -60,9 +60,9 @@ impl Card for MaskOfMayhem {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::DoubleDamageTaken {
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
-                .nearby_locations_to_card(self.get_id()),
+                .nearby_locations_to_card(self.get_id())),
             except_strikes: false,
         }])
     }

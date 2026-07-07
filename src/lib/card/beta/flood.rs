@@ -62,9 +62,9 @@ impl Card for Flood {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .in_affected_zones_of_card(self.get_id())
-                .sites(),
+                .sites()),
         }])
     }
 }

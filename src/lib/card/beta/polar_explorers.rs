@@ -62,10 +62,10 @@ impl Card for PolarExplorers {
         }
 
         Ok(vec![OngoingEffect::ConnectTopBottomEdges {
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
                 .controlled_by(&self.get_controller_id(state))
-                .in_zone_of_card(self.get_id()),
+                .in_zone_of_card(self.get_id())),
         }])
     }
 }

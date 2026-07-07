@@ -65,11 +65,11 @@ impl Card for OldSaltAnchorman {
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Immobile,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .in_play()
                 .controlled_by(&self.get_controller_id(state))
                 .nearby_to_card(self.get_id())
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

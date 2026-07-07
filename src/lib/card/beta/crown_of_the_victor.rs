@@ -76,7 +76,7 @@ impl Card for CrownOfTheVictor {
 
         Ok(vec![OngoingEffect::ModifyPower {
             power_diff: 3,
-            affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
+            affected_cards: Box::new(CardQuery::new().bearer_of_card(self.get_id())),
         }])
     }
 }

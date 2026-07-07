@@ -82,7 +82,7 @@ impl Card for LandDeed {
 
         Ok(vec![OngoingEffect::ControllerOverride {
             controller_id: bearer.get_controller_id(state),
-            affected_cards: site.get_id().into(),
+            affected_cards: Box::new(site.get_id().into()),
         }])
     }
 }

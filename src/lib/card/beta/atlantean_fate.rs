@@ -77,15 +77,15 @@ impl Card for AtlanteanFate {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Flooded,
-                affected_cards: CardQuery::from_ids(flooded_sites.clone()),
+                affected_cards: Box::new(CardQuery::from_ids(flooded_sites.clone())),
             },
             OngoingEffect::ModifyProvidedAffinities {
                 modifier: AffinityModifier::Set(Thresholds::parse("W")),
-                affected_sites: CardQuery::from_ids(flooded_sites.clone()),
+                affected_sites: Box::new(CardQuery::from_ids(flooded_sites.clone())),
             },
             OngoingEffect::RemoveAbilities {
                 removal: AbilityRemoval::AllAbilitiesExcept(vec![Ability::Flooded]),
-                affected_cards: CardQuery::from_ids(flooded_sites),
+                affected_cards: Box::new(CardQuery::from_ids(flooded_sites)),
             },
         ])
     }

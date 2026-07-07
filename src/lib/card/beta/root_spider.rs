@@ -73,7 +73,7 @@ impl Card for RootSpider {
             .in_location(self.get_location().clone().with_region(Region::Surface));
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
-            affected_cards: surface_minions,
+            affected_cards: Box::new(surface_minions),
         }])
     }
 }

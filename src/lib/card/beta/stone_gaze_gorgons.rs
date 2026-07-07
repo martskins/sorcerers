@@ -77,7 +77,7 @@ impl Card for StoneGazeGorgons {
             .into_iter()
             .map(|card_id| OngoingEffect::GrantStatus {
                 status: CardStatus::Disabled,
-                affected_cards: card_id.into(),
+                affected_cards: Box::new(card_id.into()),
             })
             .collect())
     }

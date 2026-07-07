@@ -60,9 +60,9 @@ impl Card for Silence {
         }
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
-                .in_affected_zones_of_card(self.get_id()),
+                .in_affected_zones_of_card(self.get_id())),
         }])
     }
 }

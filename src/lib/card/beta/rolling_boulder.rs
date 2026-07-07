@@ -152,7 +152,7 @@ impl Card for RollingBoulder {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(RollBoulder(*self.get_id())),
-            affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
+            affected_cards: Box::new(CardQuery::new().units().in_zone_of_card(self.get_id())),
         }])
     }
 }

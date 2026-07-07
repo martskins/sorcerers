@@ -31,7 +31,7 @@ impl ActivatedAbility for FloodSite {
                     card_id: *card_id,
                     data: std::sync::Arc::new(OngoingEffect::GrantAbility {
                         ability: Ability::Flooded,
-                        affected_cards: picked_site_id.into(),
+                        affected_cards: Box::new(picked_site_id.into()),
                     }),
                 }];
                 let teleport =

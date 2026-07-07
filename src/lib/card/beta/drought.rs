@@ -63,9 +63,9 @@ impl Card for Drought {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::ModifyProvidedAffinities {
             modifier: AffinityModifier::RemoveAll(Element::Water),
-            affected_sites: CardQuery::new()
+            affected_sites: Box::new(CardQuery::new()
                 .in_affected_zones_of_card(self.get_id())
-                .sites(),
+                .sites()),
         }])
     }
 }

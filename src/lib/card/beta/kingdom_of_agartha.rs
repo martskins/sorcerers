@@ -86,7 +86,7 @@ impl Card for KingdomOfAgartha {
 
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Burrowing,
-            affected_cards: CardQuery::new().minions(),
+            affected_cards: Box::new(CardQuery::new().minions()),
         }])
     }
 }

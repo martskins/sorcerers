@@ -65,11 +65,11 @@ impl Card for DwarvenDiggingTeam {
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Burrowing,
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .minions()
                 .controlled_by(&self.get_controller_id(state))
                 .occupying_sites_near_card(self.get_id())
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

@@ -103,7 +103,7 @@ impl Card for GreatOldOne {
         }
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::from_ids(all_sites),
+            affected_cards: Box::new(CardQuery::from_ids(all_sites)),
         }])
     }
 }

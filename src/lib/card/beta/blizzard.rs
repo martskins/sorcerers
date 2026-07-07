@@ -84,11 +84,11 @@ impl Card for Blizzard {
         Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: affected_cards.clone(),
+                affected_cards: Box::new(affected_cards.clone()),
             },
             OngoingEffect::GrantAbility {
                 ability: Ability::Uninterceptable,
-                affected_cards,
+                affected_cards: Box::new(affected_cards),
             },
         ])
     }

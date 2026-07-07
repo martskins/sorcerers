@@ -80,9 +80,9 @@ impl Card for Iceberg {
 
         Ok(vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Submerge),
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .minions()
-                .nearby_to_card(self.get_id()),
+                .nearby_to_card(self.get_id())),
         }])
     }
 }

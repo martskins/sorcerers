@@ -64,11 +64,11 @@ impl Card for HouseArnBannerman {
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantCounter {
             counter: Counter::new(1, 0, None),
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
                 .nearby_locations_to_card(self.get_id())
                 .controlled_by(&self.get_controller_id(state))
-                .id_not(*self.get_id()),
+                .id_not(*self.get_id())),
         }])
     }
 }

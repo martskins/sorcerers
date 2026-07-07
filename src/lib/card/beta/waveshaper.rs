@@ -46,7 +46,7 @@ impl ActivatedAbility for WaveshaperFlood {
             card_id: *card_id,
             data: std::sync::Arc::new(OngoingEffect::GrantAbility {
                 ability: Ability::Flooded,
-                affected_cards: CardQuery::from_id(picked_site_id),
+                affected_cards: Box::new(CardQuery::from_id(picked_site_id)),
             }),
         }];
 

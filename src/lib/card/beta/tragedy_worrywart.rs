@@ -61,9 +61,9 @@ impl Card for TragedyWorrywart {
         }
 
         Ok(vec![OngoingEffect::PreventDamageFromMagic {
-            affected_cards: CardQuery::new()
+            affected_cards: Box::new(CardQuery::new()
                 .units()
-                .nearby_locations_to_card(self.get_id()),
+                .nearby_locations_to_card(self.get_id())),
         }])
     }
 }
