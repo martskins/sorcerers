@@ -85,7 +85,7 @@ impl Game {
                     description: description.clone(),
                     datetime: *datetime,
                 });
-                self.push_toast(CardToast::new_event(description.clone()));
+                self.push_toast(Toast::new_event(description.clone()));
                 None
             }
             ServerMessage::PickLocationGroup {
@@ -194,7 +194,7 @@ impl Game {
                 description,
             } => {
                 if let Some(card) = self.data.cards.iter().find(|c| c.id == *card_id).cloned() {
-                    self.push_toast(CardToast::new_card(card, description.clone()));
+                    self.push_toast(Toast::new_card(card, description.clone()));
                 }
                 None
             }

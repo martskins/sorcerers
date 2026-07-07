@@ -10,7 +10,7 @@ use crate::{
     scene::{
         Scene,
         action_overlay::ActionOverlay,
-        card_toast::{CardToast, TOAST_MARGIN},
+        card_toast::{Toast, TOAST_MARGIN},
         combat_resolution_overlay::CombatResolutionOverlay,
         menu::Menu,
         selection_overlay::SelectionOverlay,
@@ -237,7 +237,7 @@ pub struct Game {
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
-    card_toast: Vec<CardToast>,
+    card_toast: Vec<Toast>,
     prompt_stack_pos: Option<egui::Pos2>,
     controlled_hand_opened_for: Option<PlayerId>,
 }
@@ -413,7 +413,7 @@ impl Game {
     }
 
     /// Push a toast to the queue, dropping the oldest if the cap is exceeded.
-    fn push_toast(&mut self, toast: CardToast) {
+    fn push_toast(&mut self, toast: Toast) {
         const MAX_TOASTS: usize = 8;
         if self.card_toast.len() >= MAX_TOASTS {
             self.card_toast.remove(0);

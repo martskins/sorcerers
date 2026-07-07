@@ -21,13 +21,9 @@ const TOAST_PAD: f32 = 8.0;
 pub const TOAST_MARGIN: f32 = 14.0;
 const TOAST_FONT_SIZE: f32 = 10.5;
 
-#[allow(clippy::large_enum_variant)]
 enum ToastKind {
     /// A card was played — show the card image plus a description.
-    Card {
-        card: CardData,
-        image: Option<TextureHandle>,
-    },
+    Card,
     /// A generic game event — show a text line only.
     Event,
 }
@@ -38,23 +34,27 @@ enum ToastKind {
 /// Two variants exist:
 /// - **Card** — shows the card image and a description (for `CardPlayed` messages).
 /// - **Event** — shows only a text line (for every `LogEvent` message).
-pub struct CardToast {
+pub struct Toast {
     pub description: String,
     /// Initialized lazily to `ctx.input(|i| i.time)` on first render so we
     /// don't need to thread `ctx` through `process_message`.
     start_time: Option<f64>,
     duration: f64,
     kind: ToastKind,
+    card: Option<CardData>,
+    image: Option<TextureHandle>,
 }
 
-impl CardToast {
+impl Toast {
     /// Create a toast that shows a card image and description.
     pub fn new_card(card: CardData, description: String) -> Self {
         Self {
             description,
             start_time: None,
             duration: CARD_TOAST_DURATION,
-            kind: ToastKind::Card { card, image: None },
+            kind: ToastKind::Card,
+            card: Some(card),
+            image: None,
         }
     }
 
@@ -65,19 +65,24 @@ impl CardToast {
             start_time: None,
             duration: EVENT_TOAST_DURATION,
             kind: ToastKind::Event,
+            card: None,
+            image: None,
         }
     }
 
     /// The rendered height of this toast (used for vertical stacking).
     /// Measures the wrapped text so the background always fits.
     pub fn height(&self, ctx: &Context) -> f32 {
-        let inner_w = toast_inner_width(&self.kind);
+        let inner_w = toast_inner_width(&self.kind, &self.card);
         let text_h = measure_text_height(ctx, &self.description, inner_w);
         match &self.kind {
-            ToastKind::Card { card, .. } => {
-                let (_, card_h) = card_dimensions(card);
-                TOAST_PAD + card_h + TOAST_PAD + text_h + TOAST_PAD
-            }
+            ToastKind::Card => match &self.card {
+                Some(card) => {
+                    let (_, card_h) = card_dimensions(card);
+                    TOAST_PAD + card_h + TOAST_PAD + text_h + TOAST_PAD
+                }
+                None => TOAST_PAD + text_h + TOAST_PAD,
+            },
             ToastKind::Event => TOAST_PAD + text_h + TOAST_PAD,
         }
     }
@@ -102,7 +107,7 @@ impl CardToast {
         }
         let t = (elapsed / TOAST_SLIDE_SECS) as f32;
         let ease = 1.0 - (1.0 - t).powi(3);
-        (toast_panel_width(&self.kind) + TOAST_MARGIN) * (1.0 - ease)
+        (toast_panel_width(&self.kind, &self.card) + TOAST_MARGIN) * (1.0 - ease)
     }
 
     /// Render the toast at the given `base_y` (top-left y of the toast rect).
@@ -124,8 +129,8 @@ impl CardToast {
         let text_color = Color32::from_rgba_unmultiplied(180, 195, 230, alpha);
 
         let sr = screen_rect().unwrap_or(Rect::ZERO);
-        let total_w = toast_panel_width(&self.kind);
-        let inner_w = toast_inner_width(&self.kind);
+        let total_w = toast_panel_width(&self.kind, &self.card);
+        let inner_w = toast_inner_width(&self.kind, &self.card);
         let total_h = self.height(ctx);
 
         let base_x = sr.width() - total_w - TOAST_MARGIN + slide;
@@ -149,12 +154,12 @@ impl CardToast {
             egui::StrokeKind::Outside,
         );
 
-        match &mut self.kind {
-            ToastKind::Card { card, image } => {
-                // Load texture lazily.
-                if image.is_none() {
-                    *image = TextureCache::get_card_texture_blocking(card, ctx);
-                }
+        match &mut (&self.kind, &self.card) {
+            (ToastKind::Card, Some(card)) => {
+                let image = match &self.image {
+                    Some(img) => Some(img.clone()),
+                    None => TextureCache::get_card_texture_blocking(card, ctx),
+                };
 
                 let (card_w, card_h) = card_dimensions(card);
                 let card_rect = Rect::from_min_size(
@@ -163,7 +168,7 @@ impl CardToast {
                 );
 
                 match image {
-                    Some(tex) => {
+                    Some(ref tex) => {
                         painter.image(
                             tex.id(),
                             card_rect,
@@ -204,7 +209,7 @@ impl CardToast {
                     render::draw_card_preview(ui, image.as_ref()).ok();
                 }
             }
-            ToastKind::Event => {
+            (ToastKind::Event, _) | (ToastKind::Card, None) => {
                 // Text laid out to wrap within the inner width; panel height matches.
                 let galley = ctx.fonts_mut(|f| {
                     f.layout(
@@ -234,17 +239,20 @@ fn card_dimensions(card: &CardData) -> (f32, f32) {
 }
 
 /// Total outer width of the toast panel.
-fn toast_panel_width(kind: &ToastKind) -> f32 {
-    toast_inner_width(kind) + TOAST_PAD * 2.0
+fn toast_panel_width(kind: &ToastKind, card: &Option<CardData>) -> f32 {
+    toast_inner_width(kind, card) + TOAST_PAD * 2.0
 }
 
 /// Inner width available for text / card image inside the panel.
-fn toast_inner_width(kind: &ToastKind) -> f32 {
+fn toast_inner_width(kind: &ToastKind, card: &Option<CardData>) -> f32 {
     match kind {
-        ToastKind::Card { card, .. } => {
-            let (w, _) = card_dimensions(card);
-            w
-        }
+        ToastKind::Card => match card {
+            Some(card) => {
+                let (w, _) = card_dimensions(card);
+                w
+            }
+            None => TOAST_CARD_W,
+        },
         ToastKind::Event => TOAST_CARD_W,
     }
 }
