@@ -94,7 +94,7 @@ impl Card for WayfaringPilgrim {
             id: VISIT_CORNER_HOOK,
             trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                location: LocationQuery::from_locations(corners),
+                location: Box::new(LocationQuery::from_locations(corners)),
                 from: None,
             },
             timing: HookTiming::After,

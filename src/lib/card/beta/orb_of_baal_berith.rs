@@ -83,8 +83,8 @@ impl Card for OrbOfBaalBerith {
             Hook {
                 id: CREATE_COPY_HOOK,
                 trigger: EffectQuery::PlayCard {
-                    card: CardQuery::new().magics(),
-                    spellcaster: Some(CardQuery::new().units().nearby_to_card(self.get_id())),
+                    card: Box::new(CardQuery::new().magics()),
+                    spellcaster: Some(Box::new(CardQuery::new().units().nearby_to_card(self.get_id()))),
                 },
                 timing: HookTiming::After,
                 source_zones: HookSourceZones::InPlay,

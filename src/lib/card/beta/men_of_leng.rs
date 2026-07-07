@@ -68,7 +68,7 @@ impl Card for MenOfLeng {
             id: ATTACK_HOOK,
             trigger: EffectQuery::Attack {
                 attacker: self.get_id().into(),
-                defender: Some(CardQuery::new().avatars()),
+                defender: Some(Box::new(CardQuery::new().avatars())),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

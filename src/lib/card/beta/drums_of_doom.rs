@@ -71,7 +71,9 @@ impl Card for DrumsOfDoom {
             id: DAMAGE_DEALT_HOOK,
             trigger: EffectQuery::DamageDealt {
                 source: None,
-                target: Some(CardQuery::new().minions().nearby_to_card(self.get_id())),
+                target: Some(Box::new(
+                    CardQuery::new().minions().nearby_to_card(self.get_id()),
+                )),
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::InPlay,

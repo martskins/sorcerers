@@ -22,10 +22,8 @@ pub struct DeferredEffect {
     pub hook_id: HookId,
     pub card_id: CardId,
     pub timing: HookTiming,
-    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
-    pub trigger_on_effect: Box<EffectQuery>,
-    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
-    pub expires_on_effect: Option<Box<EffectQuery>>,
+    pub trigger_on_effect: EffectQuery,
+    pub expires_on_effect: Option<EffectQuery>,
     pub trigger_times: Option<u8>,
 }
 
@@ -34,45 +32,37 @@ pub enum TemporaryEffect {
     Animate {
         card_id: CardId,
         unit_base: UnitBase,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
+        expires_on_effect: EffectQuery,
     },
     GrantAbility {
         ability: Ability,
-        affected_cards: CardQuery,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
+        affected_cards: Box<CardQuery>,
+        expires_on_effect: EffectQuery,
     },
     MakePlayable {
-        affected_cards: CardQuery,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
-        by_player: crate::game::PlayerId,
+        affected_cards: Box<CardQuery>,
+        expires_on_effect: EffectQuery,
+        by_player: PlayerId,
     },
     IgnoreCostThresholds {
-        affected_cards: CardQuery,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
-        for_player: crate::game::PlayerId,
+        affected_cards: Box<CardQuery>,
+        expires_on_effect: EffectQuery,
+        for_player: PlayerId,
     },
     ModifyEffect {
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        trigger_on_effect: Box<EffectQuery>,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
+        trigger_on_effect: EffectQuery,
+        expires_on_effect: EffectQuery,
         on_effect: EffectReplacementCallback,
     },
     ConnectSites {
         sites: Vec<Zone>,
-        affected_cards: CardQuery,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
+        affected_cards: Box<CardQuery>,
+        expires_on_effect: EffectQuery,
     },
     ControllerOverride {
         controller_id: PlayerId,
-        affected_cards: CardQuery,
-        // Boxed to keep `TemporaryEffect` variants small enough for clippy::large_enum_variant.
-        expires_on_effect: Box<EffectQuery>,
+        affected_cards: Box<CardQuery>,
+        expires_on_effect: EffectQuery,
     },
 }
 
@@ -182,7 +172,7 @@ impl TemporaryEffect {
             }
             | TemporaryEffect::ControllerOverride {
                 expires_on_effect, ..
-            } => Some(expires_on_effect.as_ref()),
+            } => Some(expires_on_effect),
         }
     }
 }

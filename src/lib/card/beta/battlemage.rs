@@ -81,9 +81,9 @@ impl Card for Battlemage {
         Ok(vec![Hook {
             id: KILL_ENEMY_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new()
+                unit: Box::new(CardQuery::new()
                     .units()
-                    .not_controlled_by(&self.get_controller_id(state)),
+                    .not_controlled_by(&self.get_controller_id(state))),
                 killer: Some(self.get_id().into()),
                 from_attack: Some(true),
             },

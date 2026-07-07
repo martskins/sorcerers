@@ -66,7 +66,7 @@ impl Card for EvilPresence {
         Ok(vec![Hook {
             id: SUMMON_SPIRIT_HOOK,
             trigger: EffectQuery::SummonCard {
-                card: CardQuery::new().minions().minion_type(&MinionType::Spirit),
+                card: Box::new(CardQuery::new().minions().minion_type(&MinionType::Spirit)),
                 location: Some(self.get_location().clone()),
             },
             timing: HookTiming::After,

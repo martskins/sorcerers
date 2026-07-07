@@ -67,7 +67,7 @@ impl Card for RimlandNomads {
         Ok(vec![Hook {
             id: PREVENT_DESERT_DAMAGE_HOOK,
             trigger: EffectQuery::DamageDealt {
-                source: Some(CardQuery::new().sites().site_types(vec![SiteType::Desert])),
+                source: Some(Box::new(CardQuery::new().sites().site_types(vec![SiteType::Desert]))),
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,

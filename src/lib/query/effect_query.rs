@@ -7,25 +7,26 @@ use crate::{
     zone::Location,
 };
 
-#[allow(clippy::large_enum_variant)]
+// Fields in EffectQuery variants are boxed to keep the size of the variants relatively small and
+// similar in size.
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
     OneOf(Vec<EffectQuery>),
     EnterLocation {
-        card: CardQuery,
-        location: LocationQuery,
-        from: Option<LocationQuery>,
+        card: Box<CardQuery>,
+        location: Box<LocationQuery>,
+        from: Option<Box<LocationQuery>>,
     },
     StopAtLocation {
-        card: CardQuery,
-        location: LocationQuery,
+        card: Box<CardQuery>,
+        location: Box<LocationQuery>,
     },
     DamageDealt {
-        source: Option<CardQuery>,
-        target: Option<CardQuery>,
+        source: Option<Box<CardQuery>>,
+        target: Option<Box<CardQuery>>,
     },
     RemoveAbility {
-        card: CardQuery,
+        card: Box<CardQuery>,
         ability: Ability,
     },
     TurnEnd {
@@ -35,62 +36,62 @@ pub enum EffectQuery {
         player_id: Option<PlayerId>,
     },
     UntapCard {
-        card: CardQuery,
+        card: Box<CardQuery>,
     },
     MoveCard {
-        card: CardQuery,
+        card: Box<CardQuery>,
     },
     PlayCard {
-        card: CardQuery,
-        spellcaster: Option<CardQuery>,
+        card: Box<CardQuery>,
+        spellcaster: Option<Box<CardQuery>>,
     },
     LifeLost {
         player_id: PlayerId,
         from_attack: Option<bool>,
     },
     SummonCard {
-        card: CardQuery,
+        card: Box<CardQuery>,
         location: Option<Location>,
     },
     Genesis {
-        card: CardQuery,
+        card: Box<CardQuery>,
     },
     Deathrite {
-        card: CardQuery,
+        card: Box<CardQuery>,
     },
     BuryCard {
-        card: CardQuery,
+        card: Box<CardQuery>,
     },
     SetCardRegion {
-        card: CardQuery,
+        card: Box<CardQuery>,
         destination: Option<Region>,
     },
     RangedStrike {
-        striker: CardQuery,
+        striker: Box<CardQuery>,
     },
     Attack {
-        attacker: CardQuery,
-        defender: Option<CardQuery>,
+        attacker: Box<CardQuery>,
+        defender: Option<Box<CardQuery>>,
     },
     DefendDeclared {
-        attacker: CardQuery,
-        defender: CardQuery,
+        attacker: Box<CardQuery>,
+        defender: Box<CardQuery>,
     },
     DrawCard {
         player_id: Option<PlayerId>,
     },
     UnitKilled {
-        unit: CardQuery,
-        killer: Option<CardQuery>,
+        unit: Box<CardQuery>,
+        killer: Option<Box<CardQuery>>,
         from_attack: Option<bool>,
     },
     StrikeCard {
-        card: CardQuery,
-        striker: Option<CardQuery>,
+        card: Box<CardQuery>,
+        striker: Option<Box<CardQuery>>,
     },
     Fight {
-        attacker: CardQuery,
-        defender: Option<CardQuery>,
+        attacker: Box<CardQuery>,
+        defender: Option<Box<CardQuery>>,
     },
 }
 

@@ -82,7 +82,9 @@ impl Card for BridgeTroll {
             Hook {
                 id: DRAIN_MANA_HOOK,
                 trigger: EffectQuery::Attack {
-                    attacker: CardQuery::new().not_controlled_by(&self.get_controller_id(state)),
+                    attacker: Box::new(
+                        CardQuery::new().not_controlled_by(&self.get_controller_id(state)),
+                    ),
                     defender: Some(self.get_id().into()),
                 },
                 timing: HookTiming::After,
@@ -144,9 +146,9 @@ impl Card for BridgeTroll {
                             hook_id: GIVE_MANA_HOOK,
                             card_id: *self.get_id(),
                             timing: HookTiming::After,
-                            trigger_on_effect: Box::new(EffectQuery::TurnStart {
+                            trigger_on_effect: EffectQuery::TurnStart {
                                 player_id: Some(my_controller),
-                            }),
+                            },
                             expires_on_effect: None,
                             trigger_times: Some(1),
                         },

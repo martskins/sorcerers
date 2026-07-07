@@ -75,7 +75,7 @@ impl Card for WallOfFire {
         Ok(vec![Hook {
             id: MOVE_THROUGH_HERE_HOOK,
             trigger: EffectQuery::MoveCard {
-                card: CardQuery::new().units(),
+                card: Box::new(CardQuery::new().units()),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

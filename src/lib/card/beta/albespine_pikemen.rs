@@ -87,14 +87,14 @@ impl Card for AlbespinePikemen {
                 };
 
                 Ok(vec![Effect::AddTemporaryEffect {
-                    effect: Box::new(TemporaryEffect::GrantAbility {
+                    effect: TemporaryEffect::GrantAbility {
                         ability: Ability::FirstStrike,
                         affected_cards: self.get_id().into(),
-                        expires_on_effect: Box::new(EffectQuery::Fight {
+                        expires_on_effect: EffectQuery::Fight {
                             attacker: self.get_id().into(),
                             defender: Some(target_id.into()),
-                        }),
-                    }),
+                        },
+                    },
                 }])
             }
             _ => Ok(vec![]),

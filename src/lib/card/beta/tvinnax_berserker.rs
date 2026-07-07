@@ -67,9 +67,9 @@ impl Card for TvinnaxBerserker {
             Hook {
                 id: UNTAP_AFTER_KILL_HOOK,
                 trigger: EffectQuery::UnitKilled {
-                    unit: CardQuery::new()
+                    unit: Box::new(CardQuery::new()
                         .minions()
-                        .not_controlled_by(&self.get_controller_id(state)),
+                        .not_controlled_by(&self.get_controller_id(state))),
                     killer: Some(self.get_id().into()),
                     from_attack: None,
                 },

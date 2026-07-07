@@ -83,11 +83,11 @@ impl Magic for Geyser {
                 kind: DrawKind::Choice,
             },
             Effect::AddTemporaryEffect {
-                effect: Box::new(TemporaryEffect::GrantAbility {
+                effect: TemporaryEffect::GrantAbility {
                     ability: Ability::Flooded,
                     affected_cards: target_site_id.into(),
-                    expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
-                }),
+                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                },
             },
         ];
 
@@ -97,7 +97,7 @@ impl Magic for Geyser {
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     ability: Ability::Airborne,
-                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
+                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             });
         }

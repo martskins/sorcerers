@@ -62,9 +62,9 @@ impl Card for SquirmingMass {
         Ok(vec![Hook {
             id: MINION_DEATH_HOOK,
             trigger: EffectQuery::BuryCard {
-                card: CardQuery::new()
+                card: Box::new(CardQuery::new()
                     .minions()
-                    .nearby_locations_to_card(self.get_id()),
+                    .nearby_locations_to_card(self.get_id())),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

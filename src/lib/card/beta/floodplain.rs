@@ -18,15 +18,17 @@ impl ActivatedAbility for FloodAdjacentSite {
         let card = state.get_card(card_id);
         Ok(vec![
             Effect::AddTemporaryEffect {
-                effect: Box::new(TemporaryEffect::GrantAbility {
+                effect: TemporaryEffect::GrantAbility {
                     ability: Ability::Flooded,
-                    affected_cards: CardQuery::new()
-                        .sites()
-                        .adjacent_to(card.get_location())
-                        .with_prompt("Pick an adjacent site to flood")
-                        .with_source_card(*card_id),
-                    expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
-                }),
+                    affected_cards: Box::new(
+                        CardQuery::new()
+                            .sites()
+                            .adjacent_to(card.get_location())
+                            .with_prompt("Pick an adjacent site to flood")
+                            .with_source_card(*card_id),
+                    ),
+                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                },
             },
             Effect::SetCardData {
                 card_id: *card_id,

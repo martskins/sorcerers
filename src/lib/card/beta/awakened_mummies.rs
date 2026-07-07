@@ -98,10 +98,10 @@ impl Card for AwakenedMummies {
         Ok(vec![Hook {
             id: ENTER_ZONE_HOOK,
             trigger: EffectQuery::EnterLocation {
-                card: CardQuery::new().minions().controlled_by(&opponent_id),
-                location: LocationQuery::from_location(
+                card: Box::new(CardQuery::new().minions().controlled_by(&opponent_id)),
+                location: Box::new(LocationQuery::from_location(
                     self.get_location().with_region(Region::Surface),
-                ),
+                )),
                 from: None,
             },
             timing: HookTiming::After,
@@ -296,8 +296,8 @@ mod tests {
             context: FightContext::FightOnly,
         };
         let attack_query = EffectQuery::Attack {
-            attacker: CardQuery::from_id(mummies_id),
-            defender: Some(CardQuery::from_id(enemy_id)),
+            attacker: Box::new(CardQuery::from_id(mummies_id)),
+            defender: Some(Box::new(CardQuery::from_id(enemy_id))),
         };
 
         assert!(!attack_query.matches(&fight, &state).await.unwrap());

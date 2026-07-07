@@ -63,14 +63,16 @@ impl Magic for ShieldWall {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
         Ok(vec![Effect::AddTemporaryEffect {
-            effect: Box::new(TemporaryEffect::ModifyEffect {
-                trigger_on_effect: Box::new(EffectQuery::DamageDealt {
+            effect: TemporaryEffect::ModifyEffect {
+                trigger_on_effect: EffectQuery::DamageDealt {
                     source: None,
-                    target: Some(CardQuery::new().units().controlled_by(&controller_id)),
-                }),
-                expires_on_effect: Box::new(EffectQuery::TurnEnd {
+                    target: Some(Box::new(
+                        CardQuery::new().units().controlled_by(&controller_id),
+                    )),
+                },
+                expires_on_effect: EffectQuery::TurnEnd {
                     player_id: Some(opponent_id),
-                }),
+                },
                 on_effect: Arc::new(move |state: &State, effect: &mut Effect| {
                     Box::pin(async move {
                         if let &mut Effect::TakeDamage {
@@ -92,7 +94,7 @@ impl Magic for ShieldWall {
                         Ok(())
                     })
                 }),
-            }),
+            },
         }])
     }
 }

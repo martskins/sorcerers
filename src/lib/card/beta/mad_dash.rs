@@ -80,7 +80,7 @@ impl Magic for MadDash {
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Movement(1),
-                expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
+                expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
             },
         });
 

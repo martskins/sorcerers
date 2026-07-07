@@ -81,7 +81,7 @@ impl Card for Enchantress {
         Ok(vec![Hook {
             id: ANIMATE_AURA_HOOK,
             trigger: EffectQuery::PlayCard {
-                card: CardQuery::new().including_not_in_play(),
+                card: Box::new(CardQuery::new().including_not_in_play()),
                 spellcaster: None,
             },
             timing: HookTiming::Before,
@@ -160,9 +160,9 @@ impl Card for Enchantress {
                         tapped: false,
                         ..Default::default()
                     },
-                    expires_on_effect: Box::new(EffectQuery::TurnStart {
+                    expires_on_effect: EffectQuery::TurnStart {
                         player_id: Some(controller_id),
-                    }),
+                    },
                 }])
             }
             _ => Ok(vec![]),

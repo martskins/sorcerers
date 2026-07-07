@@ -91,14 +91,14 @@ impl Magic for Infiltrate {
                 player_id: self.get_controller_id(state),
             },
             Effect::AddTemporaryEffect {
-                effect: Box::new(TemporaryEffect::ControllerOverride {
+                effect: TemporaryEffect::ControllerOverride {
                     controller_id: self.get_controller_id(state),
                     affected_cards: target_id.into(),
-                    expires_on_effect: Box::new(EffectQuery::RemoveAbility {
+                    expires_on_effect: EffectQuery::RemoveAbility {
                         card: target_id.into(),
                         ability: Ability::Stealth,
-                    }),
-                }),
+                    },
+                },
             },
         ])
     }

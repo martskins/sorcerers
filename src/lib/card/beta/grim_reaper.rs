@@ -67,7 +67,7 @@ impl Card for GrimReaper {
         Ok(vec![Hook {
             id: KILL_MINION_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new().minions(),
+                unit: Box::new(CardQuery::new().minions()),
                 killer: Some(self.get_id().into()),
                 from_attack: None,
             },

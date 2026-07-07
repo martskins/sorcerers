@@ -23,17 +23,19 @@ impl ActivatedAbility for SacrificeForEarthSpell {
         Ok(vec![
             Effect::BuryCard { card_id: *card_id },
             Effect::AddTemporaryEffect {
-                effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
-                    affected_cards: earth_spells,
-                    expires_on_effect: Box::new(EffectQuery::PlayCard {
-                        card: CardQuery::new()
-                            .with_element(Element::Earth)
-                            .card_types(vec![CardType::Magic])
-                            .including_not_in_play(),
+                effect: TemporaryEffect::IgnoreCostThresholds {
+                    affected_cards: Box::new(earth_spells),
+                    expires_on_effect: EffectQuery::PlayCard {
+                        card: Box::new(
+                            CardQuery::new()
+                                .with_element(Element::Earth)
+                                .card_types(vec![CardType::Magic])
+                                .including_not_in_play(),
+                        ),
                         spellcaster: None,
-                    }),
+                    },
                     for_player: *player_id,
-                }),
+                },
             },
         ])
     }

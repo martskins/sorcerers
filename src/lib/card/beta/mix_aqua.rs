@@ -23,17 +23,19 @@ impl ActivatedAbility for SacrificeForWaterSpell {
         Ok(vec![
             Effect::BuryCard { card_id: *card_id },
             Effect::AddTemporaryEffect {
-                effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
-                    affected_cards: water_spells,
-                    expires_on_effect: Box::new(EffectQuery::PlayCard {
-                        card: CardQuery::new()
-                            .with_element(Element::Water)
-                            .card_types(vec![CardType::Magic])
-                            .including_not_in_play(),
+                effect: TemporaryEffect::IgnoreCostThresholds {
+                    affected_cards: Box::new(water_spells),
+                    expires_on_effect: EffectQuery::PlayCard {
+                        card: Box::new(
+                            CardQuery::new()
+                                .with_element(Element::Water)
+                                .card_types(vec![CardType::Magic])
+                                .including_not_in_play(),
+                        ),
                         spellcaster: None,
-                    }),
+                    },
                     for_player: *player_id,
-                }),
+                },
             },
         ])
     }

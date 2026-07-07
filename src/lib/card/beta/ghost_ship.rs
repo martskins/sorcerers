@@ -68,8 +68,8 @@ impl Card for GhostShip {
             id: SUMMON_SPIRIT_HOOK,
             trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                location: LocationQuery::any_site(None, None),
-                from: Some(LocationQuery::any_void()),
+                location: Box::new(LocationQuery::any_site(None, None)),
+                from: Some(Box::new(LocationQuery::any_void())),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

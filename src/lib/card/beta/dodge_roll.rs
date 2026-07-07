@@ -64,8 +64,8 @@ impl Card for DodgeRoll {
         Ok(vec![Hook {
             id: EVADE_ATTACK_HOOK,
             trigger: EffectQuery::Attack {
-                attacker: CardQuery::new().units(),
-                defender: Some(CardQuery::new().units().controlled_by(&controller_id)),
+                attacker: Box::new(CardQuery::new().units()),
+                defender: Some(Box::new(CardQuery::new().units().controlled_by(&controller_id))),
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::Zone(Zone::Hand),

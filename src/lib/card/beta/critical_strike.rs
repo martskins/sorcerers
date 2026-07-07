@@ -94,13 +94,13 @@ impl Magic for CriticalStrike {
                 hook_id: STRIKE_HOOK,
                 card_id: *self.get_id(),
                 timing: HookTiming::Replace,
-                trigger_on_effect: Box::new(EffectQuery::StrikeCard {
-                    card: CardQuery::new().units(),
-                    striker: Some(CardQuery::new().units().controlled_by(&controller_id)),
-                }),
-                expires_on_effect: Some(Box::new(EffectQuery::TurnEnd {
+                trigger_on_effect: EffectQuery::StrikeCard {
+                    card: Box::new(CardQuery::new().units()),
+                    striker: Some(Box::new(CardQuery::new().units().controlled_by(&controller_id))),
+                },
+                expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
-                })),
+                }),
                 trigger_times: Some(1),
             },
         }])

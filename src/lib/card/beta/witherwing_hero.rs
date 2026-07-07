@@ -65,13 +65,13 @@ impl Card for WitherwingHero {
         Ok(vec![Hook {
             id: WEAKER_MINION_ATTACKED_HOOK,
             trigger: EffectQuery::Attack {
-                attacker: CardQuery::new().units(),
+                attacker: Box::new(CardQuery::new().units()),
                 defender: Some(
-                    CardQuery::new()
+                    Box::new(CardQuery::new()
                         .minions()
                         .controlled_by(&player_id)
                         .in_zone_of_card(self.get_id())
-                        .power_gte(power),
+                        .power_gte(power)),
                 ),
             },
             timing: HookTiming::After,

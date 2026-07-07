@@ -69,8 +69,8 @@ impl Card for PhaseAssassin {
             id: GAIN_STEALTH_HOOK,
             trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                location: LocationQuery::any_void(),
-                from: Some(LocationQuery::any_site(None, None)),
+                location: Box::new(LocationQuery::any_void()),
+                from: Some(Box::new(LocationQuery::any_site(None, None))),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

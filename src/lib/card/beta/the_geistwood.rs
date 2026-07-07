@@ -71,7 +71,7 @@ impl Card for TheGeistwood {
         Ok(vec![Hook {
             id: GENESIS_ARE_DEATHRITE_HOOK,
             trigger: EffectQuery::BuryCard {
-                card: CardQuery::new().in_zone_of_card(self.get_id()),
+                card: Box::new(CardQuery::new().in_zone_of_card(self.get_id())),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

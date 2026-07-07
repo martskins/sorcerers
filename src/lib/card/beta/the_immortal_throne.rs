@@ -86,7 +86,7 @@ impl Card for TheImmortalThrone {
         Ok(vec![Hook {
             id: CARD_PLAYED_HOOK,
             trigger: EffectQuery::PlayCard {
-                card: CardQuery::new().with_mana_cost(self.level_counters),
+                card: Box::new(CardQuery::new().with_mana_cost(self.level_counters)),
                 spellcaster: None,
             },
             timing: HookTiming::After,

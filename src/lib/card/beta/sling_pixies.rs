@@ -68,7 +68,7 @@ impl Card for SlingPixies {
         Ok(vec![Hook {
             id: PREVENT_BIG_UNIT_DAMAGE_HOOK,
             trigger: EffectQuery::DamageDealt {
-                source: Some(CardQuery::new().units().power_gte(4)),
+                source: Some(Box::new(CardQuery::new().units().power_gte(4))),
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,

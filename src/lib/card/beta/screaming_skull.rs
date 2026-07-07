@@ -76,7 +76,7 @@ impl Card for ScreamingSkull {
         Ok(vec![Hook {
             id: BEARER_ATTACK_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new().minions().controlled_by(&opponent_id),
+                unit: Box::new(CardQuery::new().minions().controlled_by(&opponent_id)),
                 killer: Some(bearer_id.into()),
                 from_attack: Some(true),
             },

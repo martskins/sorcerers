@@ -78,10 +78,10 @@ impl Card for SlumberingGiantess {
                 counter: StatusCounter {
                     id: uuid::Uuid::new_v4(),
                     status: CardStatus::Disabled,
-                    expires_on_effect: Some(Box::new(EffectQuery::DamageDealt {
+                    expires_on_effect: Some(EffectQuery::DamageDealt {
                         source: None,
                         target: Some(self.get_id().into()),
-                    })),
+                    }),
                 },
             }]),
             _ => Ok(vec![]),

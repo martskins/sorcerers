@@ -78,8 +78,8 @@ impl Card for VaultsOfZul {
         Ok(vec![Hook {
             id: ON_CARD_STOP_HOOK,
             trigger: EffectQuery::StopAtLocation {
-                card: CardQuery::new().avatars(),
-                location: LocationQuery::from_location(self.get_location().clone()),
+                card: Box::new(CardQuery::new().avatars()),
+                location: Box::new(LocationQuery::from_location(self.get_location().clone())),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

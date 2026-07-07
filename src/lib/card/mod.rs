@@ -207,6 +207,18 @@ impl From<&CardId> for CardQuery {
     }
 }
 
+impl From<CardId> for Box<CardQuery> {
+    fn from(val: CardId) -> Self {
+        Box::new(CardQuery::from(val))
+    }
+}
+
+impl From<&CardId> for Box<CardQuery> {
+    fn from(val: &CardId) -> Self {
+        Box::new(CardQuery::from(val))
+    }
+}
+
 impl AdditionalCost {
     pub fn tap(card: impl Into<CardQuery>) -> Self {
         Self {

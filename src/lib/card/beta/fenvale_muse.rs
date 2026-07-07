@@ -67,7 +67,7 @@ impl Card for FenvaleMuse {
         Ok(vec![Hook {
             id: TRIGGER_RIVER_GENESIS_HOOK,
             trigger: EffectQuery::PlayCard {
-                card: CardQuery::new().including_not_in_play(),
+                card: Box::new(CardQuery::new().including_not_in_play()),
                 spellcaster: Some(self.get_id().into()),
             },
             timing: HookTiming::After,

@@ -62,10 +62,10 @@ impl Card for ScourgeZombies {
         Ok(vec![Hook {
             id: ON_ALLIED_DEATH_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new()
+                unit: Box::new(CardQuery::new()
                     .minions()
                     .minion_type(&MinionType::Mortal)
-                    .controlled_by(&controller_id),
+                    .controlled_by(&controller_id)),
                 killer: None,
                 from_attack: None,
             },

@@ -112,21 +112,25 @@ impl Card for CaptainBaldassare {
                     ]);
 
                     effects.push(Effect::AddTemporaryEffect {
-                        effect: Box::new(TemporaryEffect::MakePlayable {
-                            affected_cards: std::convert::Into::<CardQuery>::into(card_id)
-                                .including_not_in_play(),
-                            expires_on_effect: Box::new(effects_expiry.clone()),
+                        effect: TemporaryEffect::MakePlayable {
+                            affected_cards: Box::new(
+                                std::convert::Into::<CardQuery>::into(card_id)
+                                    .including_not_in_play(),
+                            ),
+                            expires_on_effect: effects_expiry.clone(),
                             by_player: self.get_controller_id(state),
-                        }),
+                        },
                     });
 
                     effects.push(Effect::AddTemporaryEffect {
-                        effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
-                            affected_cards: std::convert::Into::<CardQuery>::into(card_id)
-                                .including_not_in_play(),
-                            expires_on_effect: Box::new(effects_expiry.clone()),
+                        effect: TemporaryEffect::IgnoreCostThresholds {
+                            affected_cards: Box::new(
+                                std::convert::Into::<CardQuery>::into(card_id)
+                                    .including_not_in_play(),
+                            ),
+                            expires_on_effect: effects_expiry.clone(),
                             for_player: self.get_controller_id(state),
-                        }),
+                        },
                     });
                 }
 

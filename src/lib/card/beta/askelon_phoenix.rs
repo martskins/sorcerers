@@ -67,7 +67,7 @@ impl Card for AskelonPhoenix {
         Ok(vec![Hook {
             id: FIRE_DAMAGE_TO_POWER_HOOK,
             trigger: EffectQuery::DamageDealt {
-                source: Some(CardQuery::new().with_affinity(Element::Fire)),
+                source: Some(Box::new(CardQuery::new().with_affinity(Element::Fire))),
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,

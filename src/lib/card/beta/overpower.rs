@@ -74,7 +74,7 @@ impl Magic for Overpower {
                 id: uuid::Uuid::new_v4(),
                 power: 2,
                 toughness: 2,
-                expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
+                expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
             },
         }])
     }

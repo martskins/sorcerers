@@ -76,13 +76,15 @@ impl Card for BottomlessPit {
         Ok(vec![Hook {
             id: KILL_ENTERING_MINION_HOOK,
             trigger: EffectQuery::EnterLocation {
-                card: CardQuery::new()
+                card: Box::new(CardQuery::new()
                     .minions()
-                    .without_ability(Ability::Airborne),
+                    .without_ability(Ability::Airborne)),
                 // TODO: Should we differentiate queries from pickers?
                 // Maybe we need a LocationQuery and a LocationPicker. The latter wraps a Query and
                 // lets the user choose one, the former just acts as a matcher.
-                location: LocationQuery::from_locations(self.get_location().in_all_regions()),
+                location: Box::new(LocationQuery::from_locations(
+                    self.get_location().in_all_regions(),
+                )),
                 from: None,
             },
             timing: HookTiming::After,

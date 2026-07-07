@@ -77,13 +77,13 @@ impl Magic for MinecartMadness {
         .await?;
 
         Ok(vec![Effect::AddTemporaryEffect {
-            effect: Box::new(TemporaryEffect::ConnectSites {
+            effect: TemporaryEffect::ConnectSites {
                 sites: span,
-                affected_cards: CardQuery::new().units().controlled_by(&controller_id),
-                expires_on_effect: Box::new(EffectQuery::TurnEnd {
+                affected_cards: Box::new(CardQuery::new().units().controlled_by(&controller_id)),
+                expires_on_effect: EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
-                }),
-            }),
+                },
+            },
         }])
     }
 }

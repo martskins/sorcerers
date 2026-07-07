@@ -62,7 +62,7 @@ impl Card for RoyalBodyguard {
             id: TAKE_DAMAGE_INSTEAD_HOOK,
             trigger: EffectQuery::DamageDealt {
                 source: None,
-                target: Some(CardQuery::new().units().nearby_to_card(self.get_id())),
+                target: Some(Box::new(CardQuery::new().units().nearby_to_card(self.get_id()))),
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::InPlay,

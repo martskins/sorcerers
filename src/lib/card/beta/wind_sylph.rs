@@ -78,14 +78,14 @@ impl Card for WindSylph {
         Ok(vec![Hook {
             id: PUSH_UNIT_HOOK,
             trigger: EffectQuery::PlayCard {
-                card: CardQuery::new()
+                card: Box::new(CardQuery::new()
                     .card_types(vec![
                         CardType::Minion,
                         CardType::Artifact,
                         CardType::Aura,
                         CardType::Magic,
                     ])
-                    .including_not_in_play(),
+                    .including_not_in_play()),
                 spellcaster: Some(self.get_id().into()),
             },
             timing: HookTiming::After,

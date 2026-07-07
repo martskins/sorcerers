@@ -156,7 +156,7 @@ impl Card for BullDemonsOfAdum {
             id: STRIKE_OCCUPANTS_HOOK,
             trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                location: LocationQuery::new(),
+                location: Box::new(LocationQuery::new()),
                 from: None,
             },
             timing: HookTiming::After,

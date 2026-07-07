@@ -72,9 +72,9 @@ impl Magic for Gigantism {
                     id: uuid::Uuid::new_v4(),
                     power: 6,
                     toughness: 6,
-                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd {
+                    expires_on_effect: Some(EffectQuery::TurnEnd {
                         player_id: Some(controller_id),
-                    })),
+                    }),
                 },
             })
             .collect())

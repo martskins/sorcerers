@@ -67,10 +67,10 @@ impl Card for RestInPeace {
         Ok(vec![Hook {
             id: ENTER_LAND_SITE_HOOK,
             trigger: EffectQuery::EnterLocation {
-                card: CardQuery::new()
+                card: Box::new(CardQuery::new()
                     .minions()
-                    .minion_types(vec![MinionType::Undead, MinionType::Spirit]),
-                location: LocationQuery::from_locations(affected_land_sites),
+                    .minion_types(vec![MinionType::Undead, MinionType::Spirit])),
+                location: Box::new(LocationQuery::from_locations(affected_land_sites)),
                 from: None,
             },
             timing: HookTiming::After,

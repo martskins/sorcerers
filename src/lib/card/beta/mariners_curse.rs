@@ -72,8 +72,8 @@ impl Card for MarinersCurse {
         Ok(vec![Hook {
             id: ENTER_WATER_SITE_HOOK,
             trigger: EffectQuery::EnterLocation {
-                card: CardQuery::new().minions(),
-                location: LocationQuery::from_locations(affected_water_sites),
+                card: Box::new(CardQuery::new().minions()),
+                location: Box::new(LocationQuery::from_locations(affected_water_sites)),
                 from: None,
             },
             timing: HookTiming::After,

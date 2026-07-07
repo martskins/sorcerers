@@ -67,9 +67,9 @@ impl Card for BoneRabble {
         Ok(vec![Hook {
             id: PLAY_EARTH_SITE_HOOK,
             trigger: EffectQuery::PlayCard {
-                card: CardQuery::new()
+                card: Box::new(CardQuery::new()
                     .sites()
-                    .controlled_by(&self.get_controller_id(state)),
+                    .controlled_by(&self.get_controller_id(state))),
                 spellcaster: None,
             },
             timing: HookTiming::After,

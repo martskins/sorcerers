@@ -242,7 +242,7 @@ impl Card for TestStrikeHookSource {
         Ok(vec![Hook {
             id: TEST_STRIKE_HOOK_SOURCE_ID,
             trigger: EffectQuery::StrikeCard {
-                card: CardQuery::new().units(),
+                card: Box::new(CardQuery::new().units()),
                 striker: None,
             },
             timing: HookTiming::After,
@@ -2065,11 +2065,11 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
     state.add_card(Box::new(apprentice_wizard));
 
     state.queue_one(Effect::AddTemporaryEffect {
-        effect: Box::new(TemporaryEffect::GrantAbility {
+        effect: TemporaryEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::new().sites(),
-            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
-        }),
+            affected_cards: Box::new(CardQuery::new().sites()),
+            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+        },
     });
     drain_effects(&mut state).await;
 
@@ -2235,8 +2235,8 @@ async fn test_temporary_effect_grants_ability() {
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::FirstStrike,
-            affected_cards: CardQuery::from_id(unit_id).including_not_in_play(),
-            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
+            affected_cards: Box::new(CardQuery::from_id(unit_id).including_not_in_play()),
+            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
         });
 
     let has_first_strike = unit.has_ability(&state, &Ability::FirstStrike);
@@ -2263,8 +2263,8 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
     state
         .temporary_effects_mut()
         .push(TemporaryEffect::ModifyEffect {
-            trigger_on_effect: Box::new(draw_query.clone()),
-            expires_on_effect: Box::new(draw_query),
+            trigger_on_effect: draw_query.clone(),
+            expires_on_effect: draw_query,
             on_effect: convert_draw_to_mana,
         });
 
@@ -2294,7 +2294,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
         timing: HookTiming::After,
-        trigger_on_effect: Box::new(EffectQuery::DrawCard { player_id: None }),
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
         expires_on_effect: None,
         trigger_times: Some(1),
     });
@@ -2322,7 +2322,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
         timing: HookTiming::After,
-        trigger_on_effect: Box::new(EffectQuery::DrawCard { player_id: None }),
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
         expires_on_effect: None,
         trigger_times: None,
     });
@@ -2355,8 +2355,8 @@ async fn test_deferred_expiry_removes_without_triggering() {
         hook_id: TEST_HOOK_SOURCE_ID,
         card_id,
         timing: HookTiming::After,
-        trigger_on_effect: Box::new(EffectQuery::TurnStart { player_id: None }),
-        expires_on_effect: Some(Box::new(EffectQuery::DrawCard { player_id: None })),
+        trigger_on_effect: EffectQuery::TurnStart { player_id: None },
+        expires_on_effect: Some(EffectQuery::DrawCard { player_id: None }),
         trigger_times: None,
     });
 
@@ -2383,8 +2383,8 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::Flooded,
-            affected_cards: CardQuery::from_id(site_id),
-            expires_on_effect: Box::new(EffectQuery::DrawCard { player_id: None }),
+            affected_cards: Box::new(CardQuery::from_id(site_id)),
+            expires_on_effect: EffectQuery::DrawCard { player_id: None },
         });
 
     state.queue_one(Effect::DrawCard {
@@ -3034,9 +3034,9 @@ async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersec
             toughness: 2,
             ..Default::default()
         },
-        expires_on_effect: Box::new(EffectQuery::TurnStart {
+        expires_on_effect: EffectQuery::TurnStart {
             player_id: Some(player_id),
-        }),
+        },
     }
     .apply(&mut state)
     .await
@@ -3118,9 +3118,9 @@ async fn test_animated_intersection_aura_in_void_is_banished_without_voidwalk() 
             toughness: 1,
             ..Default::default()
         },
-        expires_on_effect: Box::new(EffectQuery::TurnStart {
+        expires_on_effect: EffectQuery::TurnStart {
             player_id: Some(player_id),
-        }),
+        },
     }
     .apply(&mut state)
     .await
@@ -3149,9 +3149,9 @@ async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifi
             toughness: 1,
             ..Default::default()
         },
-        expires_on_effect: Box::new(EffectQuery::TurnStart {
+        expires_on_effect: EffectQuery::TurnStart {
             player_id: Some(player_id),
-        }),
+        },
     }
     .apply(&mut state)
     .await
@@ -3161,10 +3161,10 @@ async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifi
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::Airborne,
-            affected_cards: CardQuery::new().units().in_play(),
-            expires_on_effect: Box::new(EffectQuery::TurnStart {
+            affected_cards: Box::new(CardQuery::new().units().in_play()),
+            expires_on_effect: EffectQuery::TurnStart {
                 player_id: Some(player_id),
-            }),
+            },
         });
 
     let units = CardQuery::new().units().in_play().all(&state);

@@ -618,9 +618,9 @@ async fn test_animate_makes_aura_a_minion_until_expiry() {
             toughness: 2,
             ..Default::default()
         },
-        expires_on_effect: Box::new(EffectQuery::TurnStart {
+        expires_on_effect: EffectQuery::TurnStart {
             player_id: Some(player_id),
-        }),
+        },
     }
     .apply(&mut state)
     .await
@@ -781,9 +781,9 @@ async fn test_animated_free_city_gets_unit_actions() {
             toughness: 3,
             ..Default::default()
         },
-        expires_on_effect: Box::new(EffectQuery::TurnStart {
+        expires_on_effect: EffectQuery::TurnStart {
             player_id: Some(player_id),
-        }),
+        },
     });
     state.apply_effects_without_log().await.unwrap();
 
@@ -1327,9 +1327,11 @@ async fn test_get_effective_costs_ignoring_thresholds() {
     state
         .temporary_effects_mut()
         .push(TemporaryEffect::IgnoreCostThresholds {
-            affected_cards: std::convert::Into::<CardQuery>::into(cauldron_crones.get_id())
-                .including_not_in_play(),
-            expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
+            affected_cards: Box::new(
+                std::convert::Into::<CardQuery>::into(cauldron_crones.get_id())
+                    .including_not_in_play(),
+            ),
+            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
             for_player: player_id,
         });
     let costs = state

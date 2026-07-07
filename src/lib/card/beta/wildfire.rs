@@ -90,7 +90,7 @@ impl Card for Wildfire {
                 id: TRACK_VISITED_SITE_HOOK,
                 trigger: EffectQuery::EnterLocation {
                     card: self.get_id().into(),
-                    location: LocationQuery::new(),
+                    location: Box::new(LocationQuery::new()),
                     from: None,
                 },
                 timing: HookTiming::After,

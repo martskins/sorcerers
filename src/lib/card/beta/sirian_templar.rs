@@ -61,11 +61,11 @@ impl Card for SirianTemplar {
         Ok(vec![Hook {
             id: PREVENT_DAMAGE_HOOK,
             trigger: EffectQuery::DamageDealt {
-                source: Some(CardQuery::new().minions().minion_types(vec![
+                source: Some(Box::new(CardQuery::new().minions().minion_types(vec![
                     MinionType::Demon,
                     MinionType::Spirit,
                     MinionType::Undead,
-                ])),
+                ]))),
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,

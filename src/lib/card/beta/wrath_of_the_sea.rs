@@ -99,11 +99,11 @@ impl Magic for WrathOfTheSea {
             })
             .collect::<Vec<Effect>>();
         effects.push(Effect::AddTemporaryEffect {
-            effect: Box::new(TemporaryEffect::GrantAbility {
+            effect: TemporaryEffect::GrantAbility {
                 ability: Ability::Flooded,
-                affected_cards: sites,
-                expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
-            }),
+                affected_cards: Box::new(sites),
+                expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            },
         });
         Ok(effects)
     }

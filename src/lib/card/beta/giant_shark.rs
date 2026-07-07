@@ -71,8 +71,8 @@ impl Card for GiantShark {
         Ok(vec![Hook {
             id: ENTER_BODY_OF_WATER_HOOK,
             trigger: EffectQuery::EnterLocation {
-                card: CardQuery::new().units().id_not(*self.get_id()),
-                location: LocationQuery::from_locations(body_of_water),
+                card: Box::new(CardQuery::new().units().id_not(*self.get_id())),
+                location: Box::new(LocationQuery::from_locations(body_of_water)),
                 from: None,
             },
             timing: HookTiming::After,

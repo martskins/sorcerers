@@ -73,29 +73,29 @@ impl ActivatedAbility for Constrict {
             counter: StatusCounter {
                 id: uuid::Uuid::new_v4(),
                 status: CardStatus::Disabled,
-                expires_on_effect: Some(Box::new(EffectQuery::BuryCard {
-                    card: CardQuery::from_id(target_id),
-                })),
+                expires_on_effect: Some(EffectQuery::BuryCard {
+                    card: Box::new(CardQuery::from_id(target_id)),
+                }),
             },
         });
 
         let constrictor_id = *card_id;
         effects.push(Effect::AddTemporaryEffect {
-            effect: Box::new(TemporaryEffect::ModifyEffect {
-                trigger_on_effect: Box::new(EffectQuery::UntapCard {
-                    card: CardQuery::from_id(constrictor_id),
-                }),
-                expires_on_effect: Box::new(EffectQuery::OneOf(vec![
+            effect: TemporaryEffect::ModifyEffect {
+                trigger_on_effect: EffectQuery::UntapCard {
+                    card: Box::new(CardQuery::from_id(constrictor_id)),
+                },
+                expires_on_effect: EffectQuery::OneOf(vec![
                     EffectQuery::UntapCard {
-                        card: CardQuery::from_id(constrictor_id),
+                        card: Box::new(CardQuery::from_id(constrictor_id)),
                     },
                     EffectQuery::BuryCard {
-                        card: CardQuery::from_id(target_id),
+                        card: Box::new(CardQuery::from_id(target_id)),
                     },
                     EffectQuery::BuryCard {
-                        card: CardQuery::from_id(constrictor_id),
+                        card: Box::new(CardQuery::from_id(constrictor_id)),
                     },
-                ])),
+                ]),
                 on_effect: Arc::new(move |state: &State, effect: &mut Effect| {
                     Box::pin(async move {
                         if state
@@ -113,7 +113,7 @@ impl ActivatedAbility for Constrict {
                         Ok(())
                     })
                 }),
-            }),
+            },
         });
 
         Ok(effects)

@@ -81,9 +81,9 @@ impl Magic for PsionicBlast {
                 counter: StatusCounter {
                     id: uuid::Uuid::new_v4(),
                     status: CardStatus::Disabled,
-                    expires_on_effect: Some(Box::new(EffectQuery::TurnStart {
+                    expires_on_effect: Some(EffectQuery::TurnStart {
                         player_id: Some(controller_id),
-                    })),
+                    }),
                 },
             });
         }

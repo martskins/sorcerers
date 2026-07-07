@@ -63,7 +63,7 @@ impl Card for SeaRaider {
         Ok(vec![Hook {
             id: KILL_MINION_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new().minions().controlled_by(&opponent_id),
+                unit: Box::new(CardQuery::new().minions().controlled_by(&opponent_id)),
                 killer: Some(self.get_id().into()),
                 from_attack: Some(true),
             },
@@ -95,7 +95,7 @@ impl Card for SeaRaider {
                         player_id: Some(player_id),
                     },
                     EffectQuery::PlayCard {
-                        card: CardQuery::from_id(spell_id),
+                        card: Box::new(CardQuery::from_id(spell_id)),
                         spellcaster: None,
                     },
                 ]);
@@ -106,18 +106,22 @@ impl Card for SeaRaider {
                         zone: Zone::Cemetery,
                     },
                     Effect::AddTemporaryEffect {
-                        effect: Box::new(TemporaryEffect::MakePlayable {
-                            affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
-                            expires_on_effect: Box::new(expires_on_effect.clone()),
+                        effect: TemporaryEffect::MakePlayable {
+                            affected_cards: Box::new(
+                                CardQuery::from_id(spell_id).including_not_in_play(),
+                            ),
+                            expires_on_effect: expires_on_effect.clone(),
                             by_player: player_id,
-                        }),
+                        },
                     },
                     Effect::AddTemporaryEffect {
-                        effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
-                            affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
-                            expires_on_effect: Box::new(expires_on_effect),
+                        effect: TemporaryEffect::IgnoreCostThresholds {
+                            affected_cards: Box::new(
+                                CardQuery::from_id(spell_id).including_not_in_play(),
+                            ),
+                            expires_on_effect,
                             for_player: player_id,
-                        }),
+                        },
                     },
                 ])
             }
