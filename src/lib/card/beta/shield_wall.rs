@@ -63,7 +63,7 @@ impl Magic for ShieldWall {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
         Ok(vec![Effect::AddTemporaryEffect {
-            effect: TemporaryEffect::ModifyEffect {
+            effect: Box::new(TemporaryEffect::ModifyEffect {
                 trigger_on_effect: Box::new(EffectQuery::DamageDealt {
                     source: None,
                     target: Some(CardQuery::new().units().controlled_by(&controller_id)),
@@ -92,7 +92,7 @@ impl Magic for ShieldWall {
                         Ok(())
                     })
                 }),
-            },
+            }),
         }])
     }
 }

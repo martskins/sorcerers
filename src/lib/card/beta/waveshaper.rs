@@ -71,7 +71,7 @@ impl ActivatedAbility for WaveshaperFlood {
 
         for tapped_minion_id in tapped_minions {
             effects.push(Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::ModifyEffect {
+                effect: Box::new(TemporaryEffect::ModifyEffect {
                     trigger_on_effect: Box::new(EffectQuery::UntapCard {
                         card: CardQuery::from_id(tapped_minion_id),
                     }),
@@ -84,7 +84,7 @@ impl ActivatedAbility for WaveshaperFlood {
                             Ok(())
                         })
                     }),
-                },
+                }),
             });
         }
 

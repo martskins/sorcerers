@@ -176,10 +176,10 @@ impl Magic for DreamQuest {
                 counter: StatusCounter {
                     id: uuid::Uuid::new_v4(),
                     status: CardStatus::Disabled,
-                    expires_on_effect: Some(EffectQuery::DamageDealt {
+                    expires_on_effect: Some(Box::new(EffectQuery::DamageDealt {
                         source: None,
                         target: Some(minion_id.into()),
-                    }),
+                    })),
                 },
             },
             Effect::SetCardData {
@@ -191,9 +191,9 @@ impl Magic for DreamQuest {
                     hook_id: NEXT_TURN_HOOK,
                     card_id: *self.get_id(),
                     timing: HookTiming::After,
-                    trigger_on_effect: EffectQuery::TurnStart {
+                    trigger_on_effect: Box::new(EffectQuery::TurnStart {
                         player_id: Some(controller_id),
-                    },
+                    }),
                     expires_on_effect: None,
                     trigger_times: Some(1),
                 },

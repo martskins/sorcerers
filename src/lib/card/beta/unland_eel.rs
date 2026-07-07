@@ -118,10 +118,10 @@ impl Card for UnlandEel {
                         counter: AbilityCounter {
                             id: uuid::Uuid::new_v4(),
                             ability: Ability::Submerge,
-                            expires_on_effect: Some(EffectQuery::SetCardRegion {
+                            expires_on_effect: Some(Box::new(EffectQuery::SetCardRegion {
                                 card: CardQuery::from_id(target_id),
                                 destination: Some(Region::Surface),
-                            }),
+                            })),
                         },
                     });
                 }

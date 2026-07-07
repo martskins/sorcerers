@@ -92,9 +92,9 @@ impl Card for Quagmire {
                         counter: AbilityCounter {
                             id: uuid::Uuid::new_v4(),
                             ability: Ability::Immobile,
-                            expires_on_effect: Some(EffectQuery::TurnStart {
+                            expires_on_effect: Some(Box::new(EffectQuery::TurnStart {
                                 player_id: Some(self.get_controller_id(state)),
-                            }),
+                            })),
                         },
                     })
                     .collect();

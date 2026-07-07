@@ -129,7 +129,7 @@ impl Magic for Blaze {
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     ability: Ability::Movement(2),
-                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
+                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
                 },
             },
             Effect::SetCardData {
@@ -141,10 +141,10 @@ impl Magic for Blaze {
                     hook_id: ON_MOVE_HOOK,
                     card_id: *self.get_id(),
                     timing: HookTiming::After,
-                    trigger_on_effect: EffectQuery::MoveCard {
+                    trigger_on_effect: Box::new(EffectQuery::MoveCard {
                         card: picked_card.into(),
-                    },
-                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
+                    }),
+                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
                     trigger_times: None,
                 },
             },

@@ -22,8 +22,10 @@ pub struct DeferredEffect {
     pub hook_id: HookId,
     pub card_id: CardId,
     pub timing: HookTiming,
-    pub trigger_on_effect: EffectQuery,
-    pub expires_on_effect: Option<EffectQuery>,
+    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+    pub trigger_on_effect: Box<EffectQuery>,
+    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+    pub expires_on_effect: Option<Box<EffectQuery>>,
     pub trigger_times: Option<u8>,
 }
 

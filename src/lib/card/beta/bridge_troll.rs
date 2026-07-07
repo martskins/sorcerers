@@ -144,9 +144,9 @@ impl Card for BridgeTroll {
                             hook_id: GIVE_MANA_HOOK,
                             card_id: *self.get_id(),
                             timing: HookTiming::After,
-                            trigger_on_effect: EffectQuery::TurnStart {
+                            trigger_on_effect: Box::new(EffectQuery::TurnStart {
                                 player_id: Some(my_controller),
-                            },
+                            }),
                             expires_on_effect: None,
                             trigger_times: Some(1),
                         },

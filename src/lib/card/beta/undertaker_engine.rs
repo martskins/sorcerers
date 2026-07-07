@@ -121,10 +121,10 @@ impl Card for UndertakerEngine {
                             counter: AbilityCounter {
                                 id: uuid::Uuid::new_v4(),
                                 ability: Ability::Burrowing,
-                                expires_on_effect: Some(EffectQuery::SetCardRegion {
+                                expires_on_effect: Some(Box::new(EffectQuery::SetCardRegion {
                                     card: card_id.into(),
                                     destination: Some(Region::Surface),
-                                }),
+                                })),
                             },
                         });
                     }

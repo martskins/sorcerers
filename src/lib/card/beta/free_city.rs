@@ -64,9 +64,9 @@ impl ActivatedAbility for FreeCityAttack {
             Effect::Animate {
                 card_id: *card_id,
                 unit_base: FreeCity::animated_unit_base(),
-                expires_on_effect: EffectQuery::TurnStart {
+                expires_on_effect: Box::new(EffectQuery::TurnStart {
                     player_id: Some(*player_id),
-                },
+                }),
             },
         ])
     }
@@ -211,9 +211,9 @@ impl Card for FreeCity {
                 Effect::Animate {
                     card_id: *self.get_id(),
                     unit_base: Self::animated_unit_base(),
-                    expires_on_effect: EffectQuery::TurnStart {
+                    expires_on_effect: Box::new(EffectQuery::TurnStart {
                         player_id: Some(self.get_controller_id(state)),
-                    },
+                    }),
                 },
             ]),
             _ => Ok(vec![]),

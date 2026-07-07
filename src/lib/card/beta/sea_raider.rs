@@ -106,18 +106,18 @@ impl Card for SeaRaider {
                         zone: Zone::Cemetery,
                     },
                     Effect::AddTemporaryEffect {
-                        effect: TemporaryEffect::MakePlayable {
+                        effect: Box::new(TemporaryEffect::MakePlayable {
                             affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
                             expires_on_effect: Box::new(expires_on_effect.clone()),
                             by_player: player_id,
-                        },
+                        }),
                     },
                     Effect::AddTemporaryEffect {
-                        effect: TemporaryEffect::IgnoreCostThresholds {
+                        effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
                             affected_cards: CardQuery::from_id(spell_id).including_not_in_play(),
                             expires_on_effect: Box::new(expires_on_effect),
                             for_player: player_id,
-                        },
+                        }),
                     },
                 ])
             }

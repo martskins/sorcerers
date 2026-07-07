@@ -75,13 +75,13 @@ impl Magic for MarineVoyage {
         .await?;
 
         Ok(vec![Effect::AddTemporaryEffect {
-            effect: TemporaryEffect::ConnectSites {
+            effect: Box::new(TemporaryEffect::ConnectSites {
                 sites: body_of_water,
                 affected_cards: CardQuery::new().units().controlled_by(&controller_id),
                 expires_on_effect: Box::new(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
                 }),
-            },
+            }),
         }])
     }
 }

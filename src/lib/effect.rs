@@ -83,14 +83,16 @@ fn mana_effect_for_resource_entering_realm(
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
     pub ability: Ability,
-    pub expires_on_effect: Option<EffectQuery>,
+    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+    pub expires_on_effect: Option<Box<EffectQuery>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct StatusCounter {
     pub id: uuid::Uuid,
     pub status: CardStatus,
-    pub expires_on_effect: Option<EffectQuery>,
+    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+    pub expires_on_effect: Option<Box<EffectQuery>>,
 }
 
 #[derive(Debug, Clone)]
@@ -98,7 +100,8 @@ pub struct Counter {
     pub id: uuid::Uuid,
     pub power: i16,
     pub toughness: i16,
-    pub expires_on_effect: Option<EffectQuery>,
+    // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+    pub expires_on_effect: Option<Box<EffectQuery>>,
 }
 
 impl Counter {
@@ -107,7 +110,7 @@ impl Counter {
             id: uuid::Uuid::new_v4(),
             power,
             toughness,
-            expires_on_effect,
+            expires_on_effect: expires_on_effect.map(Box::new),
         }
     }
 }
@@ -119,7 +122,6 @@ pub enum TokenType {
     Frog,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum DrawKind {
     Site,
@@ -340,7 +342,8 @@ pub enum Effect {
     Animate {
         card_id: CardId,
         unit_base: UnitBase,
-        expires_on_effect: EffectQuery,
+        // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+        expires_on_effect: Box<EffectQuery>,
     },
     SetCardData {
         card_id: CardId,
@@ -359,7 +362,8 @@ pub enum Effect {
         effect: DeferredEffect,
     },
     AddTemporaryEffect {
-        effect: TemporaryEffect,
+        // Boxed to keep `Effect` variants small enough for clippy::large_enum_variant.
+        effect: Box<TemporaryEffect>,
     },
     SetBearer {
         card_id: CardId,
@@ -1105,7 +1109,7 @@ impl Effect {
                 state.deferred_effects_mut().push(effect.clone());
             }
             Effect::AddTemporaryEffect { effect } => {
-                state.temporary_effects_mut().push(effect.clone());
+                state.temporary_effects_mut().push(effect.as_ref().clone());
                 state.queue(location_survival_effects_for_realm(state));
             }
             Effect::SetCardZone { card_id, zone } => {
@@ -2396,7 +2400,7 @@ impl Effect {
                     .push(TemporaryEffect::Animate {
                         card_id: *card_id,
                         unit_base: unit_base.clone(),
-                        expires_on_effect: Box::new(expires_on_effect.clone()),
+                        expires_on_effect: expires_on_effect.clone(),
                     });
                 state.queue(location_survival_effects_for_realm(state));
             }

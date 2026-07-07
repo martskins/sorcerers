@@ -23,7 +23,7 @@ impl ActivatedAbility for SacrificeForAirSpell {
         Ok(vec![
             Effect::BuryCard { card_id: *card_id },
             Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::IgnoreCostThresholds {
+                effect: Box::new(TemporaryEffect::IgnoreCostThresholds {
                     affected_cards: air_spells,
                     expires_on_effect: Box::new(EffectQuery::PlayCard {
                         card: CardQuery::new()
@@ -33,7 +33,7 @@ impl ActivatedAbility for SacrificeForAirSpell {
                         spellcaster: None,
                     }),
                     for_player: *player_id,
-                },
+                }),
             },
         ])
     }

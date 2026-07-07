@@ -155,7 +155,7 @@ impl Magic for WarpSpasm {
                     id: uuid::Uuid::new_v4(),
                     power,
                     toughness: 0,
-                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
+                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
                 },
             },
             Effect::AddDeferredEffect {
@@ -163,12 +163,12 @@ impl Magic for WarpSpasm {
                     hook_id: ATTACK_AND_KILL_HOOK,
                     card_id: *self.get_id(),
                     timing: HookTiming::After,
-                    trigger_on_effect: EffectQuery::UnitKilled {
+                    trigger_on_effect: Box::new(EffectQuery::UnitKilled {
                         unit: CardQuery::new().minions(),
                         killer: Some(self.get_id().into()),
                         from_attack: Some(true),
-                    },
-                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
+                    }),
+                    expires_on_effect: Some(Box::new(EffectQuery::TurnEnd { player_id: None })),
                     trigger_times: None,
                 },
             },
@@ -177,7 +177,7 @@ impl Magic for WarpSpasm {
                     hook_id: END_OF_TURN_HOOK,
                     card_id: *self.get_id(),
                     timing: HookTiming::After,
-                    trigger_on_effect: EffectQuery::TurnEnd { player_id: None },
+                    trigger_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
                     expires_on_effect: None,
                     trigger_times: Some(1),
                 },

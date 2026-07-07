@@ -83,11 +83,11 @@ impl Magic for WaypointPortal {
         let second_zone = state.get_card(&second_site_id).get_zone().clone();
 
         Ok(vec![Effect::AddTemporaryEffect {
-            effect: TemporaryEffect::ConnectSites {
+            effect: Box::new(TemporaryEffect::ConnectSites {
                 sites: vec![first_zone, second_zone],
                 affected_cards: CardQuery::new().units(),
                 expires_on_effect: Box::new(EffectQuery::TurnEnd { player_id: None }),
-            },
+            }),
         }])
     }
 }

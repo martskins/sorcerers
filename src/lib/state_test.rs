@@ -618,9 +618,9 @@ async fn test_animate_makes_aura_a_minion_until_expiry() {
             toughness: 2,
             ..Default::default()
         },
-        expires_on_effect: EffectQuery::TurnStart {
+        expires_on_effect: Box::new(EffectQuery::TurnStart {
             player_id: Some(player_id),
-        },
+        }),
     }
     .apply(&mut state)
     .await
@@ -781,9 +781,9 @@ async fn test_animated_free_city_gets_unit_actions() {
             toughness: 3,
             ..Default::default()
         },
-        expires_on_effect: EffectQuery::TurnStart {
+        expires_on_effect: Box::new(EffectQuery::TurnStart {
             player_id: Some(player_id),
-        },
+        }),
     });
     state.apply_effects_without_log().await.unwrap();
 

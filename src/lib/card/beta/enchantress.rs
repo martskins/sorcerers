@@ -160,9 +160,9 @@ impl Card for Enchantress {
                         tapped: false,
                         ..Default::default()
                     },
-                    expires_on_effect: EffectQuery::TurnStart {
+                    expires_on_effect: Box::new(EffectQuery::TurnStart {
                         player_id: Some(controller_id),
-                    },
+                    }),
                 }])
             }
             _ => Ok(vec![]),

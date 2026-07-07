@@ -83,9 +83,9 @@ impl Magic for Shrink {
                 id: uuid::Uuid::new_v4(),
                 power: -base_power,
                 toughness: 0,
-                expires_on_effect: Some(EffectQuery::TurnStart {
+                expires_on_effect: Some(Box::new(EffectQuery::TurnStart {
                     player_id: Some(controller_id),
-                }),
+                })),
             },
         }])
     }
