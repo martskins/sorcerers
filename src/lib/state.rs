@@ -429,6 +429,7 @@ pub enum OngoingEffect {
     ModifyManaCost {
         mana_diff: i8,
         affected_cards: Box<CardQuery>,
+        spellcaster: Option<Box<CardQuery>>,
         zones: Option<ZoneQuery>,
     },
     ModifyCardQuery {
@@ -468,13 +469,11 @@ impl OngoingEffect {
         let prompt = prompt.into();
         Self::ModifyCardQuery {
             description: prompt.clone(),
-            modifier: Arc::new(move |state, player_id, query| {
+            modifier: Arc::new(move |state, _player_id, query| {
                 if !query.is_randomised() {
                     return Ok(None);
                 }
-                if state.get_card(&source_card_id).get_controller_id(state) != *player_id {
-                    return Ok(None);
-                }
+                let controller_id = state.get_card(&source_card_id).get_controller_id(state);
 
                 let options = query
                     .all(state)
@@ -484,6 +483,7 @@ impl OngoingEffect {
                 Ok(Some(
                     CardQuery::from_ids(options)
                         .with_prompt(&prompt)
+                        .with_decision_player(controller_id)
                         .with_source_card(source_card_id),
                 ))
             }),
@@ -1170,6 +1170,7 @@ impl State {
         card_id: &CardId,
         target_location: Option<&Location>,
         player_id: &PlayerId,
+        spellcaster_id: Option<&CardId>,
     ) -> anyhow::Result<Costs> {
         let card = self.get_card(card_id);
         let base_costs = card.get_costs(self)?.clone();
@@ -1181,9 +1182,15 @@ impl State {
                 OngoingEffect::ModifyManaCost {
                     mana_diff,
                     affected_cards,
+                    spellcaster,
                     zones,
                 } => {
                     if !affected_cards.matches(card.get_id(), self) {
+                        return None;
+                    }
+                    if let Some(spellcaster_query) = spellcaster
+                        && !spellcaster_query.matches(spellcaster_id?, self)
+                    {
                         return None;
                     }
                     let zone_ok = match zones {

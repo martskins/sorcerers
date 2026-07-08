@@ -78,6 +78,7 @@ impl Card for DonnybrookInn {
             OngoingEffect::ModifyManaCost {
                 mana_diff: -1,
                 affected_cards: Box::new(CardQuery::new().minions().including_not_in_play()),
+                spellcaster: None,
                 zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
             OngoingEffect::OverrideValidPlayZone {

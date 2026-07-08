@@ -60,17 +60,9 @@ impl Magic for OccultRitual {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
 
-        let spellcaster_abilities = vec![
-            Ability::Spellcaster(None),
-            Ability::Spellcaster(Some(Element::Fire)),
-            Ability::Spellcaster(Some(Element::Air)),
-            Ability::Spellcaster(Some(Element::Earth)),
-            Ability::Spellcaster(Some(Element::Water)),
-        ];
-
         let count = CardQuery::new()
             .in_location(caster.get_location().clone())
-            .with_any_ability(spellcaster_abilities)
+            .spellcasters(None)
             .all(state)
             .len() as i8;
         if count == 0 {

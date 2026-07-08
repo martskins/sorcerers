@@ -65,29 +65,19 @@ impl Card for MaddeningBells {
         Some(self)
     }
 
-    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        let all_spellcaster_abilities = vec![
-            Ability::Spellcaster(None),
-            Ability::Spellcaster(Some(Element::Fire)),
-            Ability::Spellcaster(Some(Element::Air)),
-            Ability::Spellcaster(Some(Element::Earth)),
-            Ability::Spellcaster(Some(Element::Water)),
-        ];
-        // Collect all players who have a Spellcaster nearby.
-        let spellcasters = CardQuery::new()
-            .units()
-            .near_to(self.get_location())
-            .with_any_ability(all_spellcaster_abilities)
-            .all(state);
-
-        // TODO: Missing spellcaster filter
         Ok(vec![OngoingEffect::ModifyManaCost {
             mana_diff: 2,
-            affected_cards: Box::new(CardQuery::new().magics()),
+            affected_cards: Box::new(CardQuery::new().magics().including_not_in_play()),
+            spellcaster: Some(Box::new(
+                CardQuery::new()
+                    .spellcasters(None)
+                    .near_to(self.get_location()),
+            )),
             zones: None,
         }])
     }

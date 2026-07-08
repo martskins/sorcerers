@@ -65,6 +65,7 @@ impl Magic for MajorExplosion {
             .with_source_card(*self.get_id())
             .pick(self.get_owner_id(), state)
             .await?;
+        #[rustfmt::skip]
         let location_dmg: Vec<(Option<Location>, u16)> = vec![
             (Some(location.clone()), 7),
             (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),

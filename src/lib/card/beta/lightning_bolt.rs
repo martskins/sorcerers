@@ -59,14 +59,14 @@ impl Magic for LightningBolt {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster_region = state.get_card(caster_id).get_region(state);
         let locations = Location::all_in_region(caster_region.clone());
-        let picked_zone = LocationQuery::from_locations(locations)
+        let picked_location = LocationQuery::from_locations(locations)
             .with_prompt("Choose a zone")
             .with_source_card(*self.get_id())
             .pick(self.get_owner_id(), state)
             .await?;
         let Some(card_id) = CardQuery::new()
             .units()
-            .in_zone(&picked_zone)
+            .in_location(picked_location)
             .randomised()
             .count(1)
             .pick(&self.get_controller_id(state), state)

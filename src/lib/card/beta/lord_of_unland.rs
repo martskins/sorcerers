@@ -8,8 +8,8 @@ pub struct LordOfUnland {
 
 impl LordOfUnland {
     pub const NAME: &'static str = "Lord of Unland";
-    pub const DESCRIPTION: &'static str =
-        "Submerge Other allies occupying Lord of Unland's body of water have +1 power.";
+    pub const DESCRIPTION: &'static str = "Submerge
+        Other allies occupying Lord of Unland's body of water have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -33,31 +33,6 @@ impl LordOfUnland {
                 ..Default::default()
             },
         }
-    }
-
-    /// Returns all locations connected to `start` through water sites (BFS).
-    fn connected_water_locations(start: &Location, state: &State) -> Vec<Location> {
-        let mut visited: Vec<Location> = vec![start.clone()];
-        let mut queue = std::collections::VecDeque::new();
-        queue.push_back(start.clone());
-
-        while let Some(location) = queue.pop_front() {
-            for adj in location.get_adjacent(state) {
-                if visited.contains(&adj) {
-                    continue;
-                }
-                let is_water = adj
-                    .get_site(state)
-                    .and_then(|s| s.is_water_site(state).ok())
-                    .unwrap_or(false);
-                if is_water {
-                    visited.push(adj.clone());
-                    queue.push_back(adj);
-                }
-            }
-        }
-
-        visited
     }
 }
 
@@ -103,11 +78,12 @@ impl Card for LordOfUnland {
         }
 
         let controller_id = self.get_controller_id(state);
-        let water_locations = Self::connected_water_locations(self.get_location(), state);
-
+        let body_of_water = state
+            .get_body_of_water_at(self.get_location())
+            .unwrap_or_default();
         let allies: Vec<CardId> = CardQuery::new()
             .minions()
-            .in_locations(&water_locations)
+            .occupying_sites_at_locations(body_of_water)
             .controlled_by(&controller_id)
             .id_not(*self.get_id())
             .all(state);

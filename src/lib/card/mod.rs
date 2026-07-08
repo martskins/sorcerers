@@ -798,12 +798,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let valid_locations = self.get_valid_play_locations(state, player_id, caster_id)?;
         let affordable = if valid_locations.is_empty() {
             state
-                .get_effective_costs(card_id, None, player_id)?
+                .get_effective_costs(card_id, None, player_id, Some(caster_id))?
                 .can_afford(state, player_id)?
         } else {
             valid_locations.iter().any(|location| {
                 state
-                    .get_effective_costs(card_id, Some(location), player_id)
+                    .get_effective_costs(card_id, Some(location), player_id, Some(caster_id))
                     .and_then(|costs| costs.can_afford(state, player_id))
                     .unwrap_or(false)
             })
@@ -2735,7 +2735,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         &self,
         state: &State,
         player_id: &PlayerId,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
         let mut candidates = if self.get_card_type() == CardType::Aura {
             Location::all_intersections()
@@ -2752,7 +2752,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             .into_iter()
             .filter(|loc| {
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(loc), player_id)
+                    .get_effective_costs(self.get_id(), Some(loc), player_id, Some(caster_id))
                     .unwrap_or_default();
                 let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
                 if !can_afford {

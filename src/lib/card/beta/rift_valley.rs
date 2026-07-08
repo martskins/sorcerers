@@ -115,7 +115,12 @@ impl Card for RiftValley {
             .filter_map(|location| {
                 let square = location.get_square()?;
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(&location), player_id)
+                    .get_effective_costs(
+                        self.get_id(),
+                        Some(&location),
+                        player_id,
+                        Some(caster_id),
+                    )
                     .ok()?;
                 if !costs.can_afford(state, player_id).unwrap_or_default() {
                     return None;

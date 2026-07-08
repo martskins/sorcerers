@@ -147,21 +147,11 @@ impl Magic for DreamQuest {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let spellcaster_abilities = [
-            Some(Element::Fire),
-            Some(Element::Water),
-            Some(Element::Earth),
-            Some(Element::Air),
-            None,
-        ]
-        .into_iter()
-        .map(Ability::Spellcaster)
-        .collect();
         let Some(minion_id) = CardQuery::new()
             .controlled_by(&controller_id)
             .minions()
             .in_play()
-            .with_any_ability(spellcaster_abilities)
+            .spellcasters(None)
             .with_prompt("Pick an allied Spellcaster to send on a dream quest")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)

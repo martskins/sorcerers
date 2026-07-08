@@ -1462,7 +1462,12 @@ impl Game {
                     .into_iter()
                     .filter(|location| {
                         self.state
-                            .get_effective_costs(card_id, Some(location), &acting_player)
+                            .get_effective_costs(
+                                card_id,
+                                Some(location),
+                                &acting_player,
+                                Some(&avatar_id),
+                            )
                             .and_then(|cost| cost.can_afford(&self.state, acting_player))
                             .unwrap_or(false)
                     })
@@ -1805,7 +1810,7 @@ impl Game {
                     return Ok(());
                 }
 
-                let spellcasters = CardQuery::new().units().in_play().all(&self.state);
+                let spellcasters = CardQuery::new().spellcasters(None).in_play().all(&self.state);
                 let spellcasters = spellcasters
                     .into_iter()
                     .filter(|c| {
@@ -1815,7 +1820,7 @@ impl Game {
                             .can_cast_spell_with_id(&self.state, card_id, &acting_player)
                             .unwrap_or_default();
                         let can_afford = card
-                            .is_affordable(&self.state, &acting_player, &avatar_id)
+                            .is_affordable(&self.state, &acting_player, c)
                             .unwrap_or_default();
                         can_cast && can_afford
                     })

@@ -1,14 +1,15 @@
 use crate::{
     card::{
-        Ability, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus, CauldronCrones,
-        CourtJester, CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood, FootSoldier,
-        FreeCity, HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region,
-        RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
-        SneakThief, UnitBase, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus,
+        CauldronCrones, CourtJester, CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood,
+        FootSoldier, FreeCity, Firebolts, HeadlessHaunt, KiteArcher, KytheraMechanism,
+        LavaSalamander, LuckyCharm, MaddeningBells, NimbusJinn, Region, RimlandNomads, Rubble,
+        Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase, WindSylph,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{Effect, FightContext},
-    game::{Direction, NO_CONTROLLER, Thresholds},
+    game::{Direction, Element, NO_CONTROLLER, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{
@@ -1273,7 +1274,7 @@ async fn test_get_effective_costs_donnybrook_inn() {
 
     state.reconcile_ongoing_effects_for_test().await.unwrap();
     let regular_costs = state
-        .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
+        .get_effective_costs(cauldron_crones.get_id(), None, &player_id, None)
         .unwrap();
     assert_eq!(regular_costs.printed_mana_value(), Some(3));
     assert_eq!(
@@ -1289,11 +1290,79 @@ async fn test_get_effective_costs_donnybrook_inn() {
             cauldron_crones.get_id(),
             Some(donnybrook_inn.get_location()),
             &player_id,
+            None,
         )
         .unwrap();
     assert_eq!(inn_costs.printed_mana_value(), Some(3));
     assert_eq!(
         inn_costs
+            .payable_options()
+            .first()
+            .and_then(|cost| cost.payable_mana_value()),
+        Some(2)
+    );
+}
+
+#[tokio::test]
+async fn test_get_effective_costs_maddening_bells_filters_by_spellcaster() {
+    let mut state = State::new_mock_state(vec![8]);
+    let player_id = state.players[0].id;
+    let other_player_id = state.players[1].id;
+    let nearby_avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let far_avatar_id = state.get_player_avatar_id(&other_player_id).unwrap();
+    state
+        .get_card_mut(&nearby_avatar_id)
+        .set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    state
+        .get_card_mut(&far_avatar_id)
+        .set_zone(Zone::Location(Location::Square(0, Region::Surface)));
+
+    let mut maddening_bells = MaddeningBells::new(player_id);
+    maddening_bells.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    state.add_card(Box::new(maddening_bells));
+
+    let mut firebolts = Firebolts::new(player_id);
+    firebolts.set_zone(Zone::Hand);
+    state.add_card(Box::new(firebolts.clone()));
+
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+    let nearby_costs = state
+        .get_effective_costs(
+            firebolts.get_id(),
+            None,
+            &player_id,
+            Some(&nearby_avatar_id),
+        )
+        .unwrap();
+    assert_eq!(
+        nearby_costs
+            .payable_options()
+            .first()
+            .and_then(|cost| cost.payable_mana_value()),
+        Some(4)
+    );
+
+    let far_costs = state
+        .get_effective_costs(
+            firebolts.get_id(),
+            None,
+            &player_id,
+            Some(&far_avatar_id),
+        )
+        .unwrap();
+    assert_eq!(
+        far_costs
+            .payable_options()
+            .first()
+            .and_then(|cost| cost.payable_mana_value()),
+        Some(2)
+    );
+
+    let no_spellcaster_costs = state
+        .get_effective_costs(firebolts.get_id(), None, &player_id, None)
+        .unwrap();
+    assert_eq!(
+        no_spellcaster_costs
             .payable_options()
             .first()
             .and_then(|cost| cost.payable_mana_value()),
@@ -1312,7 +1381,7 @@ async fn test_get_effective_costs_ignoring_thresholds() {
 
     state.reconcile_ongoing_effects_for_test().await.unwrap();
     let regular_costs = state
-        .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
+        .get_effective_costs(cauldron_crones.get_id(), None, &player_id, None)
         .unwrap();
     assert_eq!(regular_costs.printed_mana_value(), Some(3));
     assert_eq!(regular_costs.printed_thresholds(), &Thresholds::parse("F"));
@@ -1335,7 +1404,7 @@ async fn test_get_effective_costs_ignoring_thresholds() {
             for_player: player_id,
         });
     let costs = state
-        .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
+        .get_effective_costs(cauldron_crones.get_id(), None, &player_id, None)
         .unwrap();
     assert_eq!(costs.printed_mana_value(), Some(3));
     assert_eq!(costs.printed_thresholds(), &Thresholds::parse("F"));
@@ -1376,6 +1445,53 @@ fn test_card_query_adjacent_to_uses_state_aware_locations() {
             .adjacent_to(&source)
             .matches(&foot_soldier_id, &state)
     );
+}
+
+#[test]
+fn test_card_query_spellcasters_filters_by_element() {
+    let mut state = State::new_mock_state(vec![8]);
+    let player_id = state.players[0].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+
+    let mut apprentice_wizard = ApprenticeWizard::new(player_id);
+    apprentice_wizard.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    let apprentice_wizard_id = *apprentice_wizard.get_id();
+    state.add_card(Box::new(apprentice_wizard));
+
+    let mut lava_salamander = LavaSalamander::new(player_id);
+    lava_salamander.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    let lava_salamander_id = *lava_salamander.get_id();
+    state.add_card(Box::new(lava_salamander));
+
+    let mut wind_sylph = WindSylph::new(player_id);
+    wind_sylph.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
+    let wind_sylph_id = *wind_sylph.get_id();
+    state.add_card(Box::new(wind_sylph));
+
+    let any_spellcasters = CardQuery::new().spellcasters(None).all(&state);
+    assert!(any_spellcasters.contains(&avatar_id));
+    assert!(any_spellcasters.contains(&apprentice_wizard_id));
+    assert!(any_spellcasters.contains(&lava_salamander_id));
+    assert!(any_spellcasters.contains(&wind_sylph_id));
+
+    let fire_spellcasters = CardQuery::new()
+        .spellcasters(Some(Element::Fire))
+        .all(&state);
+    assert!(fire_spellcasters.contains(&avatar_id));
+    assert!(fire_spellcasters.contains(&apprentice_wizard_id));
+    assert!(fire_spellcasters.contains(&lava_salamander_id));
+    assert!(!fire_spellcasters.contains(&wind_sylph_id));
+
+    let water_spellcasters = CardQuery::new()
+        .spellcasters(Some(Element::Water))
+        .all(&state);
+    assert!(water_spellcasters.contains(&avatar_id));
+    assert!(water_spellcasters.contains(&apprentice_wizard_id));
+    assert!(!water_spellcasters.contains(&lava_salamander_id));
+    assert!(!water_spellcasters.contains(&wind_sylph_id));
 }
 
 #[test]

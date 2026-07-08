@@ -1459,7 +1459,7 @@ impl Effect {
                     .get_card_mut(caster_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let costs = state.get_effective_costs(card_id, None, player_id)?;
+                let costs = state.get_effective_costs(card_id, None, player_id, Some(caster_id))?;
                 let paid_cost = costs.pay(state, player_id).await?;
 
                 let snapshot = state.clone();
@@ -1479,9 +1479,15 @@ impl Effect {
                 card_id,
                 player_id,
                 location,
+                spellcaster,
                 ..
             } => {
-                let costs = state.get_effective_costs(card_id, Some(location), player_id)?;
+                let costs = state.get_effective_costs(
+                    card_id,
+                    Some(location),
+                    player_id,
+                    Some(spellcaster),
+                )?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let card = state.get_card(card_id);
                 let is_minion = card.is_minion();

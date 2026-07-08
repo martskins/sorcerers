@@ -215,7 +215,7 @@ impl Server {
         game.state.add_card(kite_archer);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(Observatory::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(MarineVoyage::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(CourtJester::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
@@ -234,19 +234,19 @@ impl Server {
         let card = card::from_name_and_zone(SummerRiver::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            GothicTower::NAME,
+            SummerRiver::NAME,
             &player_one,
             Zone::Location(Location::Square(3, Region::Surface)),
         );
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            GothicTower::NAME,
+            SummerRiver::NAME,
             &player_one,
             Zone::Location(Location::Square(9, Region::Surface)),
         );
         game.state.add_card(card);
         let card = card::from_name_and_zone(
-            LoneTower::NAME,
+            SummerRiver::NAME,
             &player_one,
             Zone::Location(Location::Square(4, Region::Surface)),
         );

@@ -74,17 +74,9 @@ impl Card for MageSlayer {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
 
-                let spellcaster_abilities = vec![
-                    Ability::Spellcaster(None),
-                    Ability::Spellcaster(Some(Element::Fire)),
-                    Ability::Spellcaster(Some(Element::Air)),
-                    Ability::Spellcaster(Some(Element::Earth)),
-                    Ability::Spellcaster(Some(Element::Water)),
-                ];
-
                 let Some(chosen) = CardQuery::new()
                     .minions()
-                    .with_any_ability(spellcaster_abilities)
+                    .spellcasters(None)
                     .nearby_to_card(self.get_id())
                     .with_prompt("Pick a nearby enemy Spellcaster to kill")
                     .with_source_card(*self.get_id())

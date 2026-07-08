@@ -81,6 +81,7 @@ impl Card for DwarvenForge {
                     .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
                     .including_not_in_play()),
+                spellcaster: None,
                 zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
             OngoingEffect::OverrideValidPlayZone {

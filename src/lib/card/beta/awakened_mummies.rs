@@ -67,13 +67,13 @@ impl Card for AwakenedMummies {
         &self,
         state: &State,
         player_id: &PlayerId,
-        _caster_id: &CardId,
+        caster_id: &CardId,
     ) -> anyhow::Result<Vec<Location>> {
         Ok(Location::all_in_region(Region::Underground)
             .into_iter()
             .filter(|loc| {
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(loc), player_id)
+                    .get_effective_costs(self.get_id(), Some(loc), player_id, Some(caster_id))
                     .unwrap_or_default();
                 if !costs.can_afford(state, player_id).unwrap_or_default() {
                     return false;

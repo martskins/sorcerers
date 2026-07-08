@@ -65,17 +65,13 @@ impl Card for LuckyCharm {
     }
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        if self.get_bearer()?.is_none() {
+            return Ok(vec![]);
+        }
+
         Ok(vec![
-            OngoingEffect::choose_from_random_card_options(
-                *self.get_id(),
-                "Lucky Charm: Choose a card",
-                2,
-            ),
-            OngoingEffect::choose_from_random_zone_options(
-                *self.get_id(),
-                "Lucky Charm: Choose a zone",
-                2,
-            ),
+            OngoingEffect::choose_from_random_card_options(*self.get_id(), "Choose a card", 2),
+            OngoingEffect::choose_from_random_zone_options(*self.get_id(), "Choose a zone", 2),
         ])
     }
 }

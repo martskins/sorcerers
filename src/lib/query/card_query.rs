@@ -48,6 +48,7 @@ pub struct CardQuery {
     decision_player_id: Option<PlayerId>,
     allow_modifiers: bool,
     bearer_of: Option<CardId>,
+    spellcasters: Option<Option<Element>>,
 }
 
 impl Default for CardQuery {
@@ -88,6 +89,7 @@ impl Default for CardQuery {
             decision_player_id: None,
             allow_modifiers: true,
             bearer_of: None,
+            spellcasters: None,
         }
     }
 }
@@ -521,6 +523,31 @@ impl<'a> PreparedCardQuery<'a> {
             let card_abilities = card.get_abilities(state).unwrap_or_default();
             for filter in abilities {
                 if !filter.matches(&card_abilities) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(element) = &query.spellcasters {
+            if !card.is_avatar() && !state.is_unit_card(card_id) {
+                return false;
+            }
+
+            if !card.is_avatar() {
+                let abilities = card.get_abilities(state).unwrap_or_default();
+                let is_spellcaster = match element {
+                    None => abilities.iter().any(|ability| {
+                        matches!(
+                            ability,
+                            Ability::Spellcaster(None) | Ability::Spellcaster(Some(_))
+                        )
+                    }),
+                    Some(element) => {
+                        abilities.contains(&Ability::Spellcaster(None))
+                            || abilities.contains(&Ability::Spellcaster(Some(element.clone())))
+                    }
+                };
+                if !is_spellcaster {
                     return false;
                 }
             }
@@ -1200,6 +1227,13 @@ impl CardQuery {
         new_filter.push(VecFilter::WithoutAny(abilities));
         Self {
             abilities: Some(new_filter),
+            ..self
+        }
+    }
+
+    pub fn spellcasters(self, element: Option<Element>) -> Self {
+        Self {
+            spellcasters: Some(element),
             ..self
         }
     }

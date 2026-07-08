@@ -66,45 +66,59 @@ impl Card for KytheraMechanism {
         Some(self)
     }
 
-    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        let Some(bearer_id) = self.get_bearer()? else {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        if self.get_bearer()?.is_none() {
             return Ok(vec![]);
-        };
-        let decision_player = state.get_card(&bearer_id).get_controller_id(state);
-        let id = *self.get_id();
+        }
+
         Ok(vec![
-            OngoingEffect::ModifyCardQuery {
-                description: Self::CARD_PROMPT.to_string(),
-                modifier: Arc::new(move |_state, _player_id, query| {
-                    if !query.is_randomised() {
-                        return Ok(None);
-                    }
-
-                    Ok(Some(
-                        query
-                            .clone()
-                            .with_prompt(Self::CARD_PROMPT)
-                            .with_source_card(id)
-                            .with_decision_player(decision_player),
-                    ))
-                }),
-            },
-            OngoingEffect::ModifyZoneQuery {
-                description: Self::ZONE_PROMPT.to_string(),
-                modifier: Arc::new(move |state, _player_id, query| {
-                    if !query.is_randomised() {
-                        return Ok(None);
-                    }
-
-                    let options = query.options(state);
-                    Ok(Some(
-                        ZoneQuery::from_options(options, Some(Self::ZONE_PROMPT.to_string()))
-                            .with_source_card(id)
-                            .with_decision_player(decision_player),
-                    ))
-                }),
-            },
+            OngoingEffect::choose_from_random_card_options(
+                *self.get_id(),
+                Self::CARD_PROMPT,
+                usize::MAX,
+            ),
+            OngoingEffect::choose_from_random_zone_options(
+                *self.get_id(),
+                Self::ZONE_PROMPT,
+                usize::MAX,
+            ),
         ])
+
+        // let decision_player = state.get_card(&bearer_id).get_controller_id(state);
+        // let id = *self.get_id();
+        // Ok(vec![
+        //     OngoingEffect::ModifyCardQuery {
+        //         description: Self::CARD_PROMPT.to_string(),
+        //         modifier: Arc::new(move |_state, _player_id, query| {
+        //             if !query.is_randomised() {
+        //                 return Ok(None);
+        //             }
+        //
+        //             Ok(Some(
+        //                 query
+        //                     .clone()
+        //                     .with_prompt(Self::CARD_PROMPT)
+        //                     .with_source_card(id)
+        //                     .with_decision_player(decision_player),
+        //             ))
+        //         }),
+        //     },
+        //     OngoingEffect::ModifyZoneQuery {
+        //         description: Self::ZONE_PROMPT.to_string(),
+        //         modifier: Arc::new(move |state, _player_id, query| {
+        //             if !query.is_randomised() {
+        //                 return Ok(None);
+        //             }
+        //
+        //             let options = query.options(state);
+        //             Ok(Some(
+        //                 ZoneQuery::from_options(options, Some(Self::ZONE_PROMPT.to_string()))
+        //                     .with_source_card(id)
+        //                     .with_decision_player(decision_player),
+        //             ))
+        //         }),
+        //     },
+        // ])
     }
 }
 

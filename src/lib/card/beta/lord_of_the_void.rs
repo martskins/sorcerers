@@ -10,7 +10,8 @@ const TURN_END_HOOK: HookId = 1;
 
 impl LordOfTheVoid {
     pub const NAME: &'static str = "Lord of the Void";
-    pub const DESCRIPTION: &'static str = "Voidwalk At the end of your turn, Lord of the Void may banish an adjacent site, unless there's an Avatar there.";
+    pub const DESCRIPTION: &'static str = "Voidwalk
+        At the end of your turn, Lord of the Void may banish an adjacent site, unless there's an Avatar there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -128,15 +129,18 @@ impl Card for LordOfTheVoid {
                     return Ok(vec![]);
                 };
 
+                // Move all units to the void and banish the site.
+                // TODO: Might be worth having something check if the unit must be moved to the
+                // void, so that we don't forget to move them on every card that has an effect like
+                // this.
                 let target_zone = state.get_card(&target_site_id).get_zone().clone();
-
-                // Move all units at the target zone back to their owners, then banish the site
                 let units_there = CardQuery::new().units().in_zone(&target_zone).all(state);
                 let mut effects: Vec<Effect> = units_there
                     .into_iter()
-                    .map(|unit_id| Effect::SetCardZone {
+                    .map(|unit_id| Effect::SetCardRegion {
                         card_id: unit_id,
-                        zone: Zone::Spellbook,
+                        destination: Region::Void,
+                        tap: false,
                     })
                     .collect();
 

@@ -200,6 +200,7 @@ impl Card for Deathspeaker {
         Ok(vec![OngoingEffect::ModifyManaCost {
             mana_diff: -i8::MAX,
             affected_cards: Box::new(CardQuery::new().minions()),
+            spellcaster: None,
             zones: Some(ZoneQuery::from_zone(Zone::Cemetery)),
         }])
     }

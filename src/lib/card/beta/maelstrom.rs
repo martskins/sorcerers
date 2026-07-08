@@ -93,6 +93,7 @@ impl Card for Maelström {
                 if state.current_player() != controller_id {
                     return Ok(vec![]);
                 }
+
                 let body_of_water = state
                     .get_body_of_water_at(self.get_location())
                     .unwrap_or_default();

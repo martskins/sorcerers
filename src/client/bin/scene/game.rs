@@ -10,7 +10,7 @@ use crate::{
     scene::{
         Scene,
         action_overlay::ActionOverlay,
-        card_toast::{Toast, TOAST_MARGIN},
+        card_toast::{TOAST_MARGIN, Toast},
         combat_resolution_overlay::CombatResolutionOverlay,
         menu::Menu,
         selection_overlay::SelectionOverlay,
