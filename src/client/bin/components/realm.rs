@@ -315,6 +315,14 @@ impl RealmComponent {
         Ok(())
     }
 
+    fn pos_is_over_realm(&self, pos: Pos2) -> bool {
+        self.cell_rects.iter().any(|cell| cell.rect.contains(pos))
+            || self
+                .intersection_rects
+                .iter()
+                .any(|intersection| intersection.rect.contains(pos))
+    }
+
     fn pending_zone_choice_is_valid(
         &self,
         choice: &PendingLocationChoice,
@@ -1869,6 +1877,18 @@ impl Component for RealmComponent {
                     } else {
                         data.status = Status::Idle;
                     }
+                } else if self.pos_is_over_realm(*pos)
+                    && data
+                        .cards
+                        .iter()
+                        .any(|card| card.id == *card_id && card.card_type == CardType::Magic)
+                {
+                    data.status = Status::Idle;
+                    self.client.send(ClientMessage::ClickCard {
+                        card_id: *card_id,
+                        player_id: self.player_id,
+                        game_id: self.game_id,
+                    })?;
                 }
             }
             _ => {}

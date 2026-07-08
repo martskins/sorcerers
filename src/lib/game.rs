@@ -1495,6 +1495,14 @@ impl Game {
         card_id: &CardId,
         zone: &Zone,
     ) -> anyhow::Result<()> {
+        let Some(_) = zone.location() else {
+            return Ok(());
+        };
+        if self.state.get_card(card_id).get_card_type() == CardType::Magic {
+            self.queue_play_magic_from_hand(player_id, card_id).await?;
+            return Ok(());
+        }
+
         let Some(playable) = self.playable_hand_card(player_id, card_id)? else {
             return Ok(());
         };
@@ -1651,6 +1659,82 @@ impl Game {
                 });
             }
         }
+
+        Ok(())
+    }
+
+    async fn queue_play_magic_from_hand(
+        &mut self,
+        player_id: &PlayerId,
+        card_id: &CardId,
+    ) -> anyhow::Result<()> {
+        if player_id != &self.state.current_turn_controller() {
+            return Ok(());
+        }
+
+        let acting_player = self.state.current_player();
+        let card = self.state.get_card(card_id);
+        if !card.is_playable(&self.state, &acting_player)? {
+            return Ok(());
+        }
+        if card.get_card_type() != CardType::Magic {
+            return Ok(());
+        }
+        if self
+            .state
+            .mandatory_avatar_site_play_location(&acting_player)?
+            .is_some()
+        {
+            return Ok(());
+        }
+
+        let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
+        let spellcasters = CardQuery::new().spellcasters(None).in_play().all(&self.state);
+        let spellcasters = spellcasters
+            .into_iter()
+            .filter(|c| {
+                let can_cast = self
+                    .state
+                    .get_card(c)
+                    .can_cast_spell_with_id(&self.state, card_id, &acting_player)
+                    .unwrap_or_default();
+                let can_afford = card
+                    .is_affordable(&self.state, &acting_player, c)
+                    .unwrap_or_default();
+                can_cast && can_afford
+            })
+            .collect::<Vec<_>>();
+
+        if spellcasters.is_empty() {
+            return Ok(());
+        }
+
+        let mut caster_id = avatar_id;
+        if spellcasters.len() > 1 {
+            let prompt = "Pick a spellcaster to cast the spell";
+            let Some(picked_caster_id) = CardQuery::from_ids(spellcasters)
+                .with_prompt(prompt)
+                .with_source_card(*card_id)
+                .pick(&acting_player, &self.state)
+                .await?
+            else {
+                return Ok(());
+            };
+            caster_id = picked_caster_id;
+        }
+
+        let caster = self.state.get_card(&caster_id);
+        self.state.queue_one(Effect::PlayMagic {
+            player_id: acting_player,
+            card_id: *card_id,
+            caster_id,
+            from: caster
+                .get_zone()
+                .clone()
+                .location()
+                .cloned()
+                .expect("spell caster must be in a location"),
+        });
 
         Ok(())
     }
@@ -1852,32 +1936,7 @@ impl Game {
                         self.state.queue(effects);
                     }
                     CardType::Magic => {
-                        let mut caster_id = avatar_id;
-                        if spellcasters.len() > 1 {
-                            let prompt = "Pick a spellcaster to cast the spell";
-                            let Some(picked_caster_id) = CardQuery::from_ids(spellcasters)
-                                .with_prompt(prompt)
-                                .with_source_card(*card_id)
-                                .pick(&acting_player, &self.state)
-                                .await?
-                            else {
-                                return Ok(());
-                            };
-                            caster_id = picked_caster_id;
-                        }
-
-                        let caster = self.state.get_card(&caster_id);
-                        self.state.queue_one(Effect::PlayMagic {
-                            player_id: acting_player,
-                            card_id: *card_id,
-                            caster_id,
-                            from: caster
-                                .get_zone()
-                                .clone()
-                                .location()
-                                .cloned()
-                                .expect("spell caster must be in a location"),
-                        });
+                        self.queue_play_magic_from_hand(player_id, card_id).await?;
                     }
                     // Sites are not playable by clicking, they have to be played through avatar
                     // actions, so ignore clicks on them in the hand.
@@ -2123,7 +2182,7 @@ impl Game {
 mod tests {
     use super::*;
     use crate::{
-        card::{AridDesert, FootSoldier, KytheraMechanism, Sorcerer},
+        card::{AridDesert, Firebolts, FootSoldier, KytheraMechanism, Sorcerer},
         deck::Deck,
         state::Player,
     };
@@ -2266,6 +2325,100 @@ mod tests {
             }] if *card_id == kythera_id
                 && *effect_bearer_id == bearer_on_drop_zone_id
                 && *played_card_id == kythera_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_dragging_magic_spell_queues_play_magic() {
+        QueryCache::init();
+
+        let player_id = uuid::Uuid::new_v4();
+        let opponent_id = uuid::Uuid::new_v4();
+        let mut avatar = Sorcerer::new(player_id);
+        let avatar_id = *avatar.get_id();
+        avatar.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        let opponent_avatar = Sorcerer::new(opponent_id);
+        let opponent_avatar_id = *opponent_avatar.get_id();
+
+        let player = PlayerWithDeck {
+            player: Player {
+                id: player_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(
+                &player_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                avatar_id,
+            ),
+            cards: vec![Box::new(avatar)],
+        };
+        let opponent = PlayerWithDeck {
+            player: Player {
+                id: opponent_id,
+                name: "Player 2".to_string(),
+            },
+            deck: Deck::new(
+                &opponent_id,
+                "Opponent Deck".to_string(),
+                vec![],
+                vec![],
+                opponent_avatar_id,
+            ),
+            cards: vec![Box::new(opponent_avatar)],
+        };
+
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        let game_id = uuid::Uuid::new_v4();
+        let mut state = State::new(
+            game_id,
+            vec![player, opponent],
+            server_tx,
+            client_rx.clone(),
+        );
+        state.phase = Phase::Main;
+        *state.get_player_mana_mut(&player_id) = 2;
+
+        let mut site = AridDesert::new(player_id);
+        site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        state.add_card(Box::new(site));
+
+        let mut firebolts = Firebolts::new(player_id);
+        let firebolts_id = *firebolts.get_id();
+        firebolts.set_zone(Zone::Hand);
+        state.add_card(Box::new(firebolts));
+
+        let (_unused_server_tx, unused_server_rx) = async_channel::unbounded();
+        let mut game = Game {
+            id: game_id,
+            state,
+            streams: HashMap::new(),
+            client_receiver: client_rx,
+            server_receiver: unused_server_rx,
+        };
+
+        game.handle_message(&ClientMessage::PlayCardAtLocation {
+            game_id,
+            player_id,
+            card_id: firebolts_id,
+            location: Location::Square(1, Region::Surface),
+        })
+        .await
+        .unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::PlayMagic {
+                card_id,
+                caster_id,
+                from,
+                ..
+            }] if *card_id == firebolts_id
+                && *caster_id == avatar_id
+                && from == &Location::Square(1, Region::Surface)
         ));
     }
 }
