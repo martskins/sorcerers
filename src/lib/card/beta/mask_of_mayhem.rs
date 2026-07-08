@@ -59,12 +59,21 @@ impl Card for MaskOfMayhem {
     }
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        Ok(vec![OngoingEffect::DoubleDamageTaken {
-            affected_cards: Box::new(CardQuery::new()
-                .units()
-                .nearby_locations_to_card(self.get_id())),
-            except_strikes: false,
-        }])
+        let nearby_minions = CardQuery::new()
+            .minions()
+            .nearby_locations_to_card(self.get_id());
+        Ok(vec![
+            OngoingEffect::DoubleDamageTaken {
+                affected_cards: Box::new(CardQuery::new()
+                    .units()
+                    .nearby_locations_to_card(self.get_id())),
+                except_strikes: false,
+            },
+            OngoingEffect::MustAttack {
+                affected_attackers: Box::new(nearby_minions),
+                valid_targets: None,
+            },
+        ])
     }
 }
 

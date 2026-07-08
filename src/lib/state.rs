@@ -372,6 +372,10 @@ pub enum OngoingEffect {
     PreventDamageFromMagic {
         affected_cards: Box<CardQuery>,
     },
+    MustAttack {
+        affected_attackers: Box<CardQuery>,
+        valid_targets: Option<Box<CardQuery>>,
+    },
     RestrictMoveToZones {
         affected_cards: Box<CardQuery>,
         allowed_locations: Vec<Location>,
@@ -546,6 +550,7 @@ impl OngoingEffect {
                 format!("Reduces damage taken by {}", amount)
             }
             Self::PreventDamageFromMagic { .. } => "Prevents magic damage".to_string(),
+            Self::MustAttack { .. } => "Must attack if able".to_string(),
             Self::RestrictMoveToZones {
                 allowed_locations: allowed_zones,
                 ..
@@ -612,6 +617,10 @@ impl OngoingEffect {
             | Self::DoubleDamageTaken { affected_cards, .. }
             | Self::ReduceDamageTaken { affected_cards, .. }
             | Self::PreventDamageFromMagic { affected_cards, .. }
+            | Self::MustAttack {
+                affected_attackers: affected_cards,
+                ..
+            }
             | Self::RestrictMoveToZones { affected_cards, .. }
             | Self::BlockMovementThrough { affected_cards, .. }
             | Self::ConnectTopBottomEdges { affected_cards, .. }
@@ -690,6 +699,7 @@ impl std::fmt::Debug for OngoingEffect {
             Self::PreventDamageFromMagic { .. } => {
                 f.debug_struct("PreventDamageFromMagic").finish()
             }
+            Self::MustAttack { .. } => f.debug_struct("MustAttack").finish(),
             Self::RestrictMoveToZones {
                 allowed_locations: allowed_zones,
                 ..

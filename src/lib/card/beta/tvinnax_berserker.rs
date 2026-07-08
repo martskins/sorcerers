@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 const UNTAP_AFTER_KILL_HOOK: HookId = 1;
-const TURN_START_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct TvinnaxBerserker {
@@ -76,12 +75,6 @@ impl Card for TvinnaxBerserker {
                 timing: HookTiming::After,
                 source_zones: HookSourceZones::InPlay,
             },
-            Hook {
-                id: TURN_START_HOOK,
-                trigger: EffectQuery::TurnStart { player_id: None },
-                timing: HookTiming::After,
-                source_zones: HookSourceZones::InPlay,
-            },
         ])
     }
 
@@ -111,32 +104,22 @@ impl Card for TvinnaxBerserker {
 
                 Ok(vec![])
             }
-            TURN_START_HOOK => {
-                if !self.can_attack(state) {
-                    return Ok(vec![]);
-                }
-
-                let valid_targets = self.get_valid_attack_targets(state, false);
-                if valid_targets.is_empty() {
-                    return Ok(vec![]);
-                }
-
-                let player_id = self.get_controller_id(state);
-                let Some(picked_card_id) = CardQuery::from_ids(valid_targets)
-                    .with_prompt("Choose a unit to attack")
-                    .with_source_card(*self.get_id())
-                    .pick(&player_id, state)
-                    .await?
-                else {
-                    return Ok(vec![]);
-                };
-                Ok(vec![Effect::DeclareAttack {
-                    attacker_id: *self.get_id(),
-                    target_id: picked_card_id,
-                }])
-            }
             _ => Ok(vec![]),
         }
+    }
+
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        let controller_id = self.get_controller_id(state);
+        Ok(vec![OngoingEffect::MustAttack {
+            affected_attackers: Box::new(CardQuery::from_id(*self.get_id())),
+            valid_targets: Some(Box::new(
+                CardQuery::new().units().not_controlled_by(&controller_id),
+            )),
+        }])
     }
 }
 

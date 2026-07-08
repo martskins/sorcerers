@@ -883,6 +883,19 @@ struct PlayableHandCard {
     locations: Vec<Location>,
 }
 
+#[derive(Clone)]
+struct MandatoryAttackLocation {
+    attack_location: Location,
+    target_ids: Vec<CardId>,
+    paths: Vec<Vec<Location>>,
+}
+
+#[derive(Clone)]
+struct MandatoryAttackerOption {
+    attacker_id: CardId,
+    locations: Vec<MandatoryAttackLocation>,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum BaseOption {
     Yes,
@@ -1739,6 +1752,226 @@ impl Game {
         Ok(())
     }
 
+    async fn mandatory_attack_options(
+        &self,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<MandatoryAttackerOption>> {
+        let mut options: Vec<MandatoryAttackerOption> = vec![];
+
+        for effect in self.state.active_continuous_effects() {
+            let OngoingEffect::MustAttack {
+                affected_attackers,
+                valid_targets,
+            } = effect
+            else {
+                continue;
+            };
+
+            for attacker_id in affected_attackers.all(&self.state) {
+                let attacker = self.state.get_card(&attacker_id);
+                if &attacker.get_controller_id(&self.state) != player_id {
+                    continue;
+                }
+                if !attacker.can_attack(&self.state) {
+                    continue;
+                }
+
+                let current_location = attacker.get_location().clone();
+                let current_targets = attacker
+                    .get_valid_attack_targets_from_location(&self.state, false, &current_location)
+                    .into_iter()
+                    .filter(|target_id| {
+                        valid_targets
+                            .as_ref()
+                            .map(|query| query.matches(target_id, &self.state))
+                            .unwrap_or(true)
+                    })
+                    .collect::<Vec<_>>();
+                let mut reachable_locations = if current_targets.is_empty() {
+                    attacker.get_valid_move_locations(&self.state).await?
+                } else {
+                    vec![current_location.clone()]
+                };
+                reachable_locations.sort();
+                reachable_locations.dedup();
+
+                for attack_location in reachable_locations {
+                    let targets = if attack_location == current_location {
+                        current_targets.clone()
+                    } else {
+                        self.state
+                            .get_card(&attacker_id)
+                            .get_valid_attack_targets_from_location(
+                                &self.state,
+                                false,
+                                &attack_location,
+                            )
+                            .into_iter()
+                            .filter(|target_id| {
+                                valid_targets
+                                    .as_ref()
+                                    .map(|query| query.matches(target_id, &self.state))
+                                    .unwrap_or(true)
+                            })
+                            .collect::<Vec<_>>()
+                    };
+
+                    if targets.is_empty() {
+                        continue;
+                    }
+
+                    let paths = if attack_location == current_location {
+                        vec![vec![current_location.clone()]]
+                    } else {
+                        self.state
+                            .get_card(&attacker_id)
+                            .get_valid_move_paths(&self.state, &attack_location)
+                            .await?
+                    };
+
+                    if paths.is_empty() {
+                        continue;
+                    }
+
+                    let existing = options
+                        .iter_mut()
+                        .find(|option| option.attacker_id == attacker_id);
+                    let option = match existing {
+                        Some(option) => option,
+                        None => {
+                            options.push(MandatoryAttackerOption {
+                                attacker_id,
+                                locations: vec![],
+                            });
+                            options.last_mut().expect("mandatory option was just pushed")
+                        }
+                    };
+
+                    if let Some(existing) = option
+                        .locations
+                        .iter_mut()
+                        .find(|existing| existing.attack_location == attack_location)
+                    {
+                        for target_id in targets {
+                            if !existing.target_ids.contains(&target_id) {
+                                existing.target_ids.push(target_id);
+                            }
+                        }
+                    } else {
+                        option.locations.push(MandatoryAttackLocation {
+                            attack_location: attack_location.clone(),
+                            target_ids: targets,
+                            paths: paths.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(options)
+    }
+
+    async fn queue_next_mandatory_attack_if_any(
+        &mut self,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<bool> {
+        if self.state.phase != Phase::Main
+            || !self.state.effects.is_empty()
+            || player_id != &self.state.current_turn_controller()
+        {
+            return Ok(false);
+        }
+
+        let acting_player = self.state.current_player();
+        let options = self.mandatory_attack_options(&acting_player).await?;
+        if options.is_empty() {
+            return Ok(false);
+        }
+
+        let option = if options.len() == 1 {
+            options[0].clone()
+        } else {
+            let attacker_ids = options
+                .iter()
+                .map(|option| option.attacker_id)
+                .collect::<Vec<_>>();
+            let Some(attacker_id) = CardQuery::from_ids(attacker_ids)
+                .with_prompt("Pick a mandatory attacker")
+                .pick(&acting_player, &self.state)
+                .await?
+            else {
+                return Ok(true);
+            };
+            options
+                .iter()
+                .find(|option| option.attacker_id == attacker_id)
+                .expect("picked mandatory attacker should be one of the options")
+                .clone()
+        };
+
+        let location = if option.locations.len() == 1 {
+            option.locations[0].clone()
+        } else {
+            let locations = option
+                .locations
+                .iter()
+                .map(|option| option.attack_location.clone())
+                .collect::<Vec<_>>();
+            let picked_location = LocationQuery::from_locations(locations)
+                .with_prompt("Pick a location for the mandatory attack")
+                .with_source_card(option.attacker_id)
+                .pick(&acting_player, &self.state)
+                .await?;
+            option
+                .locations
+                .iter()
+                .find(|option| option.attack_location == picked_location)
+                .expect("picked mandatory attack location should be one of the options")
+                .clone()
+        };
+
+        let path = if location.paths.len() == 1 {
+            location.paths[0].clone()
+        } else {
+            pick_path(
+                &acting_player,
+                &location.paths,
+                &self.state,
+                "Pick a path for the mandatory attack",
+            )
+            .await?
+        };
+
+        let Some(target_id) = CardQuery::from_ids(location.target_ids)
+            .with_prompt("Pick a card to attack")
+            .with_source_card(option.attacker_id)
+            .pick(&acting_player, &self.state)
+            .await?
+        else {
+            return Ok(true);
+        };
+
+        let mut effects = vec![];
+        for idx in 0..path.len().saturating_sub(1) {
+            effects.push(Effect::MoveCard {
+                player_id: acting_player,
+                card_id: option.attacker_id,
+                from: path[idx].clone(),
+                to: LocationQuery::from_location(path[idx + 1].clone()),
+                tap: true,
+                through_path: Some(path.clone()),
+            });
+        }
+        effects.push(Effect::DeclareAttack {
+            attacker_id: option.attacker_id,
+            target_id,
+        });
+        effects.reverse();
+        self.state.queue(effects);
+
+        Ok(true)
+    }
+
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.state.validate_client_message(message)?;
         match message {
@@ -1793,6 +2026,10 @@ impl Game {
                 location,
                 ..
             } => {
+                if self.queue_next_mandatory_attack_if_any(player_id).await? {
+                    return Ok(());
+                }
+
                 let zone = Zone::Location(location.clone());
                 self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
                     .await?;
@@ -1800,12 +2037,16 @@ impl Game {
             ClientMessage::ClickCard {
                 player_id, card_id, ..
             } => {
-                let snapshot = self.state.clone();
-                let card = snapshot.get_card(card_id);
                 if player_id != &self.state.current_turn_controller() {
                     return Ok(());
                 }
 
+                if self.queue_next_mandatory_attack_if_any(player_id).await? {
+                    return Ok(());
+                }
+
+                let snapshot = self.state.clone();
+                let card = snapshot.get_card(card_id);
                 let acting_player = self.state.current_player();
                 if card.get_zone().is_in_play() {
                     if card.get_controller_id(&self.state) != acting_player {
@@ -1947,6 +2188,9 @@ impl Game {
             }
             ClientMessage::EndTurn { player_id, .. } => {
                 if player_id != &self.state.current_turn_controller() {
+                    return Ok(());
+                }
+                if self.queue_next_mandatory_attack_if_any(player_id).await? {
                     return Ok(());
                 }
 
@@ -2182,10 +2426,124 @@ impl Game {
 mod tests {
     use super::*;
     use crate::{
-        card::{AridDesert, Firebolts, FootSoldier, KytheraMechanism, Sorcerer},
+        card::{
+            AridDesert, Firebolts, FootSoldier, KytheraMechanism, MaskOfMayhem, Sorcerer,
+            TvinnaxBerserker,
+        },
         deck::Deck,
         state::Player,
     };
+
+    fn test_game_with_avatars() -> (
+        Game,
+        PlayerId,
+        PlayerId,
+        CardId,
+        CardId,
+        Sender<ClientMessage>,
+        Receiver<ServerMessage>,
+    ) {
+        let player_id = uuid::Uuid::new_v4();
+        let opponent_id = uuid::Uuid::new_v4();
+        let mut avatar = Sorcerer::new(player_id);
+        let avatar_id = *avatar.get_id();
+        avatar.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        let mut opponent_avatar = Sorcerer::new(opponent_id);
+        let opponent_avatar_id = *opponent_avatar.get_id();
+        opponent_avatar.set_zone(Zone::Location(Location::Square(20, Region::Surface)));
+
+        let player = PlayerWithDeck {
+            player: Player {
+                id: player_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(
+                &player_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                avatar_id,
+            ),
+            cards: vec![Box::new(avatar)],
+        };
+        let opponent = PlayerWithDeck {
+            player: Player {
+                id: opponent_id,
+                name: "Player 2".to_string(),
+            },
+            deck: Deck::new(
+                &opponent_id,
+                "Opponent Deck".to_string(),
+                vec![],
+                vec![],
+                opponent_avatar_id,
+            ),
+            cards: vec![Box::new(opponent_avatar)],
+        };
+
+        let (server_tx, server_rx) = async_channel::unbounded();
+        let (client_tx, client_rx) = async_channel::unbounded();
+        let game_id = uuid::Uuid::new_v4();
+        let state = State::new(
+            game_id,
+            vec![player, opponent],
+            server_tx,
+            client_rx.clone(),
+        );
+        let (_unused_server_tx, unused_server_rx) = async_channel::unbounded();
+        let game = Game {
+            id: game_id,
+            state,
+            streams: HashMap::new(),
+            client_receiver: client_rx,
+            server_receiver: unused_server_rx,
+        };
+
+        (
+            game,
+            player_id,
+            opponent_id,
+            avatar_id,
+            opponent_avatar_id,
+            client_tx,
+            server_rx,
+        )
+    }
+
+    fn answer_pick_card(
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        client_tx: Sender<ClientMessage>,
+        server_rx: Receiver<ServerMessage>,
+        expected_prompt: &'static str,
+        picked_card_id: CardId,
+    ) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            let message = loop {
+                let message = server_rx.recv().await.unwrap();
+                match message {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { .. } => break message,
+                    other => panic!("expected PickCard, got {:?}", other),
+                }
+            };
+            match message {
+                ServerMessage::PickCard { prompt, cards, .. } => {
+                    assert_eq!(prompt, expected_prompt);
+                    assert!(cards.contains(&picked_card_id));
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: picked_card_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                other => panic!("expected PickCard, got {:?}", other),
+            }
+        })
+    }
 
     #[tokio::test]
     async fn test_dragging_carriable_artifact_uses_artifact_play_choices() {
@@ -2419,6 +2777,322 @@ mod tests {
             }] if *card_id == firebolts_id
                 && *caster_id == avatar_id
                 && from == &Location::Square(1, Region::Surface)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_mask_of_mayhem_forces_nearby_minion_to_attack_before_end_turn() {
+        QueryCache::init();
+        let (mut game, player_id, opponent_id, _, _, client_tx, server_rx) =
+            test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        for square in [1, 2] {
+            let mut site = AridDesert::new(player_id);
+            site.set_zone(Zone::Location(Location::Square(square, Region::Surface)));
+            game.state.add_card(Box::new(site));
+        }
+
+        let mut attacker = FootSoldier::new(player_id);
+        let attacker_id = *attacker.get_id();
+        attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(attacker));
+
+        let mut defender = FootSoldier::new(opponent_id);
+        let defender_id = *defender.get_id();
+        defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        game.state.add_card(Box::new(defender));
+
+        let mut mask = MaskOfMayhem::new(player_id);
+        mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(mask));
+        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let responder = answer_pick_card(
+            game.id,
+            player_id,
+            client_tx,
+            server_rx.clone(),
+            "Pick a card to attack",
+            defender_id,
+        );
+        game.handle_message(&ClientMessage::EndTurn {
+            game_id: game.id,
+            player_id,
+        })
+        .await
+        .unwrap();
+        responder.await.unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::DeclareAttack {
+                attacker_id: effect_attacker_id,
+                target_id,
+            }] if *effect_attacker_id == attacker_id && *target_id == defender_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_mask_of_mayhem_multiple_mandatory_attacks_pick_attacker_then_target() {
+        QueryCache::init();
+        let (mut game, player_id, opponent_id, _, _, client_tx, server_rx) =
+            test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        for square in [1, 2, 3] {
+            let mut site = AridDesert::new(player_id);
+            site.set_zone(Zone::Location(Location::Square(square, Region::Surface)));
+            game.state.add_card(Box::new(site));
+        }
+
+        let mut first_attacker = FootSoldier::new(player_id);
+        let first_attacker_id = *first_attacker.get_id();
+        first_attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(first_attacker));
+
+        let mut second_attacker = FootSoldier::new(player_id);
+        let second_attacker_id = *second_attacker.get_id();
+        second_attacker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        game.state.add_card(Box::new(second_attacker));
+
+        let mut defender = FootSoldier::new(opponent_id);
+        let defender_id = *defender.get_id();
+        defender.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
+        game.state.add_card(Box::new(defender));
+
+        let mut mask = MaskOfMayhem::new(player_id);
+        mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(mask));
+        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let game_id = game.id;
+        let responder_server_rx = server_rx.clone();
+        let responder = tokio::spawn(async move {
+            let message = loop {
+                let message = responder_server_rx.recv().await.unwrap();
+                match message {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { .. } => break message,
+                    other => panic!("expected PickCard, got {:?}", other),
+                }
+            };
+            match message {
+                ServerMessage::PickCard { prompt, cards, .. } => {
+                    assert_eq!(prompt, "Pick a mandatory attacker");
+                    assert!(cards.contains(&first_attacker_id));
+                    assert!(cards.contains(&second_attacker_id));
+                    assert!(!cards.contains(&defender_id));
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: second_attacker_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                other => panic!("expected PickCard, got {:?}", other),
+            }
+
+            let message = loop {
+                let message = responder_server_rx.recv().await.unwrap();
+                match message {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { .. } => break message,
+                    other => panic!("expected PickCard, got {:?}", other),
+                }
+            };
+            match message {
+                ServerMessage::PickCard { prompt, cards, .. } => {
+                    assert_eq!(prompt, "Pick a card to attack");
+                    assert!(cards.contains(&defender_id));
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: defender_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                other => panic!("expected PickCard, got {:?}", other),
+            }
+        });
+
+        game.handle_message(&ClientMessage::EndTurn {
+            game_id: game.id,
+            player_id,
+        })
+        .await
+        .unwrap();
+        responder.await.unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::DeclareAttack {
+                attacker_id,
+                target_id,
+            }] if *attacker_id == second_attacker_id && *target_id == defender_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_mask_of_mayhem_does_not_force_tapped_minion() {
+        QueryCache::init();
+        let (mut game, player_id, opponent_id, _, _, _, _) = test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        for square in [1, 2] {
+            let mut site = AridDesert::new(player_id);
+            site.set_zone(Zone::Location(Location::Square(square, Region::Surface)));
+            game.state.add_card(Box::new(site));
+        }
+
+        let mut attacker = FootSoldier::new(player_id);
+        attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        attacker.set_tapped(true);
+        game.state.add_card(Box::new(attacker));
+
+        let mut defender = FootSoldier::new(opponent_id);
+        defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        game.state.add_card(Box::new(defender));
+
+        let mut mask = MaskOfMayhem::new(player_id);
+        mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(mask));
+        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        game.handle_message(&ClientMessage::EndTurn {
+            game_id: game.id,
+            player_id,
+        })
+        .await
+        .unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::EndTurn {
+                player_id: effect_player_id,
+            }] if *effect_player_id == player_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_mask_of_mayhem_forced_attack_can_move_first() {
+        QueryCache::init();
+        let (mut game, player_id, opponent_id, _, _, client_tx, server_rx) =
+            test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        for square in [1, 2, 3] {
+            let mut site = AridDesert::new(player_id);
+            site.set_zone(Zone::Location(Location::Square(square, Region::Surface)));
+            game.state.add_card(Box::new(site));
+        }
+
+        let mut attacker = FootSoldier::new(player_id);
+        let attacker_id = *attacker.get_id();
+        attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(attacker));
+
+        let mut defender = FootSoldier::new(opponent_id);
+        let defender_id = *defender.get_id();
+        defender.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
+        game.state.add_card(Box::new(defender));
+
+        let mut mask = MaskOfMayhem::new(player_id);
+        mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(mask));
+        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let responder = answer_pick_card(
+            game.id,
+            player_id,
+            client_tx,
+            server_rx.clone(),
+            "Pick a card to attack",
+            defender_id,
+        );
+        game.handle_message(&ClientMessage::EndTurn {
+            game_id: game.id,
+            player_id,
+        })
+        .await
+        .unwrap();
+        responder.await.unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::DeclareAttack {
+                attacker_id: effect_attacker_id,
+                target_id,
+            }, Effect::MoveCard {
+                card_id,
+                from,
+                to,
+                tap: true,
+                ..
+            }] if *effect_attacker_id == attacker_id
+                && *target_id == defender_id
+                && *card_id == attacker_id
+                && from == &Location::Square(1, Region::Surface)
+                && to.options(&game.state).contains(&Location::Square(2, Region::Surface))
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_tvinnax_berserker_must_attack_before_end_turn() {
+        QueryCache::init();
+        let (mut game, player_id, opponent_id, _, _, client_tx, server_rx) =
+            test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        for square in [1, 2] {
+            let mut site = AridDesert::new(player_id);
+            site.set_zone(Zone::Location(Location::Square(square, Region::Surface)));
+            game.state.add_card(Box::new(site));
+        }
+
+        let mut tvinnax = TvinnaxBerserker::new(player_id);
+        let tvinnax_id = *tvinnax.get_id();
+        tvinnax.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(tvinnax));
+
+        let mut defender = FootSoldier::new(opponent_id);
+        let defender_id = *defender.get_id();
+        defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+        game.state.add_card(Box::new(defender));
+
+        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+        let responder = answer_pick_card(
+            game.id,
+            player_id,
+            client_tx,
+            server_rx.clone(),
+            "Pick a card to attack",
+            defender_id,
+        );
+        game.handle_message(&ClientMessage::EndTurn {
+            game_id: game.id,
+            player_id,
+        })
+        .await
+        .unwrap();
+        responder.await.unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::DeclareAttack {
+                attacker_id,
+                target_id,
+            }] if *attacker_id == tvinnax_id && *target_id == defender_id
         ));
     }
 }
