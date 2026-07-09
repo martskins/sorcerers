@@ -64,13 +64,13 @@ impl Magic for MarineVoyage {
             .map(|body| body.iter().map(Zone::from).collect::<Vec<_>>())
             .collect::<Vec<_>>();
         let prompt = "Pick a body of water";
-        let body_of_water = pick_zone_group_source(
+        let body_of_water = pick_zone_group(
             controller_id,
             &bodies_of_water,
             state,
             false,
             prompt,
-            Some(*self.get_id()),
+            *self.get_id(),
         )
         .await?;
 

@@ -72,7 +72,8 @@ impl Magic for MinecartMadness {
             &spans_of_land,
             state,
             false,
-            "Minecart Madness: Pick a span of land",
+            "Pick a span of land",
+            *self.get_id(),
         )
         .await?;
 

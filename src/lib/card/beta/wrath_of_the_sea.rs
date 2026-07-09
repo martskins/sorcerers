@@ -64,13 +64,13 @@ impl Magic for WrathOfTheSea {
             .into_iter()
             .map(|body| body.iter().map(Zone::from).collect::<Vec<_>>())
             .collect::<Vec<_>>();
-        let picked_body = pick_zone_group_source(
+        let picked_body = pick_zone_group(
             controller_id,
             &bodies_of_water,
             state,
             false,
             prompt,
-            Some(*self.get_id()),
+            *self.get_id(),
         )
         .await?;
         let picked_body_locations = picked_body

@@ -490,17 +490,7 @@ pub async fn pick_zone_group(
     state: &State,
     block_opponent: bool,
     prompt: &str,
-) -> anyhow::Result<Vec<Zone>> {
-    pick_zone_group_source(player_id, groups, state, block_opponent, prompt, None).await
-}
-
-pub async fn pick_zone_group_source(
-    player_id: impl AsRef<PlayerId>,
-    groups: &[Vec<Zone>],
-    state: &State,
-    block_opponent: bool,
-    prompt: &str,
-    source_card_id: Option<CardId>,
+    source_card_id: CardId,
 ) -> anyhow::Result<Vec<Zone>> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -512,7 +502,7 @@ pub async fn pick_zone_group_source(
         .get_sender()
         .send(ServerMessage::PickLocationGroup {
             prompt: prompt.to_string(),
-            source_card_id,
+            source_card_id: Some(source_card_id),
             player_id: decision_player,
             groups: groups
                 .iter()
@@ -1702,7 +1692,10 @@ impl Game {
         }
 
         let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
-        let spellcasters = CardQuery::new().spellcasters(None).in_play().all(&self.state);
+        let spellcasters = CardQuery::new()
+            .spellcasters(None)
+            .in_play()
+            .all(&self.state);
         let spellcasters = spellcasters
             .into_iter()
             .filter(|c| {
@@ -1843,7 +1836,9 @@ impl Game {
                                 attacker_id,
                                 locations: vec![],
                             });
-                            options.last_mut().expect("mandatory option was just pushed")
+                            options
+                                .last_mut()
+                                .expect("mandatory option was just pushed")
                         }
                     };
 
@@ -2129,7 +2124,10 @@ impl Game {
                     return Ok(());
                 }
 
-                let spellcasters = CardQuery::new().spellcasters(None).in_play().all(&self.state);
+                let spellcasters = CardQuery::new()
+                    .spellcasters(None)
+                    .in_play()
+                    .all(&self.state);
                 let spellcasters = spellcasters
                     .into_iter()
                     .filter(|c| {
@@ -2574,9 +2572,7 @@ mod tests {
             let message = server_rx.recv().await.unwrap();
             match message {
                 ServerMessage::PickAction {
-                    player_id,
-                    actions,
-                    ..
+                    player_id, actions, ..
                 } => {
                     assert!(actions.contains(&"Discard a water site to untap".to_string()));
                     let cancel_idx = actions
@@ -2871,7 +2867,10 @@ mod tests {
         let mut mask = MaskOfMayhem::new(player_id);
         mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
         game.state.add_card(Box::new(mask));
-        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+        game.state
+            .reconcile_ongoing_effects_for_test()
+            .await
+            .unwrap();
 
         let responder = answer_pick_card(
             game.id,
@@ -2930,7 +2929,10 @@ mod tests {
         let mut mask = MaskOfMayhem::new(player_id);
         mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
         game.state.add_card(Box::new(mask));
-        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+        game.state
+            .reconcile_ongoing_effects_for_test()
+            .await
+            .unwrap();
 
         let game_id = game.id;
         let responder_server_rx = server_rx.clone();
@@ -3028,7 +3030,10 @@ mod tests {
         let mut mask = MaskOfMayhem::new(player_id);
         mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
         game.state.add_card(Box::new(mask));
-        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+        game.state
+            .reconcile_ongoing_effects_for_test()
+            .await
+            .unwrap();
 
         game.handle_message(&ClientMessage::EndTurn {
             game_id: game.id,
@@ -3072,7 +3077,10 @@ mod tests {
         let mut mask = MaskOfMayhem::new(player_id);
         mask.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
         game.state.add_card(Box::new(mask));
-        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+        game.state
+            .reconcile_ongoing_effects_for_test()
+            .await
+            .unwrap();
 
         let responder = answer_pick_card(
             game.id,
@@ -3133,7 +3141,10 @@ mod tests {
         defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
         game.state.add_card(Box::new(defender));
 
-        game.state.reconcile_ongoing_effects_for_test().await.unwrap();
+        game.state
+            .reconcile_ongoing_effects_for_test()
+            .await
+            .unwrap();
 
         let responder = answer_pick_card(
             game.id,
