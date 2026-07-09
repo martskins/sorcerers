@@ -921,6 +921,7 @@ pub struct State {
     pub players_with_accepted_hands: HashSet<PlayerId>,
     pub marked_for_death: HashMap<CardId, Zone>,
     next_ongoing_effect_timestamp: u64,
+    next_zone_sequence: u64,
     runtime_cache: StateRuntimeCache,
 }
 
@@ -969,8 +970,20 @@ impl State {
             players_with_accepted_hands: HashSet::new(),
             marked_for_death: HashMap::new(),
             next_ongoing_effect_timestamp: 1,
+            next_zone_sequence: 1,
             runtime_cache: StateRuntimeCache::default(),
         }
+    }
+
+    pub fn set_card_zone_with_sequence(&mut self, card_id: &CardId, zone: Zone) {
+        let sequence = self.next_zone_sequence;
+        self.next_zone_sequence += 1;
+        let card = self
+            .cards
+            .get_mut(card_id)
+            .expect("card should exist when setting zone");
+        card.get_base_mut().zone_sequence = sequence;
+        card.set_zone(zone);
     }
 
     pub fn cards_in_play(&self) -> impl Iterator<Item = &dyn Card> {
@@ -2058,6 +2071,7 @@ impl State {
                 name: c.get_name().to_string(),
                 owner_id: *c.get_owner_id(),
                 controller_id: c.get_controller_id(self),
+                zone_sequence: c.get_base().zone_sequence,
                 tapped: c.is_tapped(),
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),

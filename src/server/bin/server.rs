@@ -215,7 +215,7 @@ impl Server {
         game.state.add_card(kite_archer);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(MaskOfMayhem::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(MarineVoyage::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);
         let card = card::from_name_and_zone(ApprenticeWizard::NAME, &player_one, Zone::Hand);
         game.state.add_card(card);

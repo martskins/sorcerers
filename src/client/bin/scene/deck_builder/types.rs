@@ -70,6 +70,7 @@ impl CardEntry {
             name: self.name.clone(),
             owner_id: PlayerId::nil(),
             controller_id: PlayerId::nil(),
+            zone_sequence: 0,
             tapped: false,
             edition: self.edition.clone(),
             zone: Zone::Spellbook,

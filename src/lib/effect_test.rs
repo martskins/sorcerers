@@ -2602,6 +2602,67 @@ async fn test_deathrite_resolves_before_source_enters_cemetery() {
 }
 
 #[tokio::test]
+async fn test_cards_entering_cemetery_receive_increasing_zone_sequence() {
+    let location = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![location.clone()]);
+    let player_id = state.players[0].id;
+
+    let mut first = FootSoldier::new(player_id);
+    let first_id = *first.get_id();
+    first.set_zone(location.clone());
+    state.add_card(Box::new(first));
+
+    let mut second = FootSoldier::new(player_id);
+    let second_id = *second.get_id();
+    second.set_zone(location);
+    state.add_card(Box::new(second));
+
+    state.queue_one(Effect::BuryCard { card_id: first_id });
+    drain_effects(&mut state).await;
+    state.queue_one(Effect::BuryCard { card_id: second_id });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&first_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(state.get_card(&second_id).get_zone(), &Zone::Cemetery);
+    assert!(
+        state.get_card(&second_id).get_base().zone_sequence
+            > state.get_card(&first_id).get_base().zone_sequence
+    );
+}
+
+#[tokio::test]
+async fn test_drawn_cards_receive_increasing_zone_sequence() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut first = Firebolts::new(player_id);
+    let first_id = *first.get_id();
+    first.set_zone(Zone::Spellbook);
+    state.add_card(Box::new(first));
+
+    let mut second = Firebolts::new(player_id);
+    let second_id = *second.get_id();
+    second.set_zone(Zone::Spellbook);
+    state.add_card(Box::new(second));
+
+    state.get_player_deck_mut(&player_id).unwrap().spells = vec![second_id, first_id];
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 2,
+        kind: DrawKind::Spell,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&first_id).get_zone(), &Zone::Hand);
+    assert_eq!(state.get_card(&second_id).get_zone(), &Zone::Hand);
+    assert!(
+        state.get_card(&second_id).get_base().zone_sequence
+            > state.get_card(&first_id).get_base().zone_sequence
+    );
+}
+
+#[tokio::test]
 async fn test_disabled_deathrite_source_does_not_resolve() {
     let location = Zone::Location(Location::Square(1, Region::Surface));
     let (mut state, _rx) = make_state(vec![location.clone()]);

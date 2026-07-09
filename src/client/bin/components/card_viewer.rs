@@ -105,14 +105,16 @@ fn render_hand_viewer(
     player_id: &PlayerId,
 ) -> bool {
     let mut picked_card = false;
-    let spells = cards
+    let mut spells = cards
         .iter()
         .filter(|card| card.is_spell())
         .collect::<Vec<_>>();
-    let sites = cards
+    spells.sort_by_key(|card| card.zone_sequence);
+    let mut sites = cards
         .iter()
         .filter(|card| card.is_site())
         .collect::<Vec<_>>();
+    sites.sort_by_key(|card| card.zone_sequence);
 
     let dims = CardDims::from_spell_width(card_layout::DEFAULT_THUMB_W);
     let available_w = ui.available_width().max(520.0) - card_layout::CARD_PAD * 2.0;

@@ -180,7 +180,7 @@ impl GameData {
     pub fn new(player_id: &PlayerId, cards: Vec<CardData>) -> Self {
         Self {
             player_id: *player_id,
-            cards,
+            cards: sort_cards(&cards),
             events: Vec::new(),
             status: Status::Mulligan,
             current_player: uuid::Uuid::nil(),
@@ -209,6 +209,10 @@ impl GameData {
 fn sort_cards(cards: &[CardData]) -> Vec<CardData> {
     let mut cards = cards.to_vec();
     cards.sort_by(|a, b| {
+        if a.zone == Zone::Cemetery && b.zone == Zone::Cemetery {
+            return a.zone_sequence.cmp(&b.zone_sequence);
+        }
+
         let region_cmp = a.region.cmp(&b.region);
         if region_cmp != std::cmp::Ordering::Equal {
             return region_cmp;

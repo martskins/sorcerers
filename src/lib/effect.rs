@@ -1439,7 +1439,7 @@ impl Effect {
                     };
 
                     if let Some(card_id) = card_id {
-                        state.get_card_mut(&card_id).set_zone(Zone::Hand);
+                        state.set_card_zone_with_sequence(&card_id, Zone::Hand);
                     } else {
                         state.queue_one(Effect::PlayerLost {
                             player_id: *player_id,
@@ -1472,7 +1472,7 @@ impl Effect {
                     .await?;
 
                 // Set zone after resolving so that the card is not in the cemetery during casting.
-                card.set_zone(Zone::Cemetery);
+                state.set_card_zone_with_sequence(card_id, Zone::Cemetery);
                 state.queue(effects);
             }
             Effect::PlayCard {
@@ -2339,7 +2339,7 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
                 let original_zone = card.get_location().clone();
-                state.get_card_mut(card_id).set_zone(Zone::Cemetery);
+                state.set_card_zone_with_sequence(card_id, Zone::Cemetery);
                 if state.mark_for_death(*card_id, original_zone.clone().into()) {
                     state.queue_one(Effect::TriggerDeathrite {
                         card_id: *card_id,
@@ -2371,7 +2371,7 @@ impl Effect {
                     }
 
                     state.remove_ongoing_effects_from_source(&card_id);
-                    state.get_card_mut(&card_id).set_zone(Zone::Cemetery);
+                    state.set_card_zone_with_sequence(&card_id, Zone::Cemetery);
                     survival_check_needed = true;
 
                     if is_token {
@@ -2526,12 +2526,12 @@ impl Effect {
                 deck.shuffle();
             }
             Effect::DiscardCard { player_id, card_id } => {
-                let card = state.get_card_mut(card_id);
+                let card = state.get_card(card_id);
                 let original_zone = card.get_zone().clone();
                 if card.get_owner_id() != player_id {
                     return Ok(());
                 }
-                card.set_zone(Zone::Cemetery);
+                state.set_card_zone_with_sequence(card_id, Zone::Cemetery);
 
                 if original_zone == Zone::Spellbook {
                     state

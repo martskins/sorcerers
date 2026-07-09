@@ -92,42 +92,24 @@ impl PlayerHandComponent {
         (rect, rotation)
     }
 
-    fn preserve_hand_order<'a>(
-        cards: Vec<&'a CardData>,
-        previous_order: &[CardId],
-    ) -> Vec<&'a CardData> {
-        let mut ordered = Vec::with_capacity(cards.len());
-
-        for card_id in previous_order {
-            if let Some(card) = cards.iter().find(|card| card.id == *card_id) {
-                ordered.push(*card);
-            }
-        }
-
-        for card in cards {
-            if !previous_order.contains(&card.id) {
-                ordered.push(card);
-            }
-        }
-
-        ordered
+    fn hand_ordered_cards(mut cards: Vec<&CardData>) -> Vec<&CardData> {
+        cards.sort_by_key(|card| card.zone_sequence);
+        cards
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
-        let spells = Self::preserve_hand_order(
+        let spells = Self::hand_ordered_cards(
             cards
                 .iter()
                 .filter(|c| c.zone == Zone::Hand && c.owner_id == self.player_id && c.is_spell())
                 .collect(),
-            &self.spells_in_hand,
         );
 
-        let sites = Self::preserve_hand_order(
+        let sites = Self::hand_ordered_cards(
             cards
                 .iter()
                 .filter(|c| c.zone == Zone::Hand && c.owner_id == self.player_id && c.is_site())
                 .collect(),
-            &self.sites_in_hand,
         );
 
         let mut new_spells = spells.len() != self.spells_in_hand.len();
