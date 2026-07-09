@@ -15,7 +15,7 @@ pub struct PuppetMaster {
 
 impl PuppetMaster {
     pub const NAME: &'static str = "Puppet Master";
-    pub const DESCRIPTION: &'static str = "Airborne Genesis → Gain control of all tapped minions here until Puppet Master leaves the realm.";
+    pub const DESCRIPTION: &'static str = "Airborne Genesis -> Gain control of all tapped minions here until Puppet Master leaves the realm.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -10,7 +10,7 @@ pub struct CourtesanThais {
 impl CourtesanThais {
     pub const NAME: &'static str = "Courtesan Thaïs";
     pub const DESCRIPTION: &'static str =
-        "Genesis → During their next turn, each player is controlled by the previous one.";
+        "Genesis -> During their next turn, each player is controlled by the previous one.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

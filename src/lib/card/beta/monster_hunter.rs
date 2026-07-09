@@ -8,7 +8,7 @@ pub struct MonsterHunter {
 
 impl MonsterHunter {
     pub const NAME: &'static str = "Monster Hunter";
-    pub const DESCRIPTION: &'static str = "Genesis → Kill a nearby Monster.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Kill a nearby Monster.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

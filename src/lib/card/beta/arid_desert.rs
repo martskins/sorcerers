@@ -9,7 +9,7 @@ pub struct AridDesert {
 impl AridDesert {
     pub const NAME: &'static str = "Arid Desert";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Deal 1 damage to each minion atop target nearby site.";
+        "Genesis -> Deal 1 damage to each minion atop target nearby site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -8,7 +8,7 @@ pub struct GrandmasterWizard {
 
 impl GrandmasterWizard {
     pub const NAME: &'static str = "Grandmaster Wizard";
-    pub const DESCRIPTION: &'static str = "Spellcaster\r Genesis → Draw three spells.";
+    pub const DESCRIPTION: &'static str = "Spellcaster\r Genesis -> Draw three spells.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

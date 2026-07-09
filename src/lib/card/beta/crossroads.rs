@@ -9,7 +9,7 @@ pub struct Crossroads {
 impl Crossroads {
     pub const NAME: &'static str = "Crossroads";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Look at your next four sites. Put three on the bottom of your atlas.";
+        "Genesis -> Look at your next four sites. Put three on the bottom of your atlas.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

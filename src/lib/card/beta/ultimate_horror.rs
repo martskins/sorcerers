@@ -8,7 +8,7 @@ pub struct UltimateHorror {
 
 impl UltimateHorror {
     pub const NAME: &'static str = "Ultimate Horror";
-    pub const DESCRIPTION: &'static str = "Airborne, Voidwalk Genesis → Summon each other dead Voidwalk minion to a nearby site or void.";
+    pub const DESCRIPTION: &'static str = "Airborne, Voidwalk Genesis -> Summon each other dead Voidwalk minion to a nearby site or void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

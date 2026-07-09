@@ -90,7 +90,7 @@ pub struct FarEastAssassin {
 
 impl FarEastAssassin {
     pub const NAME: &'static str = "Far East Assassin";
-    pub const DESCRIPTION: &'static str = "Stealth\r \r Tap → Far East Assassin throws an artifact he carries at target adjacent unit. It takes damage equal to the artifact's mana cost.";
+    pub const DESCRIPTION: &'static str = "Stealth\r \r Tap -> Far East Assassin throws an artifact he carries at target adjacent unit. It takes damage equal to the artifact's mana cost.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

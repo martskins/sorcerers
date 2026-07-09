@@ -9,7 +9,7 @@ pub struct CrownPrince {
 impl CrownPrince {
     pub const NAME: &'static str = "Crown Prince";
     pub const DESCRIPTION: &'static str =
-        "Deathrite → If you control another Mortal, return Crown Prince to its owner's hand.";
+        "Deathrite -> If you control another Mortal, return Crown Prince to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

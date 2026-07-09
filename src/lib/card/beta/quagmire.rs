@@ -9,7 +9,7 @@ pub struct Quagmire {
 impl Quagmire {
     pub const NAME: &'static str = "Quagmire";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Until your next turn, units are Immobile while they occupy nearby sites.";
+        "Genesis -> Until your next turn, units are Immobile while they occupy nearby sites.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

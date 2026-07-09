@@ -8,7 +8,7 @@ pub struct LandSurveyor {
 
 impl LandSurveyor {
     pub const NAME: &'static str = "Land Surveyor";
-    pub const DESCRIPTION: &'static str = "Genesis → Draw a site.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Draw a site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

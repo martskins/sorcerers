@@ -98,7 +98,7 @@ pub struct Pathfinder {
 
 impl Pathfinder {
     pub const NAME: &'static str = "Pathfinder";
-    pub const DESCRIPTION: &'static str = "Your atlas can’t contain duplicates. Draw no sites during setup.\r \r Tap → If able, play the topmost site of your atlas to an adjacent location and move there.";
+    pub const DESCRIPTION: &'static str = "Your atlas can’t contain duplicates. Draw no sites during setup.\r \r Tap -> If able, play the topmost site of your atlas to an adjacent location and move there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

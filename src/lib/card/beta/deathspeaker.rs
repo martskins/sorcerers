@@ -68,7 +68,7 @@ pub struct Deathspeaker {
 
 impl Deathspeaker {
     pub const NAME: &'static str = "Deathspeaker";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r You may banish a dead minion each turn to cast a copy of it, and for (0) if you're on Death's Door. The copy enters the realm, uses its Genesis, then is banished.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r You may banish a dead minion each turn to cast a copy of it, and for (0) if you're on Death's Door. The copy enters the realm, uses its Genesis, then is banished.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

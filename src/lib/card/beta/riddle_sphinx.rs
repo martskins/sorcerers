@@ -8,7 +8,7 @@ pub struct RiddleSphinx {
 
 impl RiddleSphinx {
     pub const NAME: &'static str = "Riddle Sphinx";
-    pub const DESCRIPTION: &'static str = "Airborne Genesis → Look at your topmost spell. You may put it on the bottom of your spellbook, then an opponent may exchange your top and bottommost spells. Draw a card.";
+    pub const DESCRIPTION: &'static str = "Airborne Genesis -> Look at your topmost spell. You may put it on the bottom of your spellbook, then an opponent may exchange your top and bottommost spells. Draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -9,7 +9,7 @@ pub struct HumbleVillage {
 impl HumbleVillage {
     pub const NAME: &'static str = "Humble Village";
     pub const DESCRIPTION: &'static str =
-        "Genesis → You may pay ① to summon a Foot Soldier token here.";
+        "Genesis -> You may pay ① to summon a Foot Soldier token here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

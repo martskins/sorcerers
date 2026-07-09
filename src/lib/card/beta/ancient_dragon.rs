@@ -53,7 +53,7 @@ pub struct AncientDragon {
 impl AncientDragon {
     pub const NAME: &'static str = "Ancient Dragon";
     pub const DESCRIPTION: &'static str =
-        "Airborne\r \r Tap → Deal 4 damage to each other unit at target location nearby.";
+        "Airborne\r \r Tap -> Deal 4 damage to each other unit at target location nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

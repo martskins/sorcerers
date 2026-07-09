@@ -49,7 +49,7 @@ pub struct MixAer {
 
 impl MixAer {
     pub const NAME: &'static str = "Mix Aer";
-    pub const DESCRIPTION: &'static str = "Sacrifice Mix Aer → This turn, bearer's next Air spell requires no threshold and costs ③ less to cast.";
+    pub const DESCRIPTION: &'static str = "Sacrifice Mix Aer -> This turn, bearer's next Air spell requires no threshold and costs ③ less to cast.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

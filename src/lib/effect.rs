@@ -665,7 +665,7 @@ impl Effect {
                         path.iter()
                             .map(|c| format!("{}", c))
                             .collect::<Vec<_>>()
-                            .join(" → "),
+                            .join(" -> "),
                     )),
                     None => {
                         let location: Location = to.pick(player_id, state).await?;
@@ -2421,12 +2421,10 @@ impl Effect {
             Effect::AddAbilityCounter {
                 card_id, counter, ..
             } => {
-                if state
-                    .ability_permanently_removed_by_active_continuous_effects(
-                        card_id,
-                        &counter.ability,
-                    )
-                {
+                if state.ability_permanently_removed_by_active_continuous_effects(
+                    card_id,
+                    &counter.ability,
+                ) {
                     if let Some(card) = state.try_get_card_mut(card_id) {
                         card.remove_modifier(&counter.ability);
                     }

@@ -9,7 +9,7 @@ pub struct CauldronCrones {
 impl CauldronCrones {
     pub const NAME: &'static str = "Cauldron Crones";
     pub const DESCRIPTION: &'static str =
-        "Spellcaster\r \r Genesis → You may sacrifice another minion here to draw a spell.";
+        "Spellcaster\r \r Genesis -> You may sacrifice another minion here to draw a spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

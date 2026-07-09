@@ -9,7 +9,7 @@ pub struct LoneTower {
 impl LoneTower {
     pub const NAME: &'static str = "Lone Tower";
     pub const DESCRIPTION: &'static str =
-        "Genesis → If this is the only Lone Tower you control, gain ① this turn.";
+        "Genesis -> If this is the only Lone Tower you control, gain ① this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

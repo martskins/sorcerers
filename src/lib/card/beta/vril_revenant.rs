@@ -34,7 +34,7 @@ pub struct VrilRevenant {
 
 impl VrilRevenant {
     pub const NAME: &'static str = "Vril Revenant";
-    pub const DESCRIPTION: &'static str = "Voidwalk ① → Gain +1 power this turn.";
+    pub const DESCRIPTION: &'static str = "Voidwalk ① -> Gain +1 power this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

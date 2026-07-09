@@ -9,7 +9,7 @@ pub struct Undertow {
 impl Undertow {
     pub const NAME: &'static str = "Undertow";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Staying within this body of water, move target unit one step.";
+        "Genesis -> Staying within this body of water, move target unit one step.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

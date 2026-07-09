@@ -8,7 +8,7 @@ pub struct HighlandFalconer {
 
 impl HighlandFalconer {
     pub const NAME: &'static str = "Highland Falconer";
-    pub const DESCRIPTION: &'static str = "Genesis → You may search your hand and spellbook for a Beast with Airborne and mana cost ② or less and summon it here. Shuffle if needed.";
+    pub const DESCRIPTION: &'static str = "Genesis -> You may search your hand and spellbook for a Beast with Airborne and mana cost ② or less and summon it here. Shuffle if needed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -97,7 +97,8 @@ impl Card for HighlandFalconer {
                         to_location: self
                             .get_zone()
                             .clone()
-                            .location().cloned()
+                            .location()
+                            .cloned()
                             .expect("Highland Falconer must be in a location"),
                     }],
                 }];

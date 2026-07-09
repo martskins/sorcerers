@@ -128,7 +128,7 @@ pub struct TringhConstrictor {
 
 impl TringhConstrictor {
     pub const NAME: &'static str = "Tringh Constrictor";
-    pub const DESCRIPTION: &'static str = "Tap → Tringh Constrictor may take a step, then it constricts target minion here and carries it disabled. The next time Tringh Constrictor would untap, it instead kills that minion if it's still constricted.";
+    pub const DESCRIPTION: &'static str = "Tap -> Tringh Constrictor may take a step, then it constricts target minion here and carries it disabled. The next time Tringh Constrictor would untap, it instead kills that minion if it's still constricted.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

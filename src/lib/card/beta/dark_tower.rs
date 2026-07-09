@@ -9,7 +9,7 @@ pub struct DarkTower {
 impl DarkTower {
     pub const NAME: &'static str = "Dark Tower";
     pub const DESCRIPTION: &'static str =
-        "Genesis → If this is the only Dark Tower you control, gain ① this turn.";
+        "Genesis -> If this is the only Dark Tower you control, gain ① this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

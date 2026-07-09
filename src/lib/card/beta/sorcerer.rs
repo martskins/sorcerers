@@ -36,7 +36,7 @@ pub struct Sorcerer {
 
 impl Sorcerer {
     pub const NAME: &'static str = "Sorcerer";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Tap → Draw a spell.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r Tap -> Draw a spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

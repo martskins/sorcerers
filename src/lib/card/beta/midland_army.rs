@@ -51,7 +51,7 @@ pub struct MidlandArmy {
 
 impl MidlandArmy {
     pub const NAME: &'static str = "Midland Army";
-    pub const DESCRIPTION: &'static str = "Tap → Target a location up to three steps away. Deal 4 damage to each unit there.\r \r Deathrite → Summon a Foot Soldier token to each adjacent location.";
+    pub const DESCRIPTION: &'static str = "Tap -> Target a location up to three steps away. Deal 4 damage to each unit there.\r \r Deathrite -> Summon a Foot Soldier token to each adjacent location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

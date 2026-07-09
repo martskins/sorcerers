@@ -49,7 +49,7 @@ pub struct MixTerra {
 
 impl MixTerra {
     pub const NAME: &'static str = "Mix Terra";
-    pub const DESCRIPTION: &'static str = "Sacrifice Mix Terra → This turn, bearer's next Earth spell requires no threshold and costs ③ less to cast.";
+    pub const DESCRIPTION: &'static str = "Sacrifice Mix Terra -> This turn, bearer's next Earth spell requires no threshold and costs ③ less to cast.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -8,7 +8,7 @@ pub struct Battlefield {
 
 impl Battlefield {
     pub const NAME: &'static str = "Battlefield";
-    pub const DESCRIPTION: &'static str = "Genesis → Conjure a broken Weapon or Armor here.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Conjure a broken Weapon or Armor here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

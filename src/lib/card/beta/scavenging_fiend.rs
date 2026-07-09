@@ -8,7 +8,7 @@ pub struct ScavengingFiend {
 
 impl ScavengingFiend {
     pub const NAME: &'static str = "Scavenging Fiend";
-    pub const DESCRIPTION: &'static str = "Genesis → Conjure a broken artifact to this location.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Conjure a broken artifact to this location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

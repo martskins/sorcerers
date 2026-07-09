@@ -9,7 +9,7 @@ pub struct Observatory {
 impl Observatory {
     pub const NAME: &'static str = "Observatory";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Look at your next three spells. Put them back in any order.";
+        "Genesis -> Look at your next three spells. Put them back in any order.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

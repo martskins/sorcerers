@@ -88,7 +88,7 @@ pub struct SneakThief {
 
 impl SneakThief {
     pub const NAME: &'static str = "Sneak Thief";
-    pub const DESCRIPTION: &'static str = "Stealth Tap → Steal an artifact out of the hands of another target unit here, and stay Stealthed.";
+    pub const DESCRIPTION: &'static str = "Stealth Tap -> Steal an artifact out of the hands of another target unit here, and stay Stealthed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

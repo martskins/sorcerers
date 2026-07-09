@@ -108,7 +108,7 @@ pub struct PudgeButcher {
 
 impl PudgeButcher {
     pub const NAME: &'static str = "Pudge Butcher";
-    pub const DESCRIPTION: &'static str = "Immobile\r \r Tap → Shoot a projectile. If it hits a unit, drag it to this location. Pudge may fight it when it arrives.";
+    pub const DESCRIPTION: &'static str = "Immobile\r \r Tap -> Shoot a projectile. If it hits a unit, drag it to this location. Pudge may fight it when it arrives.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

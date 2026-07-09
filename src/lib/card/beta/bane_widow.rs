@@ -8,7 +8,7 @@ pub struct BaneWidow {
 
 impl BaneWidow {
     pub const NAME: &'static str = "Bane Widow";
-    pub const DESCRIPTION: &'static str = "Genesis → May kill target minion here.";
+    pub const DESCRIPTION: &'static str = "Genesis -> May kill target minion here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

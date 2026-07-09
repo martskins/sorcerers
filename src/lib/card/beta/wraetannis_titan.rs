@@ -8,7 +8,7 @@ pub struct WraetannisTitan {
 
 impl WraetannisTitan {
     pub const NAME: &'static str = "Wraetannis Titan";
-    pub const DESCRIPTION: &'static str = "Genesis → Strike each enemy here.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Strike each enemy here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

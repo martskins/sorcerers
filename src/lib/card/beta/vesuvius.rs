@@ -20,7 +20,10 @@ impl ActivatedAbility for UseAbility {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let site_ids = CardQuery::new().sites().near_to(card.get_location()).all(state);
+        let site_ids = CardQuery::new()
+            .sites()
+            .near_to(card.get_location())
+            .all(state);
         let mut effects = vec![];
         for site_id in site_ids {
             let site = state.get_card(&site_id);
@@ -51,7 +54,7 @@ pub struct Vesuvius {
 impl Vesuvius {
     pub const NAME: &'static str = "Vesuvius";
     pub const DESCRIPTION: &'static str =
-        "(F)(F)(F) — Sacrifice Vesuvius → Each unit occupying nearby sites takes 3 damage.";
+        "(F)(F)(F) — Sacrifice Vesuvius -> Each unit occupying nearby sites takes 3 damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

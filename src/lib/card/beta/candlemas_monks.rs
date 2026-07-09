@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 /// **Candlemas Monks** — Elite Minion (3 cost, 2/2)
 ///
-/// Deathrite → Proceed to the end phase.
+/// Deathrite -> Proceed to the end phase.
 #[derive(Debug, Clone)]
 pub struct CandlemasMons {
     unit_base: UnitBase,
@@ -11,7 +11,7 @@ pub struct CandlemasMons {
 
 impl CandlemasMons {
     pub const NAME: &'static str = "Candlemas Monks";
-    pub const DESCRIPTION: &'static str = "Deathrite → Proceed to the end phase.";
+    pub const DESCRIPTION: &'static str = "Deathrite -> Proceed to the end phase.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

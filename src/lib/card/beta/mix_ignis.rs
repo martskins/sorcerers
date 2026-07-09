@@ -49,7 +49,7 @@ pub struct MixIgnis {
 
 impl MixIgnis {
     pub const NAME: &'static str = "Mix Ignis";
-    pub const DESCRIPTION: &'static str = "Sacrifice Mix Ignis → This turn, bearer's next Fire spell requires no threshold and costs ③ less to cast.";
+    pub const DESCRIPTION: &'static str = "Sacrifice Mix Ignis -> This turn, bearer's next Fire spell requires no threshold and costs ③ less to cast.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

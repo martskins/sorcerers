@@ -9,7 +9,7 @@ pub struct SacredScarabs {
 impl SacredScarabs {
     pub const NAME: &'static str = "Sacred Scarabs";
     pub const DESCRIPTION: &'static str =
-        "Airborne\r \r Deathrite → Deal 3 damage to each unit here.";
+        "Airborne\r \r Deathrite -> Deal 3 damage to each unit here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

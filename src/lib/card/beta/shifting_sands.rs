@@ -9,7 +9,7 @@ pub struct ShiftingSands {
 impl ShiftingSands {
     pub const NAME: &'static str = "Shifting Sands";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Reactivate the Genesis abilities of your nearby Deserts.";
+        "Genesis -> Reactivate the Genesis abilities of your nearby Deserts.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

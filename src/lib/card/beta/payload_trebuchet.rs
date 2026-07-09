@@ -92,7 +92,7 @@ pub struct PayloadTrebuchet {
 
 impl PayloadTrebuchet {
     pub const NAME: &'static str = "Payload Trebuchet";
-    pub const DESCRIPTION: &'static str = "Tap bearer and another ally here, Discard a card → Deal damage equal to the discarded card's mana cost to each unit at target location up to three steps away.";
+    pub const DESCRIPTION: &'static str = "Tap bearer and another ally here, Discard a card -> Deal damage equal to the discarded card's mana cost to each unit at target location up to three steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

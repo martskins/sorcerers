@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 /// **Pillar of Zeiros** — Unique Site (Earth threshold)
 ///
-/// Genesis → Banish all dead minions, and you heal 1 life for each.
+/// Genesis -> Banish all dead minions, and you heal 1 life for each.
 #[derive(Debug, Clone)]
 pub struct PillarOfZeiros {
     site_base: SiteBase,
@@ -12,7 +12,7 @@ pub struct PillarOfZeiros {
 impl PillarOfZeiros {
     pub const NAME: &'static str = "Pillar of Zeiros";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Banish all dead minions, and you heal 1 life for each.";
+        "Genesis -> Banish all dead minions, and you heal 1 life for each.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

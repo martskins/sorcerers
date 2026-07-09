@@ -8,7 +8,7 @@ pub struct HighlandPrincess {
 
 impl HighlandPrincess {
     pub const NAME: &'static str = "Highland Princess";
-    pub const DESCRIPTION: &'static str = "Genesis → Search your spellbook for an artifact that costs ① or less, reveal it, and put it into your hand. Shuffle.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Search your spellbook for an artifact that costs ① or less, reveal it, and put it into your hand. Shuffle.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

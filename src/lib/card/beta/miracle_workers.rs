@@ -9,7 +9,7 @@ pub struct MiracleWorkers {
 impl MiracleWorkers {
     pub const NAME: &'static str = "Miracle Workers";
     pub const DESCRIPTION: &'static str =
-        "Genesis → You may return a minion that died this turn from your cemetery to your hand.";
+        "Genesis -> You may return a minion that died this turn from your cemetery to your hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

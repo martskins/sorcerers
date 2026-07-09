@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 /// **Primordial Spring** — Elite Site (no threshold)
 ///
-/// Genesis → If you control fewer sites than any opponent, draw three sites.
+/// Genesis -> If you control fewer sites than any opponent, draw three sites.
 #[derive(Debug, Clone)]
 pub struct PrimordialSpring {
     site_base: SiteBase,
@@ -12,7 +12,7 @@ pub struct PrimordialSpring {
 impl PrimordialSpring {
     pub const NAME: &'static str = "Primordial Spring";
     pub const DESCRIPTION: &'static str =
-        "Genesis → If you control fewer sites than any opponent, draw three sites.";
+        "Genesis -> If you control fewer sites than any opponent, draw three sites.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

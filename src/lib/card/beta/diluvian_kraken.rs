@@ -55,7 +55,7 @@ pub struct DiluvianKraken {
 impl DiluvianKraken {
     pub const NAME: &'static str = "Diluvian Kraken";
     pub const DESCRIPTION: &'static str =
-        "Submerge\r \r Tap → Surface to strike each other unit nearby.";
+        "Submerge\r \r Tap -> Surface to strike each other unit nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

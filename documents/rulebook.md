@@ -1416,7 +1416,7 @@ else is already happening.
 Cards  in  the  realm  can  be  tapped  as  a  resource,
 spending their energy as a cost to activate various
 abilities.  Tap  abilities  are  usually  written  as,
-“Tap → Ability text.”
+“Tap -> Ability text.”
 A  player  may  also  need  to  tap  a  card  as  a  cost
 related to other spells or abilities on other cards.
 To  tap  a  card,  turn  it  90°  to  the  right  from  its
@@ -1440,7 +1440,7 @@ Playing Sites
 
 2
 
-Sites come into play through your Avatar’s activated ability: “Tap → Play or draw a site”
+Sites come into play through your Avatar’s activated ability: “Tap -> Play or draw a site”
 there are some other cards that can bring them into play as well.
 When you play a site, it must be placed:
 
@@ -2522,7 +2522,7 @@ that  fired  the  projectile  chooses  which  unit  the
 Ranged X
 projectile hits.
 
-This unit has “Tap → Shoot a projectile that stops
+This unit has “Tap -> Shoot a projectile that stops
 after 1 (or X) steps. Strike the impacted unit”.
 Range of Motion
 This unit may also intercept Airborne units.
@@ -3015,7 +3015,7 @@ the
 
  level there, or vice versa.
 
-This unit has “Tap → Shoot a projectile that stops
+This unit has “Tap -> Shoot a projectile that stops
 after 1 (or X) steps. Strike the impacted unit”.
 Spellcaster
 This unit may also intercept Airborne units.

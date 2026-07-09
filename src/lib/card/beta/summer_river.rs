@@ -9,7 +9,7 @@ pub struct SummerRiver {
 impl SummerRiver {
     pub const NAME: &'static str = "Summer River";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Look at your next spell. You may put it on the bottom of your spellbook.";
+        "Genesis -> Look at your next spell. You may put it on the bottom of your spellbook.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

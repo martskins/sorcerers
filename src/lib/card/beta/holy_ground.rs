@@ -8,7 +8,7 @@ pub struct HolyGround {
 
 impl HolyGround {
     pub const NAME: &'static str = "Holy Ground";
-    pub const DESCRIPTION: &'static str = "Genesis → Each nearby Avatar heals 3 life.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Each nearby Avatar heals 3 life.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

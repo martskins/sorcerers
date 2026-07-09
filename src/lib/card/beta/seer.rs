@@ -9,7 +9,7 @@ pub struct Seer {
 
 impl Seer {
     pub const NAME: &'static str = "Seer";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r At the start of your turn, look at your topmost site or spell. You may put it on the bottom of its deck.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r At the start of your turn, look at your topmost site or spell. You may put it on the bottom of its deck.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

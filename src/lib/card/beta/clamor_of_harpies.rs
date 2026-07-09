@@ -8,7 +8,7 @@ pub struct ClamorOfHarpies {
 
 impl ClamorOfHarpies {
     pub const NAME: &'static str = "Clamor of Harpies";
-    pub const DESCRIPTION: &'static str = "Airborne\r \r Genesis → Teleport target weaker minion to this location. Clamor of Harpies may strike it.";
+    pub const DESCRIPTION: &'static str = "Airborne\r \r Genesis -> Teleport target weaker minion to this location. Clamor of Harpies may strike it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

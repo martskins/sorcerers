@@ -9,7 +9,7 @@ pub struct SlumberingGiantess {
 impl SlumberingGiantess {
     pub const NAME: &'static str = "Slumbering Giantess";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Fall asleep. Slumbering Giantess is disabled until hurt.";
+        "Genesis -> Fall asleep. Slumbering Giantess is disabled until hurt.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

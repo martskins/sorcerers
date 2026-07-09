@@ -45,7 +45,7 @@ pub struct NimbusJinn {
 impl NimbusJinn {
     pub const NAME: &'static str = "Nimbus Jinn";
     pub const DESCRIPTION: &'static str =
-        "Airborne\r \r Discard a spell → Deal 3 damage to another random unit here.";
+        "Airborne\r \r Discard a spell -> Deal 3 damage to another random unit here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -44,7 +44,7 @@ pub struct Sinkhole {
 
 impl Sinkhole {
     pub const NAME: &'static str = "Sinkhole";
-    pub const DESCRIPTION: &'static str = "Sacrifice Sinkhole → Destroy a nearby site.";
+    pub const DESCRIPTION: &'static str = "Sacrifice Sinkhole -> Destroy a nearby site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

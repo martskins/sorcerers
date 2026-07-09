@@ -76,7 +76,7 @@ pub struct PnakoticManuscript {
 
 impl PnakoticManuscript {
     pub const NAME: &'static str = "Pnakotic Manuscript";
-    pub const DESCRIPTION: &'static str = "Bearer has \"Tap → Reveal your topmost spell and draw it. Bearer takes damage equal to that card's cost.\"";
+    pub const DESCRIPTION: &'static str = "Bearer has \"Tap -> Reveal your topmost spell and draw it. Bearer takes damage equal to that card's cost.\"";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

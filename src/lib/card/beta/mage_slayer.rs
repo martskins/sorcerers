@@ -8,7 +8,7 @@ pub struct MageSlayer {
 
 impl MageSlayer {
     pub const NAME: &'static str = "Mage Slayer";
-    pub const DESCRIPTION: &'static str = "Genesis → Kill target Spellcaster minion nearby.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Kill target Spellcaster minion nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

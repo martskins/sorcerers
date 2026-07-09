@@ -10,7 +10,7 @@ pub struct Elementalist {
 impl Elementalist {
     pub const NAME: &'static str = "Elementalist";
     pub const DESCRIPTION: &'static str =
-        "Tap → Play or draw a site.\r \r You have an additional (E)(F)(W)(A).";
+        "Tap -> Play or draw a site.\r \r You have an additional (E)(F)(W)(A).";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

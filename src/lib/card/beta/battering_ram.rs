@@ -76,7 +76,7 @@ pub struct BatteringRam {
 impl BatteringRam {
     pub const NAME: &'static str = "Battering Ram";
     pub const DESCRIPTION: &'static str =
-        "Units here have “Tap → Destroy target adjacent Wall or Monument.”";
+        "Units here have “Tap -> Destroy target adjacent Wall or Monument.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -134,9 +134,11 @@ impl Card for BatteringRam {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(RamStrike),
-            affected_cards: Box::new(CardQuery::new()
-                .units()
-                .in_location(self.get_location().clone())),
+            affected_cards: Box::new(
+                CardQuery::new()
+                    .units()
+                    .in_location(self.get_location().clone()),
+            ),
         }])
     }
 }

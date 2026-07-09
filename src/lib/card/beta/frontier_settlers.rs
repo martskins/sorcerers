@@ -41,7 +41,7 @@ fn valid_settle_locations(
 #[async_trait::async_trait]
 impl ActivatedAbility for SettleAction {
     fn get_name(&self) -> String {
-        "Tap → Reveal and play topmost site to adjacent void or Rubble; move there and lose this ability".to_string()
+        "Tap -> Reveal and play topmost site to adjacent void or Rubble; move there and lose this ability".to_string()
     }
 
     fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
@@ -115,7 +115,7 @@ pub struct FrontierSettlers {
 
 impl FrontierSettlers {
     pub const NAME: &'static str = "Frontier Settlers";
-    pub const DESCRIPTION: &'static str = "Tap → Reveal and play your topmost site to an adjacent void or Rubble. Frontier Settlers move there and lose this ability.";
+    pub const DESCRIPTION: &'static str = "Tap -> Reveal and play your topmost site to an adjacent void or Rubble. Frontier Settlers move there and lose this ability.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

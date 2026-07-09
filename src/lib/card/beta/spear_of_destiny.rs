@@ -63,7 +63,7 @@ pub struct SpearOfDestiny {
 
 impl SpearOfDestiny {
     pub const NAME: &'static str = "Spear of Destiny";
-    pub const DESCRIPTION: &'static str = "Bearer has \"Tap → Throw Spear of Destiny at any minion anywhere. It teleports to that minion's location and kills it.\"";
+    pub const DESCRIPTION: &'static str = "Bearer has \"Tap -> Throw Spear of Destiny at any minion anywhere. It teleports to that minion's location and kills it.\"";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

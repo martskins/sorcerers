@@ -6,7 +6,7 @@ struct PossessArtifact;
 #[async_trait::async_trait]
 impl ActivatedAbility for PossessArtifact {
     fn get_name(&self) -> String {
-        "Tap → Control nearby artifact".to_string()
+        "Tap -> Control nearby artifact".to_string()
     }
 
     fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
@@ -61,7 +61,7 @@ pub struct GrossePoltergeist {
 
 impl GrossePoltergeist {
     pub const NAME: &'static str = "Grösse Poltergeist";
-    pub const DESCRIPTION: &'static str = "Tap → Until Grosse Poltergeist leaves the realm, gain control of a nearby artifact and animate it. It's an Automaton with power equal to its cost, and has its own bearer abilities.";
+    pub const DESCRIPTION: &'static str = "Tap -> Until Grosse Poltergeist leaves the realm, gain control of a nearby artifact and animate it. It's an Automaton with power equal to its cost, and has its own bearer abilities.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -176,7 +176,7 @@ pub struct Geomancer {
 
 impl Geomancer {
     pub const NAME: &'static str = "Geomancer";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site. If you played an earth site, fill a void adjacent to you with Rubble.\r \r Tap → Replace an adjacent Rubble with the topmost site of your atlas.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site. If you played an earth site, fill a void adjacent to you with Rubble.\r \r Tap -> Replace an adjacent Rubble with the topmost site of your atlas.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

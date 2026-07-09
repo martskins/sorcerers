@@ -72,7 +72,7 @@ pub struct SiegeBallista {
 impl SiegeBallista {
     pub const NAME: &'static str = "Siege Ballista";
     pub const DESCRIPTION: &'static str =
-        "Tap bearer and another ally here → Deal 3 damage to target unit up to two steps away.";
+        "Tap bearer and another ally here -> Deal 3 damage to target unit up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

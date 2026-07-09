@@ -11,7 +11,7 @@ pub struct Enchantress {
 
 impl Enchantress {
     pub const NAME: &'static str = "Enchantress";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Whenever you cast a spell, you may animate target aura until your next turn. It's an aura minion with power equal to its cost.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r Whenever you cast a spell, you may animate target aura until your next turn. It's an aura minion with power equal to its cost.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

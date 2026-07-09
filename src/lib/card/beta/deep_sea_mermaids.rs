@@ -8,7 +8,7 @@ pub struct DeepSeaMermaids {
 
 impl DeepSeaMermaids {
     pub const NAME: &'static str = "Deep-Sea Mermaids";
-    pub const DESCRIPTION: &'static str = "Submerge\r \r Genesis → Draw your bottommost spell.";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r Genesis -> Draw your bottommost spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -45,7 +45,7 @@ pub struct DeckBuilder {
     all_cards: Vec<CardEntry>,
     avatars: Vec<CardEntry>,
 
-    // Deck contents: name → count
+    // Deck contents: name -> count
     deck_spells: HashMap<String, u8>,
     deck_sites: HashMap<String, u8>,
     selected_avatar: Option<String>,

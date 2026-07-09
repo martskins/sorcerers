@@ -8,7 +8,7 @@ pub struct DeathDealer {
 
 impl DeathDealer {
     pub const NAME: &'static str = "Death Dealer";
-    pub const DESCRIPTION: &'static str = "Genesis → Kill all other minions.";
+    pub const DESCRIPTION: &'static str = "Genesis -> Kill all other minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

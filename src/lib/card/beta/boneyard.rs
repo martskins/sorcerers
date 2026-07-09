@@ -9,7 +9,7 @@ pub struct Boneyard {
 impl Boneyard {
     pub const NAME: &'static str = "Boneyard";
     pub const DESCRIPTION: &'static str =
-        "Genesis → Each player may summon a minion from their cemetery here.";
+        "Genesis -> Each player may summon a minion from their cemetery here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -200,7 +200,7 @@ impl Toast {
                     text_color,
                 );
 
-                // Hover → show large preview on cursor
+                // Hover -> show large preview on cursor
                 let hovered = ctx
                     .input(|i| i.pointer.hover_pos())
                     .is_some_and(|p| toast_rect.contains(p));

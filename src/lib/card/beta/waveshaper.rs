@@ -103,7 +103,7 @@ pub struct Waveshaper {
 
 impl Waveshaper {
     pub const NAME: &'static str = "Waveshaper";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Tap → Flood a site near your body of water until you do so again. Tap minions without submerge there. They don't untap the next time they would.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r Tap -> Flood a site near your body of water until you do so again. Tap minions without submerge there. They don't untap the next time they would.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

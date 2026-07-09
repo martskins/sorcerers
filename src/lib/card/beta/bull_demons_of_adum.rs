@@ -15,7 +15,7 @@ struct TapMoveAndStrike;
 #[async_trait::async_trait]
 impl ActivatedAbility for TapMoveAndStrike {
     fn get_name(&self) -> String {
-        "Tap → Move three steps, striking each untapped unit along the way".to_string()
+        "Tap -> Move three steps, striking each untapped unit along the way".to_string()
     }
 
     async fn on_select(
@@ -91,7 +91,7 @@ pub struct BullDemonsOfAdum {
 
 impl BullDemonsOfAdum {
     pub const NAME: &'static str = "Bull Demons of Adum";
-    pub const DESCRIPTION: &'static str = "Tap → Move three steps in a cardinal direction. When Bull Demons of Adum enter each location, they strike each untapped unit there.";
+    pub const DESCRIPTION: &'static str = "Tap -> Move three steps in a cardinal direction. When Bull Demons of Adum enter each location, they strike each untapped unit there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

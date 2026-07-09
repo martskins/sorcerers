@@ -37,7 +37,7 @@ pub struct SeasonedSellsword {
 impl SeasonedSellsword {
     pub const NAME: &'static str = "Seasoned Sellsword";
     pub const DESCRIPTION: &'static str =
-        "Avatars nearby have \"Discard a card → Gain control of Seasoned Sellsword.\"";
+        "Avatars nearby have \"Discard a card -> Gain control of Seasoned Sellsword.\"";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

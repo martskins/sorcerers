@@ -11,7 +11,7 @@ pub struct Battlemage {
 
 impl Battlemage {
     pub const NAME: &'static str = "Battlemage";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Whenever Battlemage attacks and kills an enemy, you may draw a spell.";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r Whenever Battlemage attacks and kills an enemy, you may draw a spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -81,9 +81,11 @@ impl Card for Battlemage {
         Ok(vec![Hook {
             id: KILL_ENEMY_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: Box::new(CardQuery::new()
-                    .units()
-                    .not_controlled_by(&self.get_controller_id(state))),
+                unit: Box::new(
+                    CardQuery::new()
+                        .units()
+                        .not_controlled_by(&self.get_controller_id(state)),
+                ),
                 killer: Some(self.get_id().into()),
                 from_attack: Some(true),
             },

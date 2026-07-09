@@ -75,7 +75,7 @@ pub struct Flamecaller {
 
 impl Flamecaller {
     pub const NAME: &'static str = "Flamecaller";
-    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Tap, Banish all your dead fire minions → Shoot a projectile. It deals damage equal to to the sum of their (F).";
+    pub const DESCRIPTION: &'static str = "Tap -> Play or draw a site.\r \r Tap, Banish all your dead fire minions -> Shoot a projectile. It deals damage equal to to the sum of their (F).";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
