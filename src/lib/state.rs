@@ -161,6 +161,10 @@ impl OngoingEffectIndex {
                 OngoingEffect::RemoveAbilities {
                     removal,
                     affected_cards,
+                }
+                | OngoingEffect::PermanentlyRemoveAbilities {
+                    removal,
+                    affected_cards,
                 } => {
                     if removal.removes_special_abilities() {
                         for card_id in affected_cards.all(state) {
@@ -239,6 +243,10 @@ impl AreaModifierIndex {
                     }
                 }
                 OngoingEffect::RemoveAbilities {
+                    removal,
+                    affected_cards,
+                }
+                | OngoingEffect::PermanentlyRemoveAbilities {
                     removal,
                     affected_cards,
                 } => {
@@ -410,6 +418,10 @@ pub enum OngoingEffect {
         removal: AbilityRemoval,
         affected_cards: Box<CardQuery>,
     },
+    PermanentlyRemoveAbilities {
+        removal: AbilityRemoval,
+        affected_cards: Box<CardQuery>,
+    },
     GrantActivatedAbility {
         ability: Box<dyn ActivatedAbility>,
         affected_cards: Box<CardQuery>,
@@ -575,10 +587,9 @@ impl OngoingEffect {
             Self::GrantStatus { status, .. } => {
                 format!("Grants {:?} status", status)
             }
-            Self::RemoveAbilities { removal, .. } => match removal {
-                AbilityRemoval::Exact(abilities) => {
-                    format!("Removes {} abilities", abilities.len())
-                }
+            Self::RemoveAbilities { removal, .. }
+            | Self::PermanentlyRemoveAbilities { removal, .. } => match removal {
+                AbilityRemoval::Exact(abilities) => format!("Removes {} abilities", abilities.len()),
                 AbilityRemoval::AllAbilities => "Removes all abilities".to_string(),
                 AbilityRemoval::AllAbilitiesExcept(exceptions) => {
                     format!("Removes all abilities except {}", exceptions.len())
@@ -629,6 +640,7 @@ impl OngoingEffect {
             | Self::GrantAbility { affected_cards, .. }
             | Self::GrantStatus { affected_cards, .. }
             | Self::RemoveAbilities { affected_cards, .. }
+            | Self::PermanentlyRemoveAbilities { affected_cards, .. }
             | Self::GrantActivatedAbility { affected_cards, .. }
             | Self::GrantCounter { affected_cards, .. }
             | Self::ModifyProvidedMana { affected_cards, .. }
@@ -732,8 +744,11 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("GrantStatus")
                 .field("status", status)
                 .finish(),
-            Self::RemoveAbilities { removal, .. } => f
-                .debug_struct("RemoveAbilities")
+            Self::RemoveAbilities { removal, .. } => f.debug_struct("RemoveAbilities")
+                .field("removal", removal)
+                .finish(),
+            Self::PermanentlyRemoveAbilities { removal, .. } => f
+                .debug_struct("PermanentlyRemoveAbilities")
                 .field("removal", removal)
                 .finish(),
             Self::GrantActivatedAbility { .. } => f.debug_struct("GrantActivatedAbility").finish(),
@@ -1389,7 +1404,8 @@ impl State {
                 status: CardStatus::Disabled | CardStatus::Silenced,
                 ..
             } => 2,
-            OngoingEffect::RemoveAbilities { .. } => 2,
+            OngoingEffect::RemoveAbilities { .. }
+            | OngoingEffect::PermanentlyRemoveAbilities { .. } => 2,
             OngoingEffect::GrantAbility { .. }
             | OngoingEffect::GrantStatus { .. }
             | OngoingEffect::GrantActivatedAbility { .. }
@@ -1426,6 +1442,10 @@ impl State {
                         OngoingEffect::RemoveAbilities {
                             removal,
                             affected_cards,
+                        }
+                        | OngoingEffect::PermanentlyRemoveAbilities {
+                            removal,
+                            affected_cards,
                         } if removal.removes_special_abilities() => {
                             inactive_sources.extend(affected_cards.all(self));
                         }
@@ -1437,6 +1457,59 @@ impl State {
                 }
             })
             .collect()
+    }
+
+    pub fn ability_permanently_removed_by_active_continuous_effects(
+        &self,
+        card_id: &CardId,
+        ability: &Ability,
+    ) -> bool {
+        self.active_continuous_effects().into_iter().any(|effect| {
+            matches!(
+                effect,
+                OngoingEffect::PermanentlyRemoveAbilities {
+                    removal,
+                    affected_cards,
+                } if affected_cards.matches(card_id, self) && removal.removes(ability)
+            )
+        })
+    }
+
+    pub fn remove_exact_abilities_removed_by_active_continuous_effects(&mut self) {
+        let removals = self
+            .active_continuous_effects()
+            .into_iter()
+            .filter_map(|effect| match effect {
+                OngoingEffect::PermanentlyRemoveAbilities {
+                    removal: AbilityRemoval::Exact(abilities),
+                    affected_cards,
+                } => Some((affected_cards.all(self), abilities.clone())),
+                _ => None,
+            })
+            .flat_map(|(card_ids, abilities)| {
+                card_ids.into_iter().flat_map(move |card_id| {
+                    abilities
+                        .clone()
+                        .into_iter()
+                        .map(move |ability| (card_id, ability))
+                })
+            })
+            .collect::<Vec<_>>();
+
+        if removals.is_empty() {
+            return;
+        }
+
+        for (card_id, ability) in removals {
+            if let Some(card) = self.try_get_card_mut(&card_id) {
+                card.remove_modifier(&ability);
+            }
+            if let Some(base) = self.animated_unit_base_mut(&card_id) {
+                base.ability_counters
+                    .retain(|counter| counter.ability != ability);
+            }
+        }
+        self.invalidate_runtime_caches();
     }
 
     pub fn ongoing_effects_data(&self) -> Vec<OngoingEffectData> {
@@ -1529,6 +1602,7 @@ impl State {
             });
         }
         self.invalidate_runtime_caches();
+        self.remove_exact_abilities_removed_by_active_continuous_effects();
         Ok(())
     }
 

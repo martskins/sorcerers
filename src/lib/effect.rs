@@ -2421,6 +2421,22 @@ impl Effect {
             Effect::AddAbilityCounter {
                 card_id, counter, ..
             } => {
+                if state
+                    .ability_permanently_removed_by_active_continuous_effects(
+                        card_id,
+                        &counter.ability,
+                    )
+                {
+                    if let Some(card) = state.try_get_card_mut(card_id) {
+                        card.remove_modifier(&counter.ability);
+                    }
+                    if let Some(base) = state.animated_unit_base_mut(card_id) {
+                        base.ability_counters
+                            .retain(|existing| existing.ability != counter.ability);
+                    }
+                    return Ok(());
+                }
+
                 let card = state.get_card_mut(card_id);
                 if card.is_unit() {
                     let base = card
@@ -2534,6 +2550,7 @@ impl Effect {
             Effect::SetController { card_id, player_id } => {
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().controller_id = *player_id;
+                state.remove_exact_abilities_removed_by_active_continuous_effects();
             }
             Effect::MakeCardCopyOf {
                 card_id,

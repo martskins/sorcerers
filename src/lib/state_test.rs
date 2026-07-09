@@ -3,12 +3,12 @@ use crate::{
         Ability, ApprenticeWizard, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus,
         CauldronCrones, CourtJester, CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood,
         FootSoldier, FreeCity, Firebolts, HeadlessHaunt, KiteArcher, KytheraMechanism,
-        LavaSalamander, LuckyCharm, MaddeningBells, NimbusJinn, Region, RimlandNomads, Rubble,
-        Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase, WindSylph,
-        from_name_and_zone,
+        LavaSalamander, LuckyCharm, MaddeningBells, MasterTracker, NimbusJinn, Region,
+        RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
+        SneakThief, UnitBase, WindSylph, from_name_and_zone,
     },
     deck::Deck,
-    effect::{Effect, FightContext},
+    effect::{AbilityCounter, Effect, FightContext},
     game::{Direction, Element, NO_CONTROLLER, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
@@ -1737,6 +1737,105 @@ async fn test_exact_ability_removal_only_removes_that_ability() {
     let target = state.get_card(&target_id);
     assert!(!target.has_ability(&state, &Ability::Airborne));
     assert!(target.has_ability(&state, &Ability::Stealth));
+}
+
+#[tokio::test]
+async fn test_master_tracker_permanently_removes_existing_enemy_stealth() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut enemy = FootSoldier::new(opponent_id);
+    enemy.add_ability(Ability::Stealth);
+    let enemy_id = insert_realm_card(
+        &mut state,
+        Box::new(enemy),
+        Zone::Location(Location::Square(8, Region::Surface)),
+    )
+    .await;
+
+    let tracker_id = insert_realm_card(
+        &mut state,
+        Box::new(MasterTracker::new(player_id)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+    )
+    .await;
+
+    assert!(!state
+        .get_card(&enemy_id)
+        .has_ability(&state, &Ability::Stealth));
+    assert!(!state
+        .get_card(&enemy_id)
+        .get_unit_base()
+        .unwrap()
+        .abilities
+        .contains(&Ability::Stealth));
+
+    state.remove_ongoing_effects_from_source(&tracker_id);
+    state
+        .get_card_mut(&tracker_id)
+        .set_zone(Zone::Cemetery);
+
+    assert!(!state
+        .get_card(&enemy_id)
+        .has_ability(&state, &Ability::Stealth));
+
+    state
+        .get_card_mut(&enemy_id)
+        .get_unit_base_mut()
+        .unwrap()
+        .ability_counters
+        .push(AbilityCounter {
+            id: uuid::Uuid::new_v4(),
+            ability: Ability::Stealth,
+            expires_on_effect: None,
+        });
+
+    assert!(state
+        .get_card(&enemy_id)
+        .has_ability(&state, &Ability::Stealth));
+}
+
+#[tokio::test]
+async fn test_master_tracker_immediately_removes_new_enemy_stealth_counters() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(MasterTracker::new(player_id)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+    )
+    .await;
+
+    let enemy_id = insert_realm_card(
+        &mut state,
+        Box::new(FootSoldier::new(opponent_id)),
+        Zone::Location(Location::Square(8, Region::Surface)),
+    )
+    .await;
+
+    Effect::AddAbilityCounter {
+        card_id: enemy_id,
+        counter: AbilityCounter {
+            id: uuid::Uuid::new_v4(),
+            ability: Ability::Stealth,
+            expires_on_effect: None,
+        },
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    let enemy = state.get_card(&enemy_id);
+    assert!(!enemy.has_ability(&state, &Ability::Stealth));
+    assert!(enemy
+        .get_unit_base()
+        .unwrap()
+        .ability_counters
+        .iter()
+        .all(|counter| counter.ability != Ability::Stealth));
 }
 
 #[tokio::test]

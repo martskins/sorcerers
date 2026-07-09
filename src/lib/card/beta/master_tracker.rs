@@ -60,14 +60,14 @@ impl Card for MasterTracker {
         Some(&mut self.unit_base)
     }
 
-    // TODO: Reimplement this as a play minion hook + genesis effect.
-
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        Ok(vec![OngoingEffect::RemoveAbilities {
+        Ok(vec![OngoingEffect::PermanentlyRemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Stealth),
-            affected_cards: Box::new(CardQuery::new()
-                .in_play()
-                .not_controlled_by(&self.get_controller_id(state))),
+            affected_cards: Box::new(
+                CardQuery::new()
+                    .in_play()
+                    .not_controlled_by(&self.get_controller_id(state)),
+            ),
         }])
     }
 }
