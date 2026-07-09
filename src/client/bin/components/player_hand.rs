@@ -253,6 +253,16 @@ impl Component for PlayerHandComponent {
             .iter()
             .filter(|card| card.card.zone == Zone::Hand)
             .collect();
+        let selecting_hand_card = matches!(
+            &data.status,
+            Status::SelectingCard {
+                pickable_cards,
+                multiple: false,
+                ..
+            } if hand_cards
+                .iter()
+                .any(|card| pickable_cards.contains(&card.card.id))
+        );
         let dragging = self.dragging_card.is_some();
         let hover_card = pointer.is_some_and(|pos| {
             if self.expansion > 0.05 && collapsed_strip.contains(pos) {
@@ -271,7 +281,7 @@ impl Component for PlayerHandComponent {
             })
         });
 
-        self.expanded = hover_card || dragging;
+        self.expanded = hover_card || dragging || selecting_hand_card;
 
         let target = if self.expanded { 1.0 } else { 0.0 };
         let step = ui.ctx().input(|i| i.stable_dt).max(1.0 / 120.0) * 9.0;
@@ -330,6 +340,14 @@ impl Component for PlayerHandComponent {
                 self.fan_rect_and_rotation(card_rect, idx, hand_cards.len(), self.expansion);
             let mut fan_card = (*card_rect).clone();
             fan_card.rect = rect;
+            fan_card.is_selected = matches!(
+                &data.status,
+                Status::SelectingCard {
+                    pickable_cards,
+                    multiple: false,
+                    ..
+                } if pickable_cards.contains(&fan_card.card.id)
+            ) || fan_card.is_selected;
 
             let sense = if can_click_cards || can_drag_cards {
                 Sense::HOVER | Sense::CLICK | Sense::DRAG

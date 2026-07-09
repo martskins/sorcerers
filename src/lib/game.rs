@@ -2060,12 +2060,6 @@ impl Game {
                         return Ok(());
                     }
 
-                    let unit_disabled =
-                        card.has_status(&self.state, &CardStatus::SummoningSickness);
-                    if self.state.is_unit_card(card.get_id()) && unit_disabled {
-                        return Ok(());
-                    }
-
                     let mut actions = card.get_activated_abilities(&self.state)?;
                     actions.retain(|action| {
                         let can_afford = action
@@ -2428,7 +2422,7 @@ mod tests {
     use crate::{
         card::{
             AridDesert, Firebolts, FootSoldier, KytheraMechanism, MaskOfMayhem, Sorcerer,
-            TvinnaxBerserker,
+            SpringRiver, TvinnaxBerserker, YokaiKappas,
         },
         deck::Deck,
         state::Player,
@@ -2543,6 +2537,77 @@ mod tests {
                 other => panic!("expected PickCard, got {:?}", other),
             }
         })
+    }
+
+    #[tokio::test]
+    async fn test_summoning_sick_unit_can_use_non_tap_activated_ability() {
+        QueryCache::init();
+
+        let (
+            mut game,
+            player_id,
+            _opponent_id,
+            _avatar_id,
+            _opponent_avatar_id,
+            client_tx,
+            server_rx,
+        ) = test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        let mut site = AridDesert::new(player_id);
+        site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        game.state.add_card(Box::new(site));
+
+        let mut kappas = YokaiKappas::new(player_id);
+        let kappas_id = *kappas.get_id();
+        kappas.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+        kappas.set_tapped(true);
+        kappas.add_status(CardStatus::SummoningSickness);
+        game.state.add_card(Box::new(kappas));
+
+        let mut water_site = SpringRiver::new(player_id);
+        water_site.set_zone(Zone::Hand);
+        game.state.add_card(Box::new(water_site));
+
+        let game_id = game.id;
+        let responder = tokio::spawn(async move {
+            let message = server_rx.recv().await.unwrap();
+            match message {
+                ServerMessage::PickAction {
+                    player_id,
+                    actions,
+                    ..
+                } => {
+                    assert!(actions.contains(&"Discard a water site to untap".to_string()));
+                    let cancel_idx = actions
+                        .iter()
+                        .position(|action| action == "Cancel")
+                        .expect("Cancel action should be available");
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: cancel_idx,
+                        })
+                        .await
+                        .unwrap();
+                }
+                other => panic!("expected PickAction, got {:?}", other),
+            }
+        });
+
+        game.handle_message(&ClientMessage::ClickCard {
+            game_id,
+            player_id,
+            card_id: kappas_id,
+        })
+        .await
+        .unwrap();
+
+        tokio::time::timeout(std::time::Duration::from_secs(1), responder)
+            .await
+            .expect("Yokai Kappas should prompt for its non-tap ability")
+            .unwrap();
     }
 
     #[tokio::test]

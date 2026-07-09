@@ -32,7 +32,7 @@ impl ActivatedAbility for FloodAdjacentSite {
             },
             Effect::SetCardData {
                 card_id: *card_id,
-                data: std::sync::Arc::new(state.turns),
+                data: Arc::new(state.turns),
             },
         ])
     }

@@ -260,16 +260,23 @@ impl Game {
                 source_card_id,
                 ..
             } => {
+                let effective_pickable_cards = if pickable_cards.is_empty() {
+                    cards.clone()
+                } else {
+                    pickable_cards.clone()
+                };
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
-                    pickable_cards: pickable_cards.clone(),
+                    pickable_cards: effective_pickable_cards,
                     preview: *preview,
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
                     multiple: false,
                 };
 
-                if let Err(e) = self.open_viewers(cards) {
+                if !self.selection_is_only_own_hand(cards)
+                    && let Err(e) = self.open_viewers(cards)
+                {
                     eprintln!("Failed to compute viewers for card selection: {}", e);
                 }
                 None

@@ -568,6 +568,17 @@ impl Game {
         Ok(())
     }
 
+    fn selection_is_only_own_hand(&self, cards: &[uuid::Uuid]) -> bool {
+        !cards.is_empty()
+            && cards.iter().all(|card_id| {
+                self.data
+                    .cards
+                    .iter()
+                    .find(|card| card.id == *card_id)
+                    .is_some_and(|card| card.zone == Zone::Hand && card.owner_id == self.player_id)
+            })
+    }
+
     fn open_controlled_hand_viewer(&mut self) {
         if self.current_player != self.player_id || self.data.turn_player == self.player_id {
             self.controlled_hand_opened_for = None;
