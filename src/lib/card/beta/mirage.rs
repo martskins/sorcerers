@@ -73,60 +73,73 @@ impl Card for Mirage {
         Some(self)
     }
 
+    fn get_valid_play_locations(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Location>> {
+        let mut locations = self.base_get_valid_play_locations(state, player_id, caster_id)?;
+        locations.extend(
+            CardQuery::new()
+                .sites()
+                .owned_by(player_id)
+                .in_play()
+                .id_not(*self.get_id())
+                .all(state)
+                .into_iter()
+                .map(|site_id| state.get_card(&site_id).get_location().clone()),
+        );
+        locations.sort();
+        locations.dedup();
+        Ok(locations)
+    }
+
     async fn play_mechanic(
         &self,
         state: &State,
         player_id: &PlayerId,
         caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
-        let other_sites = CardQuery::new()
-            .sites()
-            .controlled_by(player_id)
-            .in_play()
-            .id_not(*self.get_id());
+        let locations = self.get_valid_play_locations(state, player_id, caster_id)?;
+        let location = LocationQuery::from_locations(locations)
+            .with_prompt("Pick a zone to play the site")
+            .with_source_card(*self.get_id())
+            .pick(player_id, state)
+            .await?;
+        self.play_mechanic_at_location(state, player_id, caster_id, &location)
+            .await
+    }
 
-        if !other_sites.is_empty(state)
-            && yes_or_no(
-                player_id,
-                state,
-                "Return one of your sites in play to your hand and play Mirage in its place?",
-                *self.get_id(),
-            )
-            .await?
+    async fn play_mechanic_at_location(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
+        location: &Location,
+    ) -> anyhow::Result<Vec<Effect>> {
+        if let Some(site) = location.get_site(state)
+            && site.get_owner_id() == player_id
+            && site.get_id() != self.get_id()
         {
-            let Some(other_site_id) = other_sites
-                .with_prompt("Pick a site to return to your hand")
-                .with_source_card(*self.get_id())
-                .pick(player_id, state)
-                .await?
-            else {
-                return Ok(vec![]);
-            };
-            let other_zone = state.get_card(&other_site_id).get_zone().clone();
             return Ok(vec![
                 Effect::SetCardZone {
-                    card_id: other_site_id,
+                    card_id: *site.get_id(),
                     zone: Zone::Hand,
                 },
                 Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
-                    location: other_zone.location().cloned().unwrap(),
+                    location: location.clone(),
                     spellcaster: *caster_id,
                 },
             ]);
         }
 
-        let locations = self.base_get_valid_play_locations(state, player_id, caster_id)?;
-        let zone = LocationQuery::from_locations(locations)
-            .with_prompt("Pick a zone to play the site")
-            .with_source_card(*self.get_id())
-            .pick(player_id, state)
-            .await?;
         Ok(vec![Effect::PlayCard {
             player_id: *player_id,
             card_id: *self.get_id(),
-            location: zone,
+            location: location.clone(),
             spellcaster: *caster_id,
         }])
     }

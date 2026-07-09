@@ -1957,6 +1957,37 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    async fn play_mechanic_at_location(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &CardId,
+        location: &Location,
+    ) -> anyhow::Result<Vec<Effect>> {
+        if self.get_card_type() == CardType::Site {
+            return state
+                .get_card(caster_id)
+                .get_avatar()
+                .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
+                .play_site_at_square(
+                    state,
+                    player_id,
+                    self.get_id(),
+                    location
+                        .get_square()
+                        .ok_or(anyhow::anyhow!("site location must be a square"))?,
+                )
+                .await;
+        }
+
+        Ok(vec![Effect::PlayCard {
+            player_id: *player_id,
+            card_id: *self.get_id(),
+            location: location.clone(),
+            spellcaster: *caster_id,
+        }])
+    }
+
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(
         &self,

@@ -1492,6 +1492,29 @@ impl Game {
         }))
     }
 
+    async fn pay_play_site_action(
+        &mut self,
+        player_id: &PlayerId,
+        avatar_id: &CardId,
+    ) -> anyhow::Result<bool> {
+        let avatar = self.state.get_card(avatar_id);
+        let Some(avatar) = avatar.get_avatar() else {
+            return Ok(false);
+        };
+        let Some(action) = avatar.get_play_site_ability() else {
+            return Ok(false);
+        };
+        if !action.can_activate(avatar_id, player_id, &self.state)? {
+            return Ok(false);
+        }
+        let cost = action.get_cost(avatar_id, &self.state)?;
+        if !cost.can_afford(&self.state, *player_id)? {
+            return Ok(false);
+        }
+        cost.pay(&mut self.state, player_id).await?;
+        Ok(true)
+    }
+
     async fn queue_play_hand_card_at_zone(
         &mut self,
         player_id: &PlayerId,
@@ -1518,35 +1541,20 @@ impl Game {
 
         match playable.card_type {
             CardType::Site => {
-                let avatar = self.state.get_card(&playable.spellcaster_id);
-                let Some(avatar) = avatar.get_avatar() else {
-                    return Ok(());
-                };
-                let Some(action) = avatar.get_play_site_ability() else {
-                    return Ok(());
-                };
-                if !action.can_activate(
-                    &playable.spellcaster_id,
-                    &playable.player_id,
-                    &self.state,
-                )? {
+                if !self
+                    .pay_play_site_action(&playable.player_id, &playable.spellcaster_id)
+                    .await?
+                {
                     return Ok(());
                 }
-                let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
-                if !cost.can_afford(&self.state, playable.player_id)? {
-                    return Ok(());
-                }
-                cost.pay(&mut self.state, &playable.player_id).await?;
                 let effects = self
                     .state
-                    .get_card(&playable.spellcaster_id)
-                    .get_avatar()
-                    .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
-                    .play_site_at_square(
+                    .get_card(&playable.card_id)
+                    .play_mechanic_at_location(
                         &self.state,
                         &playable.player_id,
-                        &playable.card_id,
-                        zone.location().and_then(Location::get_square).unwrap(),
+                        &playable.spellcaster_id,
+                        location,
                     )
                     .await?;
                 self.state.queue(effects);
@@ -2419,7 +2427,7 @@ mod tests {
     use super::*;
     use crate::{
         card::{
-            AridDesert, Firebolts, FootSoldier, KytheraMechanism, MaskOfMayhem, Sorcerer,
+            AridDesert, Firebolts, FootSoldier, KytheraMechanism, MaskOfMayhem, Mirage, Sorcerer,
             SpringRiver, TvinnaxBerserker, YokaiKappas,
         },
         deck::Deck,
@@ -2514,7 +2522,9 @@ mod tests {
             let message = loop {
                 let message = server_rx.recv().await.unwrap();
                 match message {
-                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::ForceSync { .. }
+                    | ServerMessage::Wait { .. }
+                    | ServerMessage::Resume { .. } => {}
                     ServerMessage::PickCard { .. } => break message,
                     other => panic!("expected PickCard, got {:?}", other),
                 }
@@ -2744,6 +2754,57 @@ mod tests {
             }] if *card_id == kythera_id
                 && *effect_bearer_id == bearer_on_drop_zone_id
                 && *played_card_id == kythera_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_dragging_mirage_can_replace_owned_site() {
+        QueryCache::init();
+
+        let (mut game, player_id, _opponent_id, _avatar_id, _opponent_avatar_id, _client_tx, _server_rx) =
+            test_game_with_avatars();
+        game.state.phase = Phase::Main;
+
+        let mut site = AridDesert::new(player_id);
+        let site_id = *site.get_id();
+        let site_location = Location::Square(1, Region::Surface);
+        site.set_zone(Zone::Location(site_location.clone()));
+        game.state.add_card(Box::new(site));
+
+        let mut mirage = Mirage::new(player_id);
+        let mirage_id = *mirage.get_id();
+        mirage.set_zone(Zone::Hand);
+        game.state.add_card(Box::new(mirage));
+
+        let playable = game
+            .playable_hand_card(&player_id, &mirage_id)
+            .unwrap()
+            .expect("Mirage should be playable by replacing an owned site");
+        assert!(playable.locations.contains(&site_location));
+
+        let game_id = game.id;
+        game.handle_message(&ClientMessage::PlayCardAtLocation {
+            game_id,
+            player_id,
+            card_id: mirage_id,
+            location: site_location.clone(),
+        })
+        .await
+        .unwrap();
+
+        let queued_effects = game.state.effects.iter().collect::<Vec<_>>();
+        assert!(matches!(
+            queued_effects.as_slice(),
+            [Effect::SetCardZone {
+                card_id,
+                zone: Zone::Hand,
+            }, Effect::PlayCard {
+                card_id: played_card_id,
+                location,
+                ..
+            }] if *card_id == site_id
+                && *played_card_id == mirage_id
+                && location == &site_location
         ));
     }
 
