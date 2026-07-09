@@ -43,8 +43,6 @@ impl MeteorShower {
                 let location = state.get_card(site_id).get_location();
                 selected_locations
                     .iter()
-                    // TODO: Check if we can implement this in a way that lets us get rid of
-                    // is_adjacent.
                     .all(|selected| location != selected && !location.is_adjacent(selected))
             })
             .collect()
@@ -55,41 +53,20 @@ impl MeteorShower {
         state: &State,
         caster_id: &CardId,
     ) -> Vec<(Option<Location>, u16)> {
-        vec![
+        #[rustfmt::skip]
+        let result = vec![
             (Some(location.clone()), 7),
-            (
-                location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)),
-                5,
-            ),
-            (
-                location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)),
-                5,
-            ),
-            (
-                location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)),
-                5,
-            ),
-            (
-                location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)),
-                5,
-            ),
-            (
-                location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)),
-                3,
-            ),
-            (
-                location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)),
-                3,
-            ),
-            (
-                location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)),
-                3,
-            ),
-            (
-                location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)),
-                3,
-            ),
-        ]
+            (location.steps_in_direction(&Direction::Up, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Down, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Left, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::Right, 1, state, Some(caster_id)), 5),
+            (location.steps_in_direction(&Direction::TopLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::TopRight, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomLeft, 1, state, Some(caster_id)), 3),
+            (location.steps_in_direction(&Direction::BottomRight, 1, state, Some(caster_id)), 3),
+        ];
+
+        result
     }
 
     fn medium_impact(
@@ -155,14 +132,12 @@ impl Magic for MeteorShower {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let Some(first_site_id) = CardQuery::from_ids(Self::sites_that_share_no_borders_with(
-            state,
-            &[],
-        ))
-        .with_prompt("Pick the center site for the 7-damage impact")
-        .with_source_card(*self.get_id())
-        .pick(&controller_id, state)
-        .await?
+        let Some(first_site_id) =
+            CardQuery::from_ids(Self::sites_that_share_no_borders_with(state, &[]))
+                .with_prompt("Pick the center site for the 7-damage impact")
+                .with_source_card(*self.get_id())
+                .pick(&controller_id, state)
+                .await?
         else {
             return Ok(vec![]);
         };
@@ -182,8 +157,8 @@ impl Magic for MeteorShower {
         let second_location = state.get_card(&second_site_id).get_location().clone();
 
         let Some(third_site_id) = CardQuery::from_ids(Self::sites_that_share_no_borders_with(
-                state,
-                &[first_location.clone(), second_location.clone()],
+            state,
+            &[first_location.clone(), second_location.clone()],
         ))
         .with_prompt("Pick the site for the 3-damage impact")
         .with_source_card(*self.get_id())
