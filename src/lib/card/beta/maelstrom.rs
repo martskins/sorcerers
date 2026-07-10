@@ -105,6 +105,10 @@ impl Card for Maelström {
                 let mut effects = vec![];
                 for minion_id in minion_ids {
                     let minion = state.get_card(&minion_id);
+                    if minion.get_location() == self.get_location() {
+                        continue;
+                    }
+
                     let steps = minion
                         .get_location()
                         .steps_to_location(state, self.get_location())

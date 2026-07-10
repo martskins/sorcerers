@@ -8,7 +8,7 @@ pub struct MoonClanWerewolf {
 
 impl MoonClanWerewolf {
     pub const NAME: &'static str = "Moon Clan Werewolf";
-    pub const DESCRIPTION: &'static str = "Sacrifice an allied Mortal -> Summon Moon Clan Werewolf from your hand to the Mortal's location.";
+    pub const DESCRIPTION: &'static str = "Sacrifice an allied Mortal → Summon Moon Clan Werewolf from your hand to the Mortal's location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -24,7 +24,15 @@ impl MoonClanWerewolf {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(3, "A"),
+                costs: Costs::basic(3, "A").with_alternative(Cost::additional_only(
+                    AdditionalCost::sacrifice(
+                        CardQuery::new()
+                            .minions()
+                            .minion_type(&MinionType::Mortal)
+                            .controlled_by(&owner_id),
+                    )
+                    .with_description("Sacrifice an allied Mortal"),
+                )),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id,

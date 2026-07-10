@@ -75,7 +75,6 @@ impl Card for MonsterHunter {
                 let controller_id = self.get_controller_id(state);
                 let Some(chosen) = CardQuery::new()
                     .minions()
-                    .controlled_by(&controller_id)
                     .nearby_to_card(self.get_id())
                     .minion_type(&MinionType::Monster)
                     .with_prompt("Pick a nearby Monster to kill")

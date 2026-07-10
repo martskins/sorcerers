@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TURN_START_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct MotherNature {
     unit_base: UnitBase,
@@ -34,8 +36,6 @@ impl MotherNature {
         }
     }
 }
-
-const TURN_START_HOOK: HookId = 1;
 
 #[async_trait::async_trait]
 impl Card for MotherNature {

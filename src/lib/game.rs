@@ -744,6 +744,15 @@ impl From<&str> for Thresholds {
     }
 }
 
+impl std::fmt::Display for Thresholds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", "A".repeat(self.air as usize))?;
+        write!(f, "{}", "W".repeat(self.water as usize))?;
+        write!(f, "{}", "F".repeat(self.fire as usize))?;
+        write!(f, "{}", "E".repeat(self.earth as usize))
+    }
+}
+
 impl Thresholds {
     pub const ZERO: Self = Thresholds {
         fire: 0,
@@ -2761,8 +2770,15 @@ mod tests {
     async fn test_dragging_mirage_can_replace_owned_site() {
         QueryCache::init();
 
-        let (mut game, player_id, _opponent_id, _avatar_id, _opponent_avatar_id, _client_tx, _server_rx) =
-            test_game_with_avatars();
+        let (
+            mut game,
+            player_id,
+            _opponent_id,
+            _avatar_id,
+            _opponent_avatar_id,
+            _client_tx,
+            _server_rx,
+        ) = test_game_with_avatars();
         game.state.phase = Phase::Main;
 
         let mut site = AridDesert::new(player_id);

@@ -194,6 +194,7 @@ pub enum CostAction {
 pub struct AdditionalCost {
     pub card: CardQuery,
     pub action: CostAction,
+    pub description: Option<String>,
 }
 
 impl From<CardId> for CardQuery {
@@ -225,6 +226,7 @@ impl AdditionalCost {
         Self {
             card: card.into(),
             action: CostAction::Tap,
+            description: None,
         }
     }
 
@@ -232,6 +234,7 @@ impl AdditionalCost {
         Self {
             card: card.into(),
             action: CostAction::Discard,
+            description: None,
         }
     }
 
@@ -239,6 +242,7 @@ impl AdditionalCost {
         Self {
             card: card.into(),
             action: CostAction::Sacrifice,
+            description: None,
         }
     }
 
@@ -246,6 +250,14 @@ impl AdditionalCost {
         Self {
             card: card.into(),
             action: CostAction::Surface,
+            description: None,
+        }
+    }
+
+    pub fn with_description(self, description: impl Into<String>) -> Self {
+        Self {
+            description: Some(description.into()),
+            ..self
         }
     }
 }
@@ -387,15 +399,21 @@ impl PayableCost {
         if !matches!(self.mana, ManaCost::Fixed(0)) {
             parts.push(self.mana.label());
         }
+
         if self.thresholds != Thresholds::ZERO {
-            parts.push(format!("Thresholds: {:?}", self.thresholds));
+            parts.push(format!("{}", self.thresholds));
         }
+
         for add in &self.additional {
-            match add.action {
-                CostAction::Tap => parts.push("Tap card".to_string()),
-                CostAction::Discard => parts.push("Discard card".to_string()),
-                CostAction::Sacrifice => parts.push("Sacrifice card".to_string()),
-                CostAction::Surface => parts.push("Put card on Surface".to_string()),
+            if let Some(desc) = &add.description {
+                parts.push(desc.to_string());
+            } else {
+                match add.action {
+                    CostAction::Tap => parts.push("Tap card".to_string()),
+                    CostAction::Discard => parts.push("Discard card".to_string()),
+                    CostAction::Sacrifice => parts.push("Sacrifice card".to_string()),
+                    CostAction::Surface => parts.push("Put card on Surface".to_string()),
+                }
             }
         }
 
