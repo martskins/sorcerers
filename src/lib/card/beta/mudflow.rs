@@ -15,7 +15,7 @@ impl Mudflow {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
-                provided_thresholds: Thresholds::new(),
+                provided_thresholds: Thresholds::ZERO,
                 types: vec![],
                 tapped: false,
                 ..Default::default()
@@ -76,10 +76,12 @@ impl Card for Mudflow {
         Some(self)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
-            trigger: EffectQuery::TurnStart { player_id: None },
+            trigger: EffectQuery::TurnStart {
+                player_id: Some(self.get_controller_id(state)),
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -94,13 +96,6 @@ impl Card for Mudflow {
         match hook {
             TURN_START_HOOK => {
                 let controller_id = self.get_controller_id(state);
-                if state.current_player() != controller_id {
-                    return Ok(vec![]);
-                }
-                if !self.get_zone().is_in_play() {
-                    return Ok(vec![]);
-                }
-
                 let Some(target_zone_id) = CardQuery::new()
                     .sites()
                     .near_to(self.get_location())
@@ -113,9 +108,14 @@ impl Card for Mudflow {
                 };
 
                 let target_site = state.get_card(&target_zone_id);
-                let target_zone = target_site.get_zone().clone();
-
-                let minions = CardQuery::new().minions().in_zone(&target_zone).all(state);
+                let location = target_site.get_location().clone();
+                let minions = CardQuery::new()
+                    .minions()
+                    .in_locations(&[
+                        location.with_region(Region::Underground),
+                        location.with_region(Region::Underwater),
+                    ])
+                    .all(state);
 
                 let effects = minions
                     .into_iter()

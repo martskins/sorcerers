@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-/// **Muck Lampreys** — Ordinary Minion (2 cost, 2/2)
-///
-/// Burrowing, Submerge
 #[derive(Debug, Clone)]
 pub struct MuckLampreys {
     unit_base: UnitBase,

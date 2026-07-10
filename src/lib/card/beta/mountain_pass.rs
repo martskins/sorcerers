@@ -46,7 +46,7 @@ impl Site for MountainPass {
     ) -> anyhow::Result<bool> {
         let minions_atop = CardQuery::new()
             .minions()
-            .in_zone(self.get_zone())
+            .in_location(self.get_location().clone())
             .all(state)
             .len();
         let card = state.get_card(card_id);

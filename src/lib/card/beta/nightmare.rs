@@ -62,10 +62,12 @@ impl Card for Nightmare {
         Some(&mut self.unit_base)
     }
 
-    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
-            trigger: EffectQuery::TurnEnd { player_id: None },
+            trigger: EffectQuery::TurnEnd {
+                player_id: Some(self.get_controller_id(state)),
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -79,31 +81,22 @@ impl Card for Nightmare {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-                let controller_id = self.get_controller_id(state);
-                if state.current_player() != controller_id {
-                    return Ok(vec![]);
-                }
-                if !self.get_zone().is_in_play() {
-                    return Ok(vec![]);
-                }
-
-                let my_zone = self.get_zone().clone();
-                let enemy_minions = CardQuery::new()
-                    .minions()
-                    .in_zone(&my_zone)
-                    .all(state)
-                    .into_iter()
-                    .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-                    .collect::<Vec<_>>();
-
                 let adjacent_locations = self.get_location().get_adjacent(state);
                 if adjacent_locations.is_empty() {
                     return Ok(vec![]);
                 }
 
+                let controller_id = self.get_controller_id(state);
+                let location = self.get_location().clone();
+                let enemy_minions = CardQuery::new()
+                    .minions()
+                    .not_controlled_by(&controller_id)
+                    .in_location(location)
+                    .all(state);
+
                 let mut effects = vec![];
                 for minion_id in enemy_minions {
-                    let minion_zone = state.get_card(&minion_id).get_zone().clone();
+                    let minion_loc = state.get_card(&minion_id).get_location().clone();
                     let push = yes_or_no(
                         &controller_id,
                         state,
@@ -119,21 +112,17 @@ impl Card for Nightmare {
                         continue;
                     }
 
-                    let target_zone = LocationQuery::from_locations(adjacent_locations.clone())
+                    let target_loc = LocationQuery::from_locations(adjacent_locations.clone())
                         .with_prompt("Choose adjacent location to push enemy minion")
                         .with_source_card(*self.get_id())
                         .pick(&controller_id, state)
                         .await?;
 
-                    let region = state.get_card(&minion_id).get_region(state).clone();
                     effects.push(Effect::MoveCard {
                         player_id: controller_id,
                         card_id: minion_id,
-                        from: (minion_zone)
-                            .location()
-                            .cloned()
-                            .expect("MoveCard source must be a location"),
-                        to: LocationQuery::from_location(target_zone.with_region(region)),
+                        from: minion_loc,
+                        to: target_loc.into(),
                         tap: false,
                         through_path: None,
                     });

@@ -2797,7 +2797,16 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         player_id: &PlayerId,
         caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Location>> {
-        let mut candidates = if self.get_card_type() == CardType::Aura {
+        let mut candidates = if self.is_oversized(state) {
+            self.base_playable_regions(state)
+                .into_iter()
+                .flat_map(|region| {
+                    Location::all_intersections()
+                        .into_iter()
+                        .map(move |location| location.with_region(region.clone()))
+                })
+                .collect()
+        } else if self.get_card_type() == CardType::Aura {
             Location::all_intersections()
         } else {
             self.base_playable_regions(state)

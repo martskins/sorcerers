@@ -1843,28 +1843,30 @@ impl Component for RealmComponent {
                     && preview_card_id == card_id
                 {
                     let dropped_zone_choices = self
-                        .cell_rects
+                        .intersection_rects
                         .iter()
-                        .find(|cell| cell.rect.contains(*pos))
-                        .map(|cell| {
+                        .find(|intersection| intersection.rect.contains(*pos))
+                        .map(|intersection| {
                             (
-                                Self::square_location_choices(locations, cell.id),
-                                cell.rect.center(),
+                                Self::intersection_location_choices(
+                                    locations,
+                                    &intersection.locations,
+                                ),
+                                intersection.rect.center(),
                             )
                         })
+                        .filter(|(locations, _)| !locations.is_empty())
                         .or_else(|| {
-                            self.intersection_rects
+                            self.cell_rects
                                 .iter()
-                                .find(|intersection| intersection.rect.contains(*pos))
-                                .map(|intersection| {
+                                .find(|cell| cell.rect.contains(*pos))
+                                .map(|cell| {
                                     (
-                                        Self::intersection_location_choices(
-                                            locations,
-                                            &intersection.locations,
-                                        ),
-                                        intersection.rect.center(),
+                                        Self::square_location_choices(locations, cell.id),
+                                        cell.rect.center(),
                                     )
                                 })
+                                .filter(|(locations, _)| !locations.is_empty())
                         });
 
                     if let Some((locations, pos)) = dropped_zone_choices {

@@ -675,6 +675,12 @@ impl Location {
                             return Ok(false);
                         }
 
+                        if !sqs.iter().all(|square| {
+                            Location::Square(*square, region.clone()).is_location(state)
+                        }) {
+                            return Ok(false);
+                        }
+
                         let site_squares: Vec<u8> = CardQuery::new()
                             .sites()
                             .in_play()

@@ -9,6 +9,18 @@ impl ActivatedAbility for DealDamage {
         "Deal Damage".to_string()
     }
 
+    fn can_activate(
+        &self,
+        _card_id: &CardId,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
+        Ok(CardQuery::new()
+            .in_zone(Zone::Hand)
+            .owned_by(player_id)
+            .any(state))
+    }
+
     async fn on_select(
         &self,
         card_id: &CardId,
@@ -20,8 +32,8 @@ impl ActivatedAbility for DealDamage {
             .units()
             .randomised()
             .count(1)
-            .in_zone(card.get_zone())
-            .id_not_in(vec![*card_id])
+            .in_location(card.get_location().clone())
+            .id_not(*card_id)
             .pick(&card.get_controller_id(state), state)
             .await?
         else {
