@@ -1673,6 +1673,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn set_artifact_base(&mut self, artifact_base: Option<ArtifactBase>) {
+        if let Some(artifact_base) = artifact_base
+            && let Some(existing) = self.get_artifact_base_mut()
+        {
+            *existing = artifact_base;
+        }
+    }
+
     fn get_artifact(&self) -> Option<&dyn Artifact> {
         None
     }

@@ -1,8 +1,8 @@
 use crate::zone::{Location, Zone};
 use crate::{
     card::{
-        Ability, Card, CardBaseMethods, CardStatus, Cost, Damage, FootSoldier, Frog, Region,
-        Rubble, UnitBase,
+        Ability, ArtifactBase, Card, CardBaseMethods, CardStatus, Cost, Damage, FootSoldier, Frog,
+        Region, Rubble, UnitBase,
     },
     game::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, distribute_damage,
@@ -204,6 +204,10 @@ pub enum Effect {
     AddAbilityCounter {
         card_id: CardId,
         counter: AbilityCounter,
+    },
+    SetArtifactBase {
+        card_id: CardId,
+        artifact_base: Option<ArtifactBase>,
     },
     AddStatusCounter {
         card_id: CardId,
@@ -488,6 +492,7 @@ impl Effect {
             Effect::RemoveAbility { card_id, .. } => Some(card_id),
             Effect::RemoveStatus { card_id, .. } => Some(card_id),
             Effect::AddAbilityCounter { card_id, .. } => Some(card_id),
+            Effect::SetArtifactBase { card_id, .. } => Some(card_id),
             Effect::AddStatusCounter { card_id, .. } => Some(card_id),
             Effect::AddCounter { card_id, .. } => Some(card_id),
             Effect::SetCardRegion { card_id, .. } => Some(card_id),
@@ -617,6 +622,7 @@ impl Effect {
                 ))
             }
             Effect::AddAbilityCounter { .. } => None,
+            Effect::SetArtifactBase { .. } => None,
             Effect::AddCounter { card_id, counter } => {
                 let card = state.get_card(card_id).get_name();
                 let fmt = |v: i16| {
@@ -2444,6 +2450,15 @@ impl Effect {
                 } else if let Some(base) = state.animated_unit_base_mut(card_id) {
                     base.ability_counters.push(counter.clone());
                 }
+            }
+            Effect::SetArtifactBase {
+                card_id,
+                artifact_base,
+            } => {
+                state
+                    .get_card_mut(card_id)
+                    .set_artifact_base(artifact_base.clone());
+                state.invalidate_runtime_caches();
             }
             Effect::AddStatusCounter {
                 card_id, counter, ..

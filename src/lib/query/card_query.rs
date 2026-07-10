@@ -441,6 +441,7 @@ impl<'a> PreparedCardQuery<'a> {
             && !card_types.contains(&card.get_card_type())
             && !(card_types.contains(&CardType::Minion) && state.is_minion_card(card_id))
             && !(card_types.contains(&CardType::Avatar) && card.is_avatar())
+            && !(card_types.contains(&CardType::Artifact) && card.is_artifact())
         {
             return false;
         }
