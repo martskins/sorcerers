@@ -601,6 +601,26 @@ pub fn popup_action_menu(
     painter: &Painter,
 ) -> Option<ActionMenuResponse> {
     let mut result: Option<ActionMenuResponse> = None;
+    const OPTION_KEYS: [egui::Key; 9] = [
+        egui::Key::Num1,
+        egui::Key::Num2,
+        egui::Key::Num3,
+        egui::Key::Num4,
+        egui::Key::Num5,
+        egui::Key::Num6,
+        egui::Key::Num7,
+        egui::Key::Num8,
+        egui::Key::Num9,
+    ];
+
+    if let Some(idx) = ui.ctx().input(|input| {
+        OPTION_KEYS
+            .iter()
+            .take(options.len())
+            .position(|key| input.key_pressed(*key))
+    }) {
+        result = Some(ActionMenuResponse::Selected(idx));
+    }
 
     #[derive(Clone, Copy)]
     enum AnchorSide {
@@ -844,7 +864,7 @@ pub fn popup_action_menu(
                 p.text(
                     pos2(origin.x + PAD_X, row_y + ROW_H / 2.0),
                     egui::Align2::CENTER_CENTER,
-                    ">",
+                    format!("{}.", idx + 1),
                     egui::FontId::proportional(14.0),
                     if resp.hovered() { ACCENT } else { MUTED },
                 );
