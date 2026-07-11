@@ -58,6 +58,8 @@ To play, you need to run both a server and a client.
 
 By default, the client connects to `127.0.0.1:5000`. You can override this with the `SORCERERS_SERVER_URL` environment variable.
 
+On first authentication, the client asks you to choose a Beta starter precon. The server saves that deck and its card quantities in PostgreSQL; it is then available as your initial deck on later logins.
+
 ## Contributing
 
 Contributions are welcome! Whether it's implementing new cards, fixing bugs, or improving the UI.

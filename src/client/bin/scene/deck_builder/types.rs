@@ -22,6 +22,23 @@ pub(super) enum TypeFilter {
 }
 
 #[derive(Clone, PartialEq)]
+pub(super) enum OwnershipFilter {
+    All,
+    Owned,
+    Unowned,
+}
+
+impl OwnershipFilter {
+    pub(super) fn label(&self) -> &'static str {
+        match self {
+            Self::All => "All cards",
+            Self::Owned => "Owned",
+            Self::Unowned => "Unowned",
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
 pub(super) enum SetFilter {
     All,
     Edition(Edition),

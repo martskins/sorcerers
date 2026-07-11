@@ -1,7 +1,7 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{self, *},
-    deck::precon::ALL_PRECONS,
+    deck::{CardNameWithCount, DeckList, precon::PreconDeck},
     game::Game,
     networking::{
         client::Client,
@@ -10,10 +10,10 @@ use sorcerers::{
     state::{Player, PlayerWithDeck},
     zone::{Location, Zone},
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{BTreeMap, HashMap}, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
-use crate::user_repository::UserRepository;
+use crate::repository::{User, UserRepository};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
@@ -21,6 +21,7 @@ pub struct Server {
     pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
+    pending_starter_selection: HashMap<std::net::SocketAddr, User>,
     users: UserRepository,
     /// When `true`, seed newly-created games with the local development test board.
     /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
@@ -35,6 +36,7 @@ impl Server {
             games: HashMap::new(),
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
+            pending_starter_selection: HashMap::new(),
             users,
             test_state,
         }
@@ -49,7 +51,7 @@ impl Server {
         match message {
             Message::ClientMessage(ClientMessage::Register { username, password }) => {
                 match self.users.register(username, password).await {
-                    Ok(()) => self.authenticate(username, stream, addr).await?,
+                    Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
                     Err(error) => self
                         .send_authentication_failure(error.user_message().to_string(), stream)
                         .await?,
@@ -57,7 +59,7 @@ impl Server {
             }
             Message::ClientMessage(ClientMessage::Login { username, password }) => {
                 match self.users.verify_login(username, password).await {
-                    Ok(()) => self.authenticate(username, stream, addr).await?,
+                    Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
                     Err(error) => self
                         .send_authentication_failure(error.user_message().to_string(), stream)
                         .await?,
@@ -67,6 +69,25 @@ impl Server {
             Message::ClientMessage(ClientMessage::Connect) => {
                 self.send_authentication_failure("register or log in before connecting".to_string(), stream)
                     .await?;
+            }
+            Message::ClientMessage(ClientMessage::ChooseStarterDeck { deck }) => {
+                let Some(user) = self.pending_starter_selection.remove(addr) else {
+                    return Ok(());
+                };
+                let deck_list = starter_deck_list(deck);
+                let cards = collection_from_deck(&deck_list);
+                match self
+                    .users
+                    .complete_starter_selection(user.id, deck, &deck_list, &cards)
+                    .await
+                {
+                    Ok(()) => self
+                        .authenticate(user, deck.clone(), vec![deck_list], cards, stream, addr)
+                        .await?,
+                    Err(error) => self
+                        .send_authentication_failure(error.user_message().to_string(), stream)
+                        .await?,
+                }
             }
             Message::ClientMessage(ClientMessage::JoinQueue {
                 player_id,
@@ -99,6 +120,7 @@ impl Server {
                     .remove(addr)
                     .unwrap_or(uuid::Uuid::nil());
                 self.looking_for_match.retain(|(id, _)| id != &player_id);
+                self.pending_starter_selection.remove(addr);
                 self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
 
                 if player_id == uuid::Uuid::nil() {
@@ -146,9 +168,45 @@ impl Server {
         Ok(())
     }
 
+    async fn begin_authenticated_session(
+        &mut self,
+        user: User,
+        stream: Arc<Mutex<OwnedWriteHalf>>,
+        addr: &std::net::SocketAddr,
+    ) -> anyhow::Result<()> {
+        match self.users.selected_starter_deck(user.id).await? {
+            Some(deck) => {
+                let saved_decks = self.users.load_decks(user.id).await?;
+                let collection = self.users.load_collection(user.id).await?;
+                self.authenticate(user, deck, saved_decks, collection, stream, addr)
+                    .await
+            }
+            None => {
+                Client::send_to_stream(
+                    &ServerMessage::StarterDeckSelection {
+                        username: user.username.clone(),
+                        available_decks: vec![
+                            PreconDeck::BetaFire,
+                            PreconDeck::BetaAir,
+                            PreconDeck::BetaEarth,
+                            PreconDeck::BetaWater,
+                        ],
+                    },
+                    Arc::clone(&stream),
+                )
+                .await?;
+                self.pending_starter_selection.insert(*addr, user);
+                Ok(())
+            }
+        }
+    }
+
     async fn authenticate(
         &mut self,
-        username: &str,
+        user: User,
+        starter_deck: PreconDeck,
+        saved_decks: Vec<DeckList>,
+        collection: Vec<CardNameWithCount>,
         stream: Arc<Mutex<OwnedWriteHalf>>,
         addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
@@ -161,11 +219,10 @@ impl Server {
         Client::send_to_stream(
             &ServerMessage::AuthenticationSuccess {
                 player_id,
-                username: username.to_owned(),
-                available_decks: ALL_PRECONS
-                    .iter()
-                    .map(|(deck, _)| (*deck).clone())
-                    .collect(),
+                username: user.username,
+                available_decks: vec![starter_deck],
+                saved_decks,
+                collection,
             },
             Arc::clone(&stream),
         )
@@ -358,4 +415,45 @@ impl Server {
             None
         }
     }
+}
+
+fn starter_deck_list(deck: &PreconDeck) -> DeckList {
+    let (_, cards) = deck.build(&uuid::Uuid::nil());
+    let mut sites = BTreeMap::new();
+    let mut spells = BTreeMap::new();
+    let mut avatar = String::new();
+
+    for card in cards {
+        if card.is_avatar() {
+            avatar = card.get_name().to_string();
+        } else if matches!(card.get_base().zone, Zone::Atlasbook) {
+            *sites.entry(card.get_name().to_string()).or_insert(0) += 1;
+        } else {
+            *spells.entry(card.get_name().to_string()).or_insert(0) += 1;
+        }
+    }
+
+    DeckList {
+        name: format!("{} Precon", deck.name()),
+        avatar,
+        sites: card_counts(sites),
+        spells: card_counts(spells),
+    }
+}
+
+fn collection_from_deck(deck: &DeckList) -> Vec<CardNameWithCount> {
+    let mut cards = deck.sites.clone();
+    cards.extend(deck.spells.clone());
+    cards.push(CardNameWithCount {
+        count: 1,
+        name: deck.avatar.clone(),
+    });
+    cards
+}
+
+fn card_counts(cards: BTreeMap<String, u8>) -> Vec<CardNameWithCount> {
+    cards
+        .into_iter()
+        .map(|(name, count)| CardNameWithCount { name, count })
+        .collect()
 }

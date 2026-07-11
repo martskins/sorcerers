@@ -3,7 +3,7 @@ use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
 };
-use sorcerers::deck::precon::PreconDeck;
+use sorcerers::deck::{CardNameWithCount, precon::PreconDeck};
 use sorcerers::game::PlayerId;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Edition, Rarity},
@@ -17,7 +17,7 @@ use unidecode::unidecode;
 mod save;
 mod types;
 
-use types::{CardEntry, ElemFilter, SetFilter, TypeFilter};
+use types::{CardEntry, ElemFilter, OwnershipFilter, SetFilter, TypeFilter};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
@@ -41,6 +41,8 @@ pub struct DeckBuilder {
     player_id: Option<PlayerId>,
     player_name: String,
     prev_available_decks: Vec<PreconDeck>,
+    prev_saved_decks: Vec<sorcerers::deck::DeckList>,
+    collection: HashMap<String, u8>,
 
     all_cards: Vec<CardEntry>,
     avatars: Vec<CardEntry>,
@@ -54,6 +56,7 @@ pub struct DeckBuilder {
     // Filters
     search: String,
     set_filter: SetFilter,
+    ownership_filter: OwnershipFilter,
     elem_filter: ElemFilter,
     type_filter: TypeFilter,
 
@@ -70,8 +73,10 @@ impl DeckBuilder {
         player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
+        prev_saved_decks: Vec<sorcerers::deck::DeckList>,
+        collection: Vec<CardNameWithCount>,
     ) -> Self {
-        Self::build(client, player_id, player_name, prev_available_decks, None)
+        Self::build(client, player_id, player_name, prev_available_decks, prev_saved_decks, collection, None)
     }
 
     /// Open the deck builder pre-populated with an existing saved deck for editing.
@@ -80,6 +85,8 @@ impl DeckBuilder {
         player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
+        prev_saved_decks: Vec<sorcerers::deck::DeckList>,
+        collection: Vec<CardNameWithCount>,
         deck: sorcerers::deck::DeckList,
     ) -> Self {
         Self::build(
@@ -87,6 +94,8 @@ impl DeckBuilder {
             player_id,
             player_name,
             prev_available_decks,
+            prev_saved_decks,
+            collection,
             Some(deck),
         )
     }
@@ -96,8 +105,14 @@ impl DeckBuilder {
         player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
+        prev_saved_decks: Vec<sorcerers::deck::DeckList>,
+        collection: Vec<CardNameWithCount>,
         existing: Option<sorcerers::deck::DeckList>,
     ) -> Self {
+        let collection: HashMap<String, u8> = collection
+            .into_iter()
+            .map(|card| (card.name, card.count))
+            .collect();
         let dummy_id = uuid::Uuid::nil();
         let mut all_cards: Vec<CardEntry> = Vec::new();
         let mut avatars: Vec<CardEntry> = Vec::new();
@@ -156,6 +171,8 @@ impl DeckBuilder {
             player_id,
             player_name,
             prev_available_decks,
+            prev_saved_decks,
+            collection,
             all_cards,
             avatars,
             deck_spells,
@@ -164,6 +181,7 @@ impl DeckBuilder {
             deck_name,
             search: String::new(),
             set_filter: SetFilter::All,
+            ownership_filter: OwnershipFilter::All,
             elem_filter: ElemFilter::All,
             type_filter: TypeFilter::All,
             save_error: None,
@@ -360,6 +378,7 @@ impl DeckBuilder {
 
         let search_lower = unidecode(&self.search).to_lowercase();
         let set_filter = self.set_filter.clone();
+        let ownership_filter = self.ownership_filter.clone();
         let elem_filter = self.elem_filter.clone();
         let type_filter = self.type_filter.clone();
 
@@ -377,6 +396,16 @@ impl DeckBuilder {
                     && &c.edition != edition
                 {
                     return false;
+                }
+                match ownership_filter {
+                    OwnershipFilter::All => {}
+                    OwnershipFilter::Owned if !self.collection.contains_key(&c.name) => {
+                        return false;
+                    }
+                    OwnershipFilter::Unowned if self.collection.contains_key(&c.name) => {
+                        return false;
+                    }
+                    _ => {}
                 }
                 match &elem_filter {
                     ElemFilter::All => {}
@@ -463,6 +492,24 @@ impl DeckBuilder {
             });
             ui.add_space(6.0);
 
+            egui::ComboBox::from_id_salt("deck_builder_ownership_filter")
+                .selected_text(self.ownership_filter.label())
+                .width(92.0)
+                .show_ui(ui, |ui| {
+                    for filter in [
+                        OwnershipFilter::All,
+                        OwnershipFilter::Owned,
+                        OwnershipFilter::Unowned,
+                    ] {
+                        ui.selectable_value(
+                            &mut self.ownership_filter,
+                            filter.clone(),
+                            filter.label(),
+                        );
+                    }
+                });
+            ui.add_space(6.0);
+
             // Element buttons — "All" as text, elements as triangle icons
             let btn_sz = vec2(30.0, 26.0);
 
@@ -539,13 +586,17 @@ impl DeckBuilder {
             .show(&mut list_ui, |ui| {
                 for entry in &filtered {
                     let is_site = matches!(entry.zone, Zone::Atlasbook);
+                    let owned_count = self.collection.get(&entry.name).copied().unwrap_or_default();
+                    let is_owned = owned_count > 0;
                     let map = if is_site {
                         &self.deck_sites
                     } else {
                         &self.deck_spells
                     };
                     let current_count = map.get(&entry.name).copied().unwrap_or(0);
-                    let max_copies = entry.max_copies();
+                    let max_copies = entry
+                        .max_copies()
+                        .min(owned_count);
 
                     let row_resp =
                         ui.allocate_response(vec2(ui.available_width(), ROW_H), Sense::hover());
@@ -558,7 +609,9 @@ impl DeckBuilder {
                     }
 
                     // Row background — highlight on hover
-                    let row_bg = if row_resp.hovered() {
+                    let row_bg = if !is_owned {
+                        Color32::from_rgba_premultiplied(18, 20, 29, 180)
+                    } else if row_resp.hovered() {
                         Color32::from_rgba_premultiplied(35, 45, 80, 220)
                     } else {
                         Color32::from_rgba_premultiplied(20, 25, 45, 200)
@@ -598,6 +651,13 @@ impl DeckBuilder {
                             TEXT_DIM,
                         );
                     }
+                    if !is_owned {
+                        ui.painter().rect_filled(
+                            thumb_rect,
+                            CornerRadius::same(2),
+                            Color32::from_rgba_premultiplied(8, 10, 16, 150),
+                        );
+                    }
 
                     // Card info
                     let info_x = thumb_rect.min.x + CARD_THUMB_H + 8.0;
@@ -607,8 +667,17 @@ impl DeckBuilder {
                         egui::Align2::LEFT_TOP,
                         &entry.name,
                         egui::FontId::proportional(14.0),
-                        TEXT_BRIGHT,
+                        if is_owned { TEXT_BRIGHT } else { TEXT_DIM },
                     );
+                    if !is_owned {
+                        ui.painter().text(
+                            pos2(row_rect.max.x - 170.0, row_rect.min.y + 10.0),
+                            egui::Align2::LEFT_TOP,
+                            "Not owned",
+                            egui::FontId::proportional(11.0),
+                            Color32::from_rgb(170, 105, 105),
+                        );
+                    }
 
                     let rarity_color = match entry.rarity {
                         Rarity::Ordinary => Color32::from_rgb(160, 160, 160),
@@ -622,7 +691,7 @@ impl DeckBuilder {
                         egui::Align2::LEFT_TOP,
                         format!("{}  {}", entry.card_type, entry.rarity),
                         egui::FontId::proportional(12.0),
-                        TEXT_DIM,
+                        if is_owned { TEXT_DIM } else { Color32::from_rgb(100, 105, 120) },
                     );
 
                     let rarity_x = sub_pos.x
@@ -853,6 +922,7 @@ impl DeckBuilder {
             );
 
             let is_selected = self.selected_avatar.as_deref() == Some(&entry.name);
+            let is_owned = self.collection.contains_key(&entry.name);
             let av_resp = ui.allocate_rect(av_rect, Sense::click());
 
             if av_resp.hovered() {
@@ -890,10 +960,23 @@ impl DeckBuilder {
                     TEXT_DIM,
                 );
             }
+            if !is_owned {
+                ui.painter().rect_filled(
+                    av_rect,
+                    CornerRadius::same(3),
+                    Color32::from_rgba_premultiplied(8, 10, 16, 150),
+                );
+            }
 
             // Name below portrait
             let name_pos = pos2(av_rect.center().x, av_rect.max.y + 3.0);
-            let av_name_col = if is_selected { GOLD } else { TEXT_DIM };
+            let av_name_col = if is_selected {
+                GOLD
+            } else if is_owned {
+                TEXT_DIM
+            } else {
+                Color32::from_rgb(100, 105, 120)
+            };
             ui.painter().text(
                 name_pos,
                 egui::Align2::CENTER_TOP,
@@ -902,7 +985,7 @@ impl DeckBuilder {
                 av_name_col,
             );
 
-            if av_resp.clicked() {
+            if av_resp.clicked() && is_owned {
                 self.selected_avatar = Some(entry.name.clone());
             }
         }

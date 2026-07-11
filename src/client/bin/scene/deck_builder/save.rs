@@ -9,6 +9,14 @@ impl DeckBuilder {
             self.player_id,
             self.player_name.clone(),
             self.prev_available_decks.clone(),
+            self.prev_saved_decks.clone(),
+            self.collection
+                .iter()
+                .map(|(name, &count)| CardNameWithCount {
+                    name: name.clone(),
+                    count,
+                })
+                .collect(),
         ))
     }
 

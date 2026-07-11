@@ -1,8 +1,9 @@
 mod server;
-mod user_repository;
+#[path = "../repository/mod.rs"]
+mod repository;
 
 use crate::server::Server;
-use crate::user_repository::UserRepository;
+use crate::repository::UserRepository;
 use sorcerers::{
     networking::{
         MAX_MESSAGE_SIZE,

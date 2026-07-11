@@ -4475,6 +4475,7 @@ dependencies = [
  "argon2",
  "async-channel",
  "rmp-serde",
+ "serde_json",
  "sorcerers-core",
  "sqlx",
  "thiserror 2.0.18",

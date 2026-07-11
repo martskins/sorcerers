@@ -3,7 +3,7 @@ use egui::{Color32, Context, Ui, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
-use sorcerers::deck::DeckList;
+use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
 use sorcerers::networking::message::ServerMessage;
@@ -11,7 +11,6 @@ use sorcerers::networking::{
     self,
     message::{ClientMessage, DeckChoice},
 };
-use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Menu {
@@ -19,6 +18,7 @@ pub struct Menu {
     player_id: Option<PlayerId>,
     available_decks: Vec<PreconDeck>,
     saved_decks: Vec<DeckList>,
+    collection: Vec<CardNameWithCount>,
     selected_saved_deck: Option<usize>,
     deck_error: Option<String>,
     looking_for_match: bool,
@@ -28,6 +28,8 @@ pub struct Menu {
     registering: bool,
     auth_requested: bool,
     auth_error: Option<String>,
+    selecting_starter_deck: bool,
+    starter_decks: Vec<PreconDeck>,
     connect_requested: bool,
     #[cfg(feature = "name-entry")]
     /// Time (seconds, from `ctx.input`) when the shake was triggered.
@@ -43,6 +45,7 @@ impl Menu {
             player_id: None,
             available_decks: vec![],
             saved_decks: DeckList::load_all(),
+            collection: vec![],
             selected_saved_deck: None,
             deck_error: None,
             looking_for_match: false,
@@ -52,6 +55,8 @@ impl Menu {
             registering: false,
             auth_requested: false,
             auth_error: None,
+            selecting_starter_deck: false,
+            starter_decks: vec![],
             connect_requested: false,
             #[cfg(feature = "name-entry")]
             shake_start: None,
@@ -65,12 +70,15 @@ impl Menu {
         player_id: Option<PlayerId>,
         player_name: String,
         available_decks: Vec<PreconDeck>,
+        saved_decks: Vec<DeckList>,
+        collection: Vec<CardNameWithCount>,
     ) -> Self {
         Self {
             client,
             player_id,
             available_decks,
-            saved_decks: DeckList::load_all(),
+            saved_decks,
+            collection,
             selected_saved_deck: None,
             deck_error: None,
             looking_for_match: false,
@@ -80,6 +88,8 @@ impl Menu {
             registering: false,
             auth_requested: false,
             auth_error: None,
+            selecting_starter_deck: false,
+            starter_decks: vec![],
             connect_requested: false,
             #[cfg(feature = "name-entry")]
             shake_start: None,
@@ -88,12 +98,6 @@ impl Menu {
     }
 
     pub fn update(&mut self, _ctx: &Context) {}
-
-    fn precon_parts(deck: &PreconDeck) -> (&'static str, &'static str) {
-        deck.name()
-            .split_once(" - ")
-            .unwrap_or(("Precon", deck.name()))
-    }
 
     fn play_precon(&mut self, deck: PreconDeck) {
         self.deck_error = None;
@@ -108,6 +112,16 @@ impl Menu {
     }
 
     fn play_custom_deck(&mut self, deck_list: DeckList) {
+        if let Some(starter_deck) = self
+            .available_decks
+            .iter()
+            .find(|deck| deck_list.name == format!("{} Precon", deck.name()))
+            .cloned()
+        {
+            self.play_precon(starter_deck);
+            return;
+        }
+
         match deck_list.validate() {
             Ok(()) => {
                 self.deck_error = None;
@@ -134,7 +148,7 @@ impl Menu {
         );
         ui.add_space(6.0);
         ui.label(
-            egui::RichText::new("Pick a precon for a quick game, or play and edit saved decks.")
+            egui::RichText::new("Play or edit a deck from your collection.")
                 .color(Color32::from_rgb(130, 145, 180))
                 .size(15.0),
         );
@@ -146,13 +160,7 @@ impl Menu {
             ui.add_space(left_pad);
             ui.vertical(|ui| {
                 ui.set_width(content_w);
-
-                let precon_h = 330.0;
-                self.render_precon_section(ui, content_w, precon_h);
-                ui.add_space(14.0);
-                // The precon section uses a 10 pixel margin between each button column, so we give
-                // it 10 pixels more width to make sure both have the same total width.
-                self.render_custom_section(ui, next_scene, content_w + 10.0, 330.0);
+                self.render_custom_section(ui, next_scene, content_w, 510.0);
 
                 if let Some(ref err) = self.deck_error.clone() {
                     ui.add_space(10.0);
@@ -164,94 +172,6 @@ impl Menu {
                 }
             });
         });
-    }
-
-    fn render_precon_section(&mut self, ui: &mut Ui, width: f32, height: f32) {
-        egui::Frame::new()
-            .fill(Color32::from_rgb(15, 18, 30))
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
-            .corner_radius(6.0)
-            .inner_margin(egui::Margin::same(14))
-            .show(ui, |ui| {
-                ui.set_width(width - 28.0);
-                ui.set_min_height(height - 28.0);
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new("Preconstructed")
-                            .color(Color32::from_rgb(235, 238, 255))
-                            .size(18.0)
-                            .strong(),
-                    );
-                    ui.add_space(8.0);
-                    ui.label(
-                        egui::RichText::new(format!("{} decks", self.available_decks.len()))
-                            .color(Color32::from_rgb(125, 145, 180))
-                            .size(13.0),
-                    );
-                });
-                ui.add_space(10.0);
-
-                let mut grouped: BTreeMap<&'static str, Vec<PreconDeck>> = BTreeMap::new();
-                for deck in self.available_decks.clone() {
-                    let (set, _) = Self::precon_parts(&deck);
-                    grouped.entry(set).or_default().push(deck);
-                }
-
-                egui::ScrollArea::vertical()
-                    .id_salt("precon_decks")
-                    .max_height(height - 56.0)
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        for (set, decks) in grouped {
-                            ui.label(
-                                egui::RichText::new(set)
-                                    .color(Color32::from_rgb(255, 200, 80))
-                                    .size(14.0)
-                                    .strong(),
-                            );
-                            ui.add_space(6.0);
-
-                            let gap = 10.0;
-                            let card_w = ((ui.available_width() - gap) / 2.0).max(180.0);
-                            for row in decks.chunks(2) {
-                                ui.horizontal(|ui| {
-                                    for (idx, deck) in row.iter().enumerate() {
-                                        self.render_precon_button(ui, deck.clone(), card_w);
-                                        if idx + 1 < row.len() {
-                                            ui.add_space(gap);
-                                        }
-                                    }
-                                });
-                                ui.add_space(8.0);
-                            }
-                        }
-                    });
-            });
-    }
-
-    fn render_precon_button(&mut self, ui: &mut Ui, deck: PreconDeck, width: f32) {
-        let (_, element) = Self::precon_parts(&deck);
-        let accent = match element {
-            "Earth" => Color32::from_rgb(117, 176, 96),
-            "Water" => Color32::from_rgb(74, 154, 210),
-            "Air" => Color32::from_rgb(180, 195, 230),
-            "Fire" => Color32::from_rgb(224, 107, 72),
-            _ => Color32::from_rgb(180, 160, 220),
-        };
-
-        let button = egui::Button::new(
-            egui::RichText::new(element)
-                .size(19.0)
-                .color(Color32::WHITE)
-                .strong(),
-        )
-        .fill(Color32::from_rgb(35, 44, 65))
-        .stroke(egui::Stroke::new(1.5, accent))
-        .min_size(vec2(width, 48.0));
-
-        if ui.add(button).on_hover_text(deck.name()).clicked() {
-            self.play_precon(deck);
-        }
     }
 
     fn render_custom_section(
@@ -271,7 +191,7 @@ impl Menu {
                 ui.set_min_height(height - 28.0);
                 ui.horizontal(|ui| {
                     ui.label(
-                        egui::RichText::new("Custom Decks")
+                        egui::RichText::new("Your Decks")
                             .color(Color32::from_rgb(235, 238, 255))
                             .size(18.0)
                             .strong(),
@@ -297,6 +217,8 @@ impl Menu {
                                     self.player_id,
                                     self.player_name.clone(),
                                     self.available_decks.clone(),
+                                    self.saved_decks.clone(),
+                                    self.collection.clone(),
                                 ),
                             ));
                         }
@@ -313,7 +235,7 @@ impl Menu {
                         .show(ui, |ui| {
                             ui.label(
                                 egui::RichText::new(
-                                    "No saved custom decks yet. Build one when you want to tune your own list.",
+                                    "No decks in your collection yet.",
                                 )
                                 .color(Color32::from_rgb(150, 165, 195))
                                 .size(14.0),
@@ -379,6 +301,15 @@ impl Menu {
                             .color(Color32::from_rgb(130, 145, 180))
                             .size(12.0),
                         );
+                        if self.available_decks.iter().any(|starter| {
+                            deck_list.name == format!("{} Precon", starter.name())
+                        }) {
+                            ui.label(
+                                egui::RichText::new("Preconstructed starter deck")
+                                    .color(Color32::from_rgb(255, 200, 80))
+                                    .size(12.0),
+                            );
+                        }
                     });
 
                     let play_btn = egui::Button::new(
@@ -406,6 +337,8 @@ impl Menu {
                                 self.player_id,
                                 self.player_name.clone(),
                                 self.available_decks.clone(),
+                                self.saved_decks.clone(),
+                                self.collection.clone(),
                                 deck_list,
                             ),
                         ));
@@ -429,18 +362,34 @@ impl Menu {
                 player_id,
                 username,
                 available_decks,
+                saved_decks,
+                collection,
             } => {
                 self.available_decks = available_decks.clone();
+                self.saved_decks = saved_decks.clone();
+                self.collection = collection.clone();
                 self.player_id = Some(*player_id);
                 self.player_name = username.clone();
                 self.password.clear();
                 self.auth_requested = false;
                 self.auth_error = None;
+                self.selecting_starter_deck = false;
                 None
             }
             ServerMessage::AuthenticationFailure { message } => {
                 self.auth_requested = false;
                 self.auth_error = Some(message.clone());
+                None
+            }
+            ServerMessage::StarterDeckSelection {
+                username,
+                available_decks,
+            } => {
+                self.player_name = username.clone();
+                self.password.clear();
+                self.auth_requested = false;
+                self.selecting_starter_deck = true;
+                self.starter_decks = available_decks.clone();
                 None
             }
             ServerMessage::GameStarted {
@@ -567,6 +516,35 @@ impl Menu {
                                 .color(Color32::WHITE)
                                 .size(28.0),
                         );
+                    } else if self.selecting_starter_deck {
+                        ui.label(
+                            egui::RichText::new("Choose your starter deck")
+                                .color(Color32::from_rgb(180, 180, 210))
+                                .size(20.0),
+                        );
+                        ui.add_space(8.0);
+                        ui.label("Its cards will be added to your collection.");
+                        ui.add_space(16.0);
+                        for deck in self.starter_decks.clone() {
+                            if ui
+                                .add_enabled(
+                                    !self.auth_requested,
+                                    egui::Button::new(deck.name()).min_size(vec2(260.0, 42.0)),
+                                )
+                                .clicked()
+                            {
+                                if self
+                                    .client
+                                    .send(ClientMessage::ChooseStarterDeck { deck })
+                                    .is_ok()
+                                {
+                                    self.auth_requested = true;
+                                } else {
+                                    self.auth_error = Some("Unable to reach the server".to_string());
+                                }
+                            }
+                            ui.add_space(6.0);
+                        }
                     } else if self.available_decks.is_empty() {
                         ui.label(
                             egui::RichText::new(if self.registering {

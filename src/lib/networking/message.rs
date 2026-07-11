@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardData, CardType},
-    deck::{Deck, DeckList, precon::PreconDeck},
+    deck::{CardNameWithCount, Deck, DeckList, precon::PreconDeck},
     game::{CardId, Direction, PlayerId, Resources, SoundEffect},
     zone::{Location, Zone},
 };
@@ -115,9 +115,15 @@ pub enum ServerMessage {
         player_id: PlayerId,
         username: String,
         available_decks: Vec<PreconDeck>,
+        saved_decks: Vec<DeckList>,
+        collection: Vec<CardNameWithCount>,
     },
     AuthenticationFailure {
         message: String,
+    },
+    StarterDeckSelection {
+        username: String,
+        available_decks: Vec<PreconDeck>,
     },
     GameStarted {
         game_id: uuid::Uuid,
@@ -236,6 +242,7 @@ impl ServerMessage {
             ServerMessage::ConnectResponse { player_id, .. } => *player_id,
             ServerMessage::AuthenticationSuccess { player_id, .. } => *player_id,
             ServerMessage::AuthenticationFailure { .. } => uuid::Uuid::nil(),
+            ServerMessage::StarterDeckSelection { .. } => uuid::Uuid::nil(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => *player_id,
@@ -261,6 +268,7 @@ pub enum ClientMessage {
     Disconnect,
     Register { username: String, password: String },
     Login { username: String, password: String },
+    ChooseStarterDeck { deck: PreconDeck },
     ResolveAction {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -373,6 +381,7 @@ impl ClientMessage {
             ClientMessage::Disconnect => uuid::Uuid::nil(),
             ClientMessage::Register { .. } => uuid::Uuid::nil(),
             ClientMessage::Login { .. } => uuid::Uuid::nil(),
+            ClientMessage::ChooseStarterDeck { .. } => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
             ClientMessage::PlayerDisconnected { game_id, .. } => *game_id,
             ClientMessage::PickCard { game_id, .. } => *game_id,
@@ -403,6 +412,7 @@ impl ClientMessage {
             ClientMessage::Disconnect => &NIL,
             ClientMessage::Register { .. } => &NIL,
             ClientMessage::Login { .. } => &NIL,
+            ClientMessage::ChooseStarterDeck { .. } => &NIL,
             ClientMessage::PlayerDisconnected { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,
