@@ -24,7 +24,7 @@ Sorcerers is very much a work in progress. Bugs and incomplete features are to b
 
 ### Prerequisites
 
-You'll need the [Rust toolchain](https://rustup.rs/) installed.
+You'll need the [Rust toolchain](https://rustup.rs/) and a PostgreSQL database. The server reads its connection string from `DATABASE_URL` and creates its `users` table on startup.
 
 ### Installation
 
@@ -39,6 +39,14 @@ cargo build --release
 To play, you need to run both a server and a client.
 
 1. **Start the Server:**
+
+   Create a local database once, then set its connection string:
+
+   ```sh
+   createdb sorcerers
+   export DATABASE_URL=postgres://localhost/sorcerers
+   ```
+
    ```sh
    cargo run --release --bin server
    ```

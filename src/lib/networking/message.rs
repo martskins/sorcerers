@@ -111,6 +111,14 @@ pub enum ServerMessage {
         player_id: PlayerId,
         available_decks: Vec<PreconDeck>,
     },
+    AuthenticationSuccess {
+        player_id: PlayerId,
+        username: String,
+        available_decks: Vec<PreconDeck>,
+    },
+    AuthenticationFailure {
+        message: String,
+    },
     GameStarted {
         game_id: uuid::Uuid,
         player1: PlayerId,
@@ -226,6 +234,8 @@ impl ServerMessage {
             ServerMessage::PickAction { player_id, .. } => *player_id,
             ServerMessage::PickPath { player_id, .. } => *player_id,
             ServerMessage::ConnectResponse { player_id, .. } => *player_id,
+            ServerMessage::AuthenticationSuccess { player_id, .. } => *player_id,
+            ServerMessage::AuthenticationFailure { .. } => uuid::Uuid::nil(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => *player_id,
@@ -249,6 +259,8 @@ impl ToMessage for ServerMessage {
 pub enum ClientMessage {
     Connect,
     Disconnect,
+    Register { username: String, password: String },
+    Login { username: String, password: String },
     ResolveAction {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -359,6 +371,8 @@ impl ClientMessage {
         match self {
             ClientMessage::Connect => uuid::Uuid::nil(),
             ClientMessage::Disconnect => uuid::Uuid::nil(),
+            ClientMessage::Register { .. } => uuid::Uuid::nil(),
+            ClientMessage::Login { .. } => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
             ClientMessage::PlayerDisconnected { game_id, .. } => *game_id,
             ClientMessage::PickCard { game_id, .. } => *game_id,
@@ -387,6 +401,8 @@ impl ClientMessage {
         match self {
             ClientMessage::Connect => &NIL,
             ClientMessage::Disconnect => &NIL,
+            ClientMessage::Register { .. } => &NIL,
+            ClientMessage::Login { .. } => &NIL,
             ClientMessage::PlayerDisconnected { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,

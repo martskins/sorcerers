@@ -23,6 +23,11 @@ pub struct Menu {
     deck_error: Option<String>,
     looking_for_match: bool,
     player_name: String,
+    username: String,
+    password: String,
+    registering: bool,
+    auth_requested: bool,
+    auth_error: Option<String>,
     connect_requested: bool,
     #[cfg(feature = "name-entry")]
     /// Time (seconds, from `ctx.input`) when the shake was triggered.
@@ -42,6 +47,11 @@ impl Menu {
             deck_error: None,
             looking_for_match: false,
             player_name: String::new(),
+            username: String::new(),
+            password: String::new(),
+            registering: false,
+            auth_requested: false,
+            auth_error: None,
             connect_requested: false,
             #[cfg(feature = "name-entry")]
             shake_start: None,
@@ -65,6 +75,11 @@ impl Menu {
             deck_error: None,
             looking_for_match: false,
             player_name,
+            username: String::new(),
+            password: String::new(),
+            registering: false,
+            auth_requested: false,
+            auth_error: None,
             connect_requested: false,
             #[cfg(feature = "name-entry")]
             shake_start: None,
@@ -410,6 +425,24 @@ impl Menu {
                 self.connect_requested = false;
                 None
             }
+            ServerMessage::AuthenticationSuccess {
+                player_id,
+                username,
+                available_decks,
+            } => {
+                self.available_decks = available_decks.clone();
+                self.player_id = Some(*player_id);
+                self.player_name = username.clone();
+                self.password.clear();
+                self.auth_requested = false;
+                self.auth_error = None;
+                None
+            }
+            ServerMessage::AuthenticationFailure { message } => {
+                self.auth_requested = false;
+                self.auth_error = Some(message.clone());
+                None
+            }
             ServerMessage::GameStarted {
                 player1,
                 player2,
@@ -464,12 +497,6 @@ impl Menu {
         // Clear error state once the user has typed something
         if !self.player_name.is_empty() {
             self.show_name_error = false;
-        }
-
-        #[cfg(not(feature = "name-entry"))]
-        if self.player_id.is_none() && !self.connect_requested {
-            self.client.send(ClientMessage::Connect).ok();
-            self.connect_requested = true;
         }
 
         let mut next_scene: Option<Scene> = None;
@@ -541,84 +568,77 @@ impl Menu {
                                 .size(28.0),
                         );
                     } else if self.available_decks.is_empty() {
-                        #[cfg(feature = "name-entry")]
-                        {
-                            // ── Name entry ────────────────────────────────────────
-                            ui.label(
-                                egui::RichText::new("Enter your name")
-                                    .color(Color32::from_rgb(180, 180, 210))
-                                    .size(20.0),
-                            );
-                            ui.add_space(12.0);
-
-                            // We render the input via `allocate_exact_size` +
-                            // `ui.put` so we can apply the shake offset.
-                            let input_w = 320.0;
-                            let input_h = 46.0;
-                            let (base_rect, _) = ui
-                                .allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
-                            let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
-
-                            let te = egui::TextEdit::singleline(&mut self.player_name)
-                                .font(egui::FontId::proportional(24.0))
-                                .text_color(Color32::DARK_GRAY)
-                                .hint_text("Your name…")
-                                .frame(
-                                    egui::Frame::new()
-                                        .corner_radius(2.5)
-                                        .stroke(egui::Stroke::new(2.0, Color32::GRAY)),
-                                );
-                            let resp = ui.put(shaken_rect, te);
-
-                            // Auto-focus the field on first render
-                            if resp.gained_focus()
-                                || (!resp.has_focus() && self.player_name.is_empty())
-                            {
-                                resp.request_focus();
-                            }
-
-                            // Error hint text
-                            let is_error = self.show_name_error && self.player_name.is_empty();
-                            if is_error {
-                                ui.add_space(4.0);
-                                ui.label(
-                                    egui::RichText::new("Please enter a name to continue")
-                                        .color(Color32::from_rgb(220, 80, 60))
-                                        .size(14.0),
-                                );
+                        ui.label(
+                            egui::RichText::new(if self.registering {
+                                "Create account"
                             } else {
-                                ui.add_space(20.0); // reserve same space so layout doesn't shift
-                            }
+                                "Log in"
+                            })
+                            .color(Color32::from_rgb(180, 180, 210))
+                            .size(20.0),
+                        );
+                        ui.add_space(12.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.username)
+                                .hint_text("Username")
+                                .desired_width(320.0),
+                        );
+                        ui.add_space(8.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.password)
+                                .password(true)
+                                .hint_text("Password")
+                                .desired_width(320.0),
+                        );
+                        ui.add_space(10.0);
 
-                            let btn = egui::Button::new(
-                                egui::RichText::new("Search for Match")
-                                    .size(24.0)
-                                    .color(Color32::WHITE),
-                            )
-                            .min_size(vec2(280.0, 52.0));
-
-                            let clicked = ui.add(btn).clicked()
-                                || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
-
-                            if clicked {
-                                if self.player_name.is_empty() {
-                                    // Trigger shake + error state
-                                    self.shake_start = Some(time);
-                                    self.show_name_error = true;
-                                    ui.ctx().request_repaint();
-                                } else {
-                                    self.client.send(ClientMessage::Connect).ok();
-                                }
-                            }
+                        if let Some(error) = &self.auth_error {
+                            ui.label(
+                                egui::RichText::new(error)
+                                    .color(Color32::from_rgb(220, 80, 60)),
+                            );
+                            ui.add_space(6.0);
                         }
 
-                        #[cfg(not(feature = "name-entry"))]
+                        let submit = ui.add_enabled(
+                            !self.auth_requested && !self.username.is_empty() && !self.password.is_empty(),
+                            egui::Button::new(if self.registering { "Create account" } else { "Log in" })
+                                .min_size(vec2(180.0, 42.0)),
+                        );
+                        if submit.clicked() {
+                            let message = if self.registering {
+                                ClientMessage::Register {
+                                    username: self.username.clone(),
+                                    password: self.password.clone(),
+                                }
+                            } else {
+                                ClientMessage::Login {
+                                    username: self.username.clone(),
+                                    password: self.password.clone(),
+                                }
+                            };
+                            if self.client.send(message).is_ok() {
+                                self.auth_requested = true;
+                                self.auth_error = None;
+                            } else {
+                                self.auth_error = Some("Unable to reach the server".to_string());
+                            }
+                        }
+                        if self.auth_requested {
+                            ui.add_space(8.0);
+                            ui.label("Authenticating...");
+                        }
+                        ui.add_space(10.0);
+                        if ui
+                            .link(if self.registering {
+                                "Already have an account? Log in"
+                            } else {
+                                "Need an account? Register"
+                            })
+                            .clicked()
                         {
-                            ui.label(
-                                egui::RichText::new("Connecting...")
-                                    .color(Color32::WHITE)
-                                    .size(28.0),
-                            );
+                            self.registering = !self.registering;
+                            self.auth_error = None;
                         }
                     } else {
                         self.render_deck_selection(ui, &mut next_scene);

@@ -1,6 +1,8 @@
 mod server;
+mod user_repository;
 
 use crate::server::Server;
+use crate::user_repository::UserRepository;
 use sorcerers::{
     networking::{
         MAX_MESSAGE_SIZE,
@@ -22,8 +24,12 @@ async fn main() -> anyhow::Result<()> {
         println!("Server test-state mode enabled – new games will include the seeded test board.");
     }
 
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set, for example postgres://user:password@localhost/sorcerers");
+    let users = UserRepository::connect(&database_url).await?;
+
     let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;
-    let server = Arc::new(Mutex::new(Server::new(test_state)));
+    let server = Arc::new(Mutex::new(Server::new(test_state, users)));
 
     loop {
         let (stream, addr) = socket.accept().await?;

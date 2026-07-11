@@ -13,25 +13,29 @@ use sorcerers::{
 use std::{collections::HashMap, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
+use crate::user_repository::UserRepository;
+
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
     pub game_players: HashMap<uuid::Uuid, Vec<Player>>,
     pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
+    users: UserRepository,
     /// When `true`, seed newly-created games with the local development test board.
     /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
     pub test_state: bool,
 }
 
 impl Server {
-    pub fn new(test_state: bool) -> Self {
+    pub fn new(test_state: bool, users: UserRepository) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
             games: HashMap::new(),
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
+            users,
             test_state,
         }
     }
@@ -43,21 +47,26 @@ impl Server {
         addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
         match message {
+            Message::ClientMessage(ClientMessage::Register { username, password }) => {
+                match self.users.register(username, password).await {
+                    Ok(()) => self.authenticate(username, stream, addr).await?,
+                    Err(error) => self
+                        .send_authentication_failure(error.user_message().to_string(), stream)
+                        .await?,
+                }
+            }
+            Message::ClientMessage(ClientMessage::Login { username, password }) => {
+                match self.users.verify_login(username, password).await {
+                    Ok(()) => self.authenticate(username, stream, addr).await?,
+                    Err(error) => self
+                        .send_authentication_failure(error.user_message().to_string(), stream)
+                        .await?,
+                }
+            }
+            // Authentication must precede all gameplay messages.
             Message::ClientMessage(ClientMessage::Connect) => {
-                let player_id = uuid::Uuid::new_v4();
-                Client::send_to_stream(
-                    &ServerMessage::ConnectResponse {
-                        player_id,
-                        available_decks: ALL_PRECONS
-                            .iter()
-                            .map(|(deck, _)| (*deck).clone())
-                            .collect(),
-                    },
-                    Arc::clone(&stream),
-                )
-                .await?;
-                self.streams.insert(player_id, stream);
-                self.addr_to_player.insert(*addr, player_id);
+                self.send_authentication_failure("register or log in before connecting".to_string(), stream)
+                    .await?;
             }
             Message::ClientMessage(ClientMessage::JoinQueue {
                 player_id,
@@ -87,8 +96,7 @@ impl Server {
             Message::ClientMessage(ClientMessage::Disconnect) => {
                 let player_id = self
                     .addr_to_player
-                    .get(addr)
-                    .cloned()
+                    .remove(addr)
                     .unwrap_or(uuid::Uuid::nil());
                 self.looking_for_match.retain(|(id, _)| id != &player_id);
                 self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
@@ -136,6 +144,43 @@ impl Server {
         }
 
         Ok(())
+    }
+
+    async fn authenticate(
+        &mut self,
+        username: &str,
+        stream: Arc<Mutex<OwnedWriteHalf>>,
+        addr: &std::net::SocketAddr,
+    ) -> anyhow::Result<()> {
+        if let Some(previous_player_id) = self.addr_to_player.remove(addr) {
+            self.streams.remove(&previous_player_id);
+            self.looking_for_match
+                .retain(|(player_id, _)| *player_id != previous_player_id);
+        }
+        let player_id = uuid::Uuid::new_v4();
+        Client::send_to_stream(
+            &ServerMessage::AuthenticationSuccess {
+                player_id,
+                username: username.to_owned(),
+                available_decks: ALL_PRECONS
+                    .iter()
+                    .map(|(deck, _)| (*deck).clone())
+                    .collect(),
+            },
+            Arc::clone(&stream),
+        )
+        .await?;
+        self.streams.insert(player_id, stream);
+        self.addr_to_player.insert(*addr, player_id);
+        Ok(())
+    }
+
+    async fn send_authentication_failure(
+        &self,
+        message: String,
+        stream: Arc<Mutex<OwnedWriteHalf>>,
+    ) -> anyhow::Result<()> {
+        Client::send_to_stream(&ServerMessage::AuthenticationFailure { message }, stream).await
     }
 
     pub async fn create_game(
