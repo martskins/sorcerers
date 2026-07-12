@@ -3,7 +3,8 @@ use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
 };
-use sorcerers::deck::{CardNameWithCount, precon::PreconDeck};
+use sorcerers::collection::CollectedCard;
+use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Edition, Rarity},
@@ -32,7 +33,7 @@ const HEADER_H: f32 = 48.0;
 const LEFT_FRAC: f32 = 0.62;
 const CARD_THUMB_W: f32 = 44.0;
 const CARD_THUMB_H: f32 = 62.0;
-const ROW_H: f32 = 68.0;
+const ROW_H: f32 = 88.0;
 const THRESH_SZ: f32 = 10.0;
 
 // ── DeckBuilder scene ────────────────────────────────────────────────────────
@@ -42,14 +43,15 @@ pub struct DeckBuilder {
     player_name: String,
     prev_available_decks: Vec<PreconDeck>,
     prev_saved_decks: Vec<sorcerers::deck::DeckList>,
+    collection_entries: Vec<CollectedCard>,
     collection: HashMap<String, u8>,
 
     all_cards: Vec<CardEntry>,
     avatars: Vec<CardEntry>,
 
-    // Deck contents: name -> count
-    deck_spells: HashMap<String, u8>,
-    deck_sites: HashMap<String, u8>,
+    // Deck contents: (name, is_foil) -> count
+    deck_spells: HashMap<(String, bool), u8>,
+    deck_sites: HashMap<(String, bool), u8>,
     selected_avatar: Option<String>,
     deck_name: String,
 
@@ -68,13 +70,25 @@ pub struct DeckBuilder {
 }
 
 impl DeckBuilder {
+    fn collection_counts(&self, name: &str) -> (u8, u8) {
+        self.collection_entries.iter().fold((0, 0), |(regular, foil), card| {
+            if card.name != name {
+                (regular, foil)
+            } else if card.is_foil {
+                (regular, foil.saturating_add(card.count))
+            } else {
+                (regular.saturating_add(card.count), foil)
+            }
+        })
+    }
+
     pub fn from_menu(
         client: networking::client::Client,
         player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
         prev_saved_decks: Vec<sorcerers::deck::DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
     ) -> Self {
         Self::build(client, player_id, player_name, prev_available_decks, prev_saved_decks, collection, None)
     }
@@ -86,7 +100,7 @@ impl DeckBuilder {
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
         prev_saved_decks: Vec<sorcerers::deck::DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
         deck: sorcerers::deck::DeckList,
     ) -> Self {
         Self::build(
@@ -106,13 +120,15 @@ impl DeckBuilder {
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
         prev_saved_decks: Vec<sorcerers::deck::DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
         existing: Option<sorcerers::deck::DeckList>,
     ) -> Self {
-        let collection: HashMap<String, u8> = collection
-            .into_iter()
-            .map(|card| (card.name, card.count))
-            .collect();
+        let collection_entries = collection;
+        let collection: HashMap<String, u8> = collection_entries.iter().fold(HashMap::new(), |mut cards, card| {
+            let count = cards.entry(card.name.clone()).or_insert(0u8);
+            *count = count.saturating_add(card.count);
+            cards
+        });
         let dummy_id = uuid::Uuid::nil();
         let mut all_cards: Vec<CardEntry> = Vec::new();
         let mut avatars: Vec<CardEntry> = Vec::new();
@@ -154,13 +170,16 @@ impl DeckBuilder {
 
         // Pre-populate from existing deck if editing
         let (deck_spells, deck_sites, selected_avatar, deck_name) = if let Some(ref dl) = existing {
-            let spells: HashMap<String, u8> = dl
+            let spells: HashMap<(String, bool), u8> = dl
                 .spells
                 .iter()
-                .map(|c| (c.name.clone(), c.count))
+                .map(|c| ((c.name.clone(), c.is_foil), c.count))
                 .collect();
-            let sites: HashMap<String, u8> =
-                dl.sites.iter().map(|c| (c.name.clone(), c.count)).collect();
+            let sites: HashMap<(String, bool), u8> = dl
+                .sites
+                .iter()
+                .map(|c| ((c.name.clone(), c.is_foil), c.count))
+                .collect();
             (spells, sites, Some(dl.avatar.clone()), dl.name.clone())
         } else {
             (HashMap::new(), HashMap::new(), None, String::new())
@@ -172,6 +191,7 @@ impl DeckBuilder {
             player_name,
             prev_available_decks,
             prev_saved_decks,
+            collection_entries,
             collection,
             all_cards,
             avatars,
@@ -370,7 +390,8 @@ impl DeckBuilder {
         let pad = 8.0;
 
         // Filter row
-        let filter_h = 48.0;
+        // Dropdowns are taller than the icon buttons; reserve a little clearance before cards.
+        let filter_h = 64.0;
         let filter_rect = Rect::from_min_size(
             rect.min + vec2(pad, pad),
             vec2(rect.width() - pad * 2.0, filter_h),
@@ -454,7 +475,7 @@ impl DeckBuilder {
             .collect();
 
         let mut filter_ui = ui.new_child(egui::UiBuilder::new().max_rect(filter_rect));
-        filter_ui.horizontal(|ui| {
+        filter_ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
             // Search field
             let te = egui::TextEdit::singleline(&mut self.search)
                 .hint_text("🔍 Search…")
@@ -492,22 +513,25 @@ impl DeckBuilder {
             });
             ui.add_space(6.0);
 
-            egui::ComboBox::from_id_salt("deck_builder_ownership_filter")
-                .selected_text(self.ownership_filter.label())
-                .width(92.0)
-                .show_ui(ui, |ui| {
-                    for filter in [
-                        OwnershipFilter::All,
-                        OwnershipFilter::Owned,
-                        OwnershipFilter::Unowned,
-                    ] {
-                        ui.selectable_value(
-                            &mut self.ownership_filter,
-                            filter.clone(),
-                            filter.label(),
-                        );
-                    }
-                });
+            ui.scope(|ui| {
+                ui.spacing_mut().interact_size.y = 26.0;
+                egui::ComboBox::from_id_salt("deck_builder_ownership_filter")
+                    .selected_text(self.ownership_filter.label())
+                    .width(92.0)
+                    .show_ui(ui, |ui| {
+                        for filter in [
+                            OwnershipFilter::All,
+                            OwnershipFilter::Owned,
+                            OwnershipFilter::Unowned,
+                        ] {
+                            ui.selectable_value(
+                                &mut self.ownership_filter,
+                                filter.clone(),
+                                filter.label(),
+                            );
+                        }
+                    });
+            });
             ui.add_space(6.0);
 
             // Element buttons — "All" as text, elements as triangle icons
@@ -585,18 +609,30 @@ impl DeckBuilder {
             .id_salt("card_list")
             .show(&mut list_ui, |ui| {
                 for entry in &filtered {
+                    let (_, available_foils) = self.collection_counts(&entry.name);
+                    for is_foil in [false, true] {
+                    if is_foil && available_foils == 0 {
+                        continue;
+                    }
                     let is_site = matches!(entry.zone, Zone::Atlasbook);
-                    let owned_count = self.collection.get(&entry.name).copied().unwrap_or_default();
-                    let is_owned = owned_count > 0;
+                    let (regular_count, foil_count) = self.collection_counts(&entry.name);
+                    let printing_owned_count = if is_foil { foil_count } else { regular_count };
+                    let is_owned = printing_owned_count > 0;
                     let map = if is_site {
                         &self.deck_sites
                     } else {
                         &self.deck_spells
                     };
-                    let current_count = map.get(&entry.name).copied().unwrap_or(0);
-                    let max_copies = entry
-                        .max_copies()
-                        .min(owned_count);
+                    let regular_in_deck = map
+                        .get(&(entry.name.clone(), false))
+                        .copied()
+                        .unwrap_or(0);
+                    let foil_in_deck = map
+                        .get(&(entry.name.clone(), true))
+                        .copied()
+                        .unwrap_or(0);
+                    let total_in_deck = regular_in_deck.saturating_add(foil_in_deck);
+                    let current_in_deck = if is_foil { foil_in_deck } else { regular_in_deck };
 
                     let row_resp =
                         ui.allocate_response(vec2(ui.available_width(), ROW_H), Sense::hover());
@@ -628,7 +664,10 @@ impl DeckBuilder {
                     let thumb_rect = Rect::from_min_size(
                         row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0),
                         image_size,
-                    );
+                    )
+                    // Keep the card art inside its row; some card textures render a
+                    // couple of pixels beyond their requested bounds otherwise.
+                    .shrink2(vec2(2.0, 5.0));
 
                     if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx)
                     {
@@ -667,15 +706,20 @@ impl DeckBuilder {
                         egui::Align2::LEFT_TOP,
                         &entry.name,
                         egui::FontId::proportional(14.0),
-                        if is_owned { TEXT_BRIGHT } else { TEXT_DIM },
+                        if is_foil {
+                            Color32::from_rgb(255, 215, 120)
+                        } else if is_owned {
+                            TEXT_BRIGHT
+                        } else {
+                            TEXT_DIM
+                        },
                     );
-                    if !is_owned {
-                        ui.painter().text(
-                            pos2(row_rect.max.x - 170.0, row_rect.min.y + 10.0),
-                            egui::Align2::LEFT_TOP,
-                            "Not owned",
-                            egui::FontId::proportional(11.0),
-                            Color32::from_rgb(170, 105, 105),
+                    if is_foil {
+                        ui.painter().rect_stroke(
+                            thumb_rect.shrink(0.5),
+                            CornerRadius::same(2),
+                            Stroke::new(1.0, Color32::from_rgb(255, 215, 120)),
+                            StrokeKind::Inside,
                         );
                     }
 
@@ -686,10 +730,11 @@ impl DeckBuilder {
                         Rarity::Unique => Color32::from_rgb(200, 80, 200),
                     };
                     let sub_pos = pos2(info_x, row_rect.min.y + 28.0);
+                    let card_type_text = entry.card_type.to_string();
                     ui.painter().text(
                         sub_pos,
                         egui::Align2::LEFT_TOP,
-                        format!("{}  {}", entry.card_type, entry.rarity),
+                        format!("{card_type_text}  "),
                         egui::FontId::proportional(12.0),
                         if is_owned { TEXT_DIM } else { Color32::from_rgb(100, 105, 120) },
                     );
@@ -697,7 +742,7 @@ impl DeckBuilder {
                     let rarity_x = sub_pos.x
                         + ui.painter()
                             .layout_no_wrap(
-                                format!("{}  ", entry.card_type),
+                                format!("{card_type_text}  "),
                                 egui::FontId::proportional(12.0),
                                 TEXT_DIM,
                             )
@@ -710,9 +755,35 @@ impl DeckBuilder {
                         egui::FontId::proportional(12.0),
                         rarity_color,
                     );
+                    let printing_x = rarity_x
+                        + ui.painter()
+                            .layout_no_wrap(
+                                entry.rarity.to_string(),
+                                egui::FontId::proportional(12.0),
+                                rarity_color,
+                            )
+                            .rect
+                            .width();
+                    ui.painter().text(
+                        pos2(printing_x, sub_pos.y),
+                        egui::Align2::LEFT_TOP,
+                        if is_foil {
+                            "  ·  ✦ Foil"
+                        } else {
+                            "  ·  Standard"
+                        },
+                        egui::FontId::proportional(12.0),
+                        if is_foil {
+                            Color32::from_rgb(255, 215, 120)
+                        } else if is_owned {
+                            TEXT_DIM
+                        } else {
+                            Color32::from_rgb(100, 105, 120)
+                        },
+                    );
 
                     // Mana + thresholds
-                    let cost_y = row_rect.min.y + 44.0;
+                    let cost_y = row_rect.min.y + 49.0;
                     let mut cx = info_x;
                     if entry.mana > 0 {
                         ui.painter().text(
@@ -744,103 +815,86 @@ impl DeckBuilder {
                         );
                     }
 
-                    // +/- buttons on the right
-                    let btn_w = 26.0;
-                    let btn_h = 26.0;
-                    let minus_rect = Rect::from_min_size(
-                        pos2(
-                            row_rect.max.x - btn_w * 2.0 - 36.0,
-                            row_rect.center().y - btn_h / 2.0,
-                        ),
-                        vec2(btn_w, btn_h),
-                    );
-                    let count_rect = Rect::from_min_size(
-                        pos2(
-                            row_rect.max.x - btn_w - 32.0,
-                            row_rect.center().y - btn_h / 2.0,
-                        ),
-                        vec2(28.0, btn_h),
-                    );
-                    let plus_rect = Rect::from_min_size(
-                        pos2(
-                            row_rect.max.x - btn_w - 4.0,
-                            row_rect.center().y - btn_h / 2.0,
-                        ),
-                        vec2(btn_w, btn_h),
-                    );
-
-                    // Minus
-                    let minus_resp = ui.allocate_rect(minus_rect, Sense::click());
-                    let minus_bg = if current_count > 0 && minus_resp.hovered() {
-                        Color32::from_rgb(130, 40, 40)
+                    // These controls affect this printing only.
+                    let btn_w = 24.0;
+                    let btn_h = 23.0;
+                    let controls_left = row_rect.max.x - 84.0;
+                    let controls_y = row_rect.min.y + 29.0;
+                    let label_color = if is_foil {
+                        Color32::from_rgb(255, 215, 120)
                     } else {
-                        Color32::from_rgb(55, 25, 25)
+                        TEXT_DIM
                     };
-                    ui.painter()
-                        .rect_filled(minus_rect, CornerRadius::same(3), minus_bg);
+                    ui.painter().text(
+                        pos2(controls_left + 36.0, row_rect.min.y + 7.0),
+                        egui::Align2::CENTER_TOP,
+                        format!("{}/{}", current_in_deck, printing_owned_count),
+                        egui::FontId::proportional(10.0),
+                        label_color,
+                    );
+                    let minus_rect = Rect::from_min_size(pos2(controls_left, controls_y), vec2(btn_w, btn_h));
+                    let count_rect = Rect::from_min_size(pos2(controls_left + 25.0, controls_y), vec2(34.0, btn_h));
+                    let plus_rect = Rect::from_min_size(pos2(controls_left + 60.0, controls_y), vec2(btn_w, btn_h));
+                    let can_add = current_in_deck < printing_owned_count
+                        && total_in_deck < entry.max_copies();
+
+                    let minus_response = ui.allocate_rect(minus_rect, Sense::click());
+                    ui.painter().rect_filled(
+                        minus_rect,
+                        CornerRadius::same(3),
+                        if current_in_deck > 0 && minus_response.hovered() {
+                            Color32::from_rgb(130, 40, 40)
+                        } else {
+                            Color32::from_rgb(55, 25, 25)
+                        },
+                    );
                     ui.painter().text(
                         minus_rect.center(),
                         egui::Align2::CENTER_CENTER,
                         "−",
-                        egui::FontId::proportional(16.0),
+                        egui::FontId::proportional(15.0),
                         Color32::WHITE,
                     );
-                    if minus_resp.clicked() && current_count > 0 {
-                        let map = if is_site {
-                            &mut self.deck_sites
+                    let plus_response = ui.allocate_rect(plus_rect, Sense::click());
+                    ui.painter().rect_filled(
+                        plus_rect,
+                        CornerRadius::same(3),
+                        if can_add && plus_response.hovered() {
+                            if is_foil { Color32::from_rgb(145, 105, 28) } else { Color32::from_rgb(30, 110, 50) }
+                        } else if can_add {
+                            if is_foil { Color32::from_rgb(100, 70, 20) } else { Color32::from_rgb(20, 70, 35) }
                         } else {
-                            &mut self.deck_spells
-                        };
-                        let count = map.entry(entry.name.clone()).or_insert(0);
-                        if *count > 0 {
-                            *count -= 1;
-                        }
-                        if *count == 0 {
-                            map.remove(&entry.name);
-                        }
-                    }
-
-                    // Count
+                            Color32::from_rgb(25, 30, 25)
+                        },
+                    );
                     ui.painter().text(
                         count_rect.center(),
                         egui::Align2::CENTER_CENTER,
-                        format!("{current_count}"),
-                        egui::FontId::proportional(15.0),
-                        TEXT_BRIGHT,
+                        format!("{current_in_deck}"),
+                        egui::FontId::proportional(14.0),
+                        label_color,
                     );
-
-                    // Plus
-                    let plus_resp = ui.allocate_rect(plus_rect, Sense::click());
-                    let can_add = current_count < max_copies;
-                    let plus_bg = if can_add && plus_resp.hovered() {
-                        Color32::from_rgb(30, 110, 50)
-                    } else if can_add {
-                        Color32::from_rgb(20, 70, 35)
-                    } else {
-                        Color32::from_rgb(25, 30, 25)
-                    };
-                    ui.painter()
-                        .rect_filled(plus_rect, CornerRadius::same(3), plus_bg);
-                    let plus_col = if can_add {
-                        Color32::WHITE
-                    } else {
-                        Color32::from_rgb(70, 75, 70)
-                    };
                     ui.painter().text(
                         plus_rect.center(),
                         egui::Align2::CENTER_CENTER,
                         "+",
-                        egui::FontId::proportional(16.0),
-                        plus_col,
+                        egui::FontId::proportional(15.0),
+                        if can_add { Color32::WHITE } else { Color32::from_rgb(70, 75, 70) },
                     );
-                    if plus_resp.clicked() && can_add {
-                        let map = if is_site {
-                            &mut self.deck_sites
-                        } else {
-                            &mut self.deck_spells
-                        };
-                        let count = map.entry(entry.name.clone()).or_insert(0);
-                        *count += 1;
+
+                    let delta = if minus_response.clicked() && current_in_deck > 0 {
+                        Some(-1)
+                    } else if plus_response.clicked() && can_add {
+                        Some(1)
+                    } else {
+                        None
+                    };
+                    if let Some(delta) = delta {
+                        let map = if is_site { &mut self.deck_sites } else { &mut self.deck_spells };
+                        let key = (entry.name.clone(), is_foil);
+                        let count = map.entry(key.clone()).or_insert(0);
+                        if delta > 0 { *count += 1; } else { *count -= 1; }
+                        if *count == 0 { map.remove(&key); }
                     }
 
                     // Separator
@@ -849,7 +903,8 @@ impl DeckBuilder {
                         Stroke::new(0.5, Color32::from_rgb(30, 35, 60)),
                     );
 
-                    ui.add_space(2.0);
+                    ui.add_space(6.0);
+                }
                 }
             });
     }
@@ -1029,24 +1084,31 @@ impl DeckBuilder {
                 });
                 ui.add_space(4.0);
 
-                let mut sites_to_remove: Option<String> = None;
-                let mut sites_snapshot: Vec<(String, u8)> = self
+                let mut sites_to_remove: Option<(String, bool)> = None;
+                let mut sites_snapshot: Vec<((String, bool), u8)> = self
                     .deck_sites
                     .iter()
                     .map(|(k, &v)| (k.clone(), v))
                     .collect();
                 sites_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
 
-                for (name, count) in &sites_snapshot {
+                for ((name, is_foil), count) in &sites_snapshot {
                     ui.horizontal(|ui| {
                         if ui.small_button("×").clicked() {
-                            sites_to_remove = Some(name.clone());
+                            sites_to_remove = Some((name.clone(), *is_foil));
                         }
                         ui.label(
                             egui::RichText::new(format!("{count}×  {name}"))
                                 .color(TEXT_BRIGHT)
                                 .size(13.0),
                         );
+                        if *is_foil {
+                            ui.label(
+                                egui::RichText::new("✦ Foil")
+                                    .color(Color32::from_rgb(255, 215, 120))
+                                    .size(11.0),
+                            );
+                        }
                     });
                 }
                 if let Some(rm) = sites_to_remove {
@@ -1071,24 +1133,31 @@ impl DeckBuilder {
                 });
                 ui.add_space(4.0);
 
-                let mut spells_to_remove: Option<String> = None;
-                let mut spells_snapshot: Vec<(String, u8)> = self
+                let mut spells_to_remove: Option<(String, bool)> = None;
+                let mut spells_snapshot: Vec<((String, bool), u8)> = self
                     .deck_spells
                     .iter()
                     .map(|(k, &v)| (k.clone(), v))
                     .collect();
                 spells_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
 
-                for (name, count) in &spells_snapshot {
+                for ((name, is_foil), count) in &spells_snapshot {
                     ui.horizontal(|ui| {
                         if ui.small_button("×").clicked() {
-                            spells_to_remove = Some(name.clone());
+                            spells_to_remove = Some((name.clone(), *is_foil));
                         }
                         ui.label(
                             egui::RichText::new(format!("{count}×  {name}"))
                                 .color(TEXT_BRIGHT)
                                 .size(13.0),
                         );
+                        if *is_foil {
+                            ui.label(
+                                egui::RichText::new("✦ Foil")
+                                    .color(Color32::from_rgb(255, 215, 120))
+                                    .size(11.0),
+                            );
+                        }
                     });
                 }
                 if let Some(rm) = spells_to_remove {

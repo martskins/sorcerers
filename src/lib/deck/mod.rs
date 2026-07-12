@@ -11,11 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct CardNameWithCount {
     pub count: u8,
     pub name: String,
+    pub is_foil: bool,
 }
 
 impl std::fmt::Display for CardNameWithCount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}x {}", self.count, self.name)
+        write!(f, "{}x {}{}", self.count, self.name, if self.is_foil { " (foil)" } else { "" })
     }
 }
 
@@ -24,7 +25,7 @@ impl Serialize for CardNameWithCount {
     where
         S: serde::Serializer,
     {
-        let s = format!("{}x {}", self.count, self.name);
+        let s = self.to_string();
         serializer.serialize_str(&s)
     }
 }
@@ -45,8 +46,11 @@ impl<'de> Deserialize<'de> for CardNameWithCount {
         let count = parts[0].parse::<u8>().map_err(|_| {
             serde::de::Error::custom(format!("Invalid count in card format: \"{}\"", s))
         })?;
-        let name = parts[1].to_string();
-        Ok(CardNameWithCount { count, name })
+        let (name, is_foil) = match parts[1].strip_suffix(" (foil)") {
+            Some(name) => (name.to_string(), true),
+            None => (parts[1].to_string(), false),
+        };
+        Ok(CardNameWithCount { count, name, is_foil })
     }
 }
 
@@ -145,7 +149,7 @@ impl DeckList {
             if !card_exists(&spell.name) {
                 return Err(format!("Unknown card: \"{name}\"."));
             }
-            *spell_counts.entry(name).or_insert(0) += 1;
+            *spell_counts.entry(name).or_insert(0) += spell.count as usize;
         }
         for (name, &count) in &spell_counts {
             let card = from_name(name, &dummy_id);
@@ -170,7 +174,7 @@ impl DeckList {
             if !card_exists(name) {
                 return Err(format!("Unknown site: \"{name}\"."));
             }
-            *site_counts.entry(name).or_insert(0) += 1;
+            *site_counts.entry(name).or_insert(0) += spell.count as usize;
         }
         for (name, &count) in &site_counts {
             let card = from_name(name, &dummy_id);
@@ -346,5 +350,26 @@ impl Deck {
             .chain(site_cards)
             .collect();
         Ok((deck, all_cards))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CardNameWithCount;
+
+    #[test]
+    fn card_counts_preserve_foil_status_and_read_legacy_entries() {
+        let foil = CardNameWithCount {
+            count: 2,
+            name: "Backstab".to_string(),
+            is_foil: true,
+        };
+        let encoded = serde_json::to_string(&foil).unwrap();
+        assert_eq!(encoded, r#""2x Backstab (foil)""#);
+
+        let decoded: CardNameWithCount = serde_json::from_str(&encoded).unwrap();
+        assert!(decoded.is_foil);
+        let legacy: CardNameWithCount = serde_json::from_str(r#""2x Backstab""#).unwrap();
+        assert!(!legacy.is_foil);
     }
 }

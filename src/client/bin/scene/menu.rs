@@ -1,11 +1,15 @@
 use crate::scene::{Scene, game::Game};
+use crate::texture_cache::TextureCache;
 use egui::{Color32, Context, Ui, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
-use sorcerers::deck::{CardNameWithCount, DeckList};
+use sorcerers::collection::CollectedCard;
+use sorcerers::deck::DeckList;
 use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
+use sorcerers::booster::{BoosterCard, BoosterPack, UnopenedBoosterPack};
+use sorcerers::card::{CardData, Region, from_name};
 use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
     self,
@@ -18,7 +22,7 @@ pub struct Menu {
     player_id: Option<PlayerId>,
     available_decks: Vec<PreconDeck>,
     saved_decks: Vec<DeckList>,
-    collection: Vec<CardNameWithCount>,
+    collection: Vec<CollectedCard>,
     selected_saved_deck: Option<usize>,
     deck_error: Option<String>,
     looking_for_match: bool,
@@ -28,6 +32,10 @@ pub struct Menu {
     registering: bool,
     auth_requested: bool,
     auth_error: Option<String>,
+    booster_reward: Option<String>,
+    unopened_booster_packs: Vec<UnopenedBoosterPack>,
+    opened_booster_pack: Option<BoosterPack>,
+    show_packs: bool,
     selecting_starter_deck: bool,
     starter_decks: Vec<PreconDeck>,
     connect_requested: bool,
@@ -55,6 +63,10 @@ impl Menu {
             registering: false,
             auth_requested: false,
             auth_error: None,
+            booster_reward: None,
+            unopened_booster_packs: vec![],
+            opened_booster_pack: None,
+            show_packs: false,
             selecting_starter_deck: false,
             starter_decks: vec![],
             connect_requested: false,
@@ -71,7 +83,7 @@ impl Menu {
         player_name: String,
         available_decks: Vec<PreconDeck>,
         saved_decks: Vec<DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
     ) -> Self {
         Self {
             client,
@@ -88,6 +100,10 @@ impl Menu {
             registering: false,
             auth_requested: false,
             auth_error: None,
+            booster_reward: None,
+            unopened_booster_packs: vec![],
+            opened_booster_pack: None,
+            show_packs: false,
             selecting_starter_deck: false,
             starter_decks: vec![],
             connect_requested: false,
@@ -140,6 +156,15 @@ impl Menu {
         }
     }
 
+    fn foil_cards_in_deck(&self, deck: &DeckList) -> u32 {
+        deck.sites
+            .iter()
+            .chain(&deck.spells)
+            .filter(|deck_card| deck_card.is_foil)
+            .map(|deck_card| u32::from(deck_card.count))
+            .sum()
+    }
+
     fn render_deck_selection(&mut self, ui: &mut Ui, next_scene: &mut Option<Scene>) {
         ui.label(
             egui::RichText::new("Choose a deck")
@@ -152,6 +177,29 @@ impl Menu {
                 .color(Color32::from_rgb(130, 145, 180))
                 .size(15.0),
         );
+        if let Some(reward) = &self.booster_reward {
+            ui.add_space(6.0);
+            ui.label(
+                egui::RichText::new(reward)
+                    .color(Color32::from_rgb(255, 200, 80))
+                    .size(14.0),
+            );
+        }
+        if !self.unopened_booster_packs.is_empty() {
+            ui.add_space(10.0);
+            if ui
+                .add(
+                    egui::Button::new(format!(
+                        "Packs ({})",
+                        self.unopened_booster_packs.len()
+                    ))
+                    .min_size(vec2(250.0, 36.0)),
+            )
+                .clicked()
+            {
+                self.show_packs = true;
+            }
+        }
         ui.add_space(18.0);
 
         let content_w = ui.available_width().min(860.0);
@@ -301,6 +349,14 @@ impl Menu {
                             .color(Color32::from_rgb(130, 145, 180))
                             .size(12.0),
                         );
+                        let foil_cards = self.foil_cards_in_deck(&deck_list);
+                        if foil_cards > 0 {
+                            ui.label(
+                                egui::RichText::new(format!("✦ {foil_cards} foil card(s)"))
+                                    .color(Color32::from_rgb(255, 215, 120))
+                                    .size(12.0),
+                            );
+                        }
                         if self.available_decks.iter().any(|starter| {
                             deck_list.name == format!("{} Precon", starter.name())
                         }) {
@@ -347,6 +403,286 @@ impl Menu {
             });
     }
 
+    fn render_opened_booster_pack(&mut self, ui: &mut Ui) {
+        let Some(pack) = self.opened_booster_pack.clone() else {
+            return;
+        };
+
+        ui.vertical_centered(|ui| {
+            ui.add_space(12.0);
+            ui.label(
+                egui::RichText::new(format!("{} Booster Opened", pack.set_name))
+                    .color(Color32::from_rgb(255, 200, 60))
+                    .size(32.0)
+                    .strong(),
+            );
+            ui.label(
+                egui::RichText::new("All cards in this pack have been added to your collection.")
+                    .color(Color32::from_rgb(180, 190, 215))
+                    .size(15.0),
+            );
+            ui.add_space(10.0);
+
+            let tray_width = ui.available_width().min(880.0);
+            ui.allocate_ui_with_layout(
+                vec2(tray_width, 710.0),
+                egui::Layout::top_down(egui::Align::Center),
+                |ui| {
+                    egui::Frame::new()
+                        .fill(Color32::from_rgb(14, 18, 30))
+                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(50, 64, 96)))
+                        .corner_radius(8.0)
+                        .inner_margin(egui::Margin::same(14))
+                        .show(ui, |ui| {
+                            egui::Grid::new("opened_booster_pack_grid")
+                                .num_columns(5)
+                                .spacing(vec2(10.0, 12.0))
+                                .show(ui, |ui| {
+                                    for (index, card) in pack.cards.iter().enumerate() {
+                                        Self::render_reward_card(ui, card, vec2(150.0, 205.0));
+                                        if index % 5 == 4 {
+                                            ui.end_row();
+                                        }
+                                    }
+                                });
+                        });
+                },
+            );
+            ui.add_space(10.0);
+            let continue_clicked = ui.button("Continue").clicked()
+                || ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
+            if continue_clicked {
+                self.opened_booster_pack = None;
+            }
+        });
+    }
+
+    fn render_reward_card(ui: &mut Ui, booster_card: &BoosterCard, size: egui::Vec2) {
+        let card_name = &booster_card.name;
+        let card = Self::card_preview_data(card_name);
+        let image_size = vec2(135.0, 178.0);
+        let response = ui.allocate_ui_with_layout(
+            size,
+            egui::Layout::top_down(egui::Align::Center),
+            |ui| {
+                if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
+                    let image = ui.add(
+                        egui::Image::new(egui::ImageSource::Texture(
+                            egui::load::SizedTexture::from_handle(&texture),
+                        ))
+                        .max_size(image_size),
+                    );
+                    if booster_card.is_foil {
+                        Self::paint_foil_effect(ui, image.rect);
+                    }
+                } else {
+                    ui.ctx().request_repaint();
+                    ui.allocate_space(image_size);
+                }
+                ui.label(
+                        egui::RichText::new(card_name)
+                            .color(if booster_card.is_foil {
+                                Color32::from_rgb(255, 222, 125)
+                            } else {
+                                Color32::from_rgb(230, 235, 250)
+                            })
+                        .size(11.0)
+                        .strong(),
+                );
+            },
+        );
+        response.response.on_hover_ui(|ui| {
+            ui.label(
+                egui::RichText::new(if booster_card.is_foil {
+                    format!("✦ Foil {card_name}")
+                } else {
+                    card_name.to_owned()
+                })
+                    .color(Color32::from_rgb(255, 200, 80))
+                    .strong(),
+            );
+            if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
+                let preview = ui.add(
+                    egui::Image::new(egui::ImageSource::Texture(
+                        egui::load::SizedTexture::from_handle(&texture),
+                    ))
+                    .max_size(vec2(310.0, 410.0)),
+                );
+                if booster_card.is_foil {
+                    Self::paint_foil_effect(ui, preview.rect);
+                }
+            } else {
+                ui.ctx().request_repaint();
+                ui.allocate_space(vec2(310.0, 410.0));
+            }
+        });
+    }
+
+    fn paint_foil_effect(ui: &Ui, rect: egui::Rect) {
+        let painter = ui.painter().with_clip_rect(rect);
+
+        // Real foil keeps the ink dark and only shifts the reflected colour.
+        // The spectrum is fixed to the card surface because the card itself does
+        // not tilt or move in this view.
+        let colors = [
+            Color32::from_rgba_unmultiplied(255, 55, 105, 67),
+            Color32::from_rgba_unmultiplied(255, 175, 45, 58),
+            Color32::from_rgba_unmultiplied(80, 245, 145, 62),
+            Color32::from_rgba_unmultiplied(45, 190, 255, 72),
+            Color32::from_rgba_unmultiplied(105, 75, 255, 66),
+            Color32::from_rgba_unmultiplied(235, 65, 250, 64),
+        ];
+        let band_width = rect.width() / 5.0;
+        let slant = rect.height() * 0.16;
+        let first_x = rect.left() - slant - band_width * 0.65;
+        let mut mesh = egui::Mesh::default();
+        let column_count = 9u32;
+
+        for column in 0..=column_count {
+            let x = first_x + column as f32 * band_width;
+            let color = colors[column as usize % colors.len()];
+            mesh.colored_vertex(egui::pos2(x + slant, rect.top()), color);
+            mesh.colored_vertex(egui::pos2(x - slant, rect.bottom()), color);
+        }
+        for column in 0..column_count {
+            let top_left = column * 2;
+            let bottom_left = top_left + 1;
+            let top_right = top_left + 2;
+            let bottom_right = top_left + 3;
+            mesh.add_triangle(top_left, bottom_left, top_right);
+            mesh.add_triangle(top_right, bottom_left, bottom_right);
+        }
+        painter.add(egui::Shape::mesh(mesh));
+
+        // A fixed, feathered highlight gives the foil a reflective focal point.
+        let sweep = rect.width() * 0.08 - rect.height() * 0.28;
+        let glow_colors = [
+            Color32::TRANSPARENT,
+            Color32::from_rgba_unmultiplied(210, 235, 255, 24),
+            Color32::from_rgba_unmultiplied(245, 252, 255, 55),
+            Color32::from_rgba_unmultiplied(215, 238, 255, 28),
+            Color32::TRANSPARENT,
+        ];
+        let glow_offsets = [-34.0, -18.0, 0.0, 18.0, 34.0];
+        let mut glow = egui::Mesh::default();
+        for (offset, color) in glow_offsets.into_iter().zip(glow_colors) {
+            glow.colored_vertex(
+                egui::pos2(
+                    rect.left() + sweep + rect.height() * 0.45 + offset,
+                    rect.top(),
+                ),
+                color,
+            );
+            glow.colored_vertex(
+                egui::pos2(rect.left() + sweep + offset, rect.bottom()),
+                color,
+            );
+        }
+        for column in 0..4u32 {
+            let top_left = column * 2;
+            let bottom_left = top_left + 1;
+            let top_right = top_left + 2;
+            let bottom_right = top_left + 3;
+            glow.add_triangle(top_left, bottom_left, top_right);
+            glow.add_triangle(top_right, bottom_left, bottom_right);
+        }
+        painter.add(egui::Shape::mesh(glow));
+        painter.rect_stroke(
+            rect.shrink(0.5),
+            3.0,
+            egui::Stroke::new(
+                1.0,
+                Color32::from_rgba_unmultiplied(205, 235, 245, 185),
+            ),
+            egui::StrokeKind::Inside,
+        );
+    }
+
+    fn render_packs(&mut self, ui: &mut Ui) {
+        ui.vertical_centered(|ui| {
+            ui.add_space(18.0);
+            ui.label(
+                egui::RichText::new("Your Packs")
+                    .color(Color32::from_rgb(255, 200, 60))
+                    .size(30.0)
+                    .strong(),
+            );
+            ui.label("Choose a pack to open it and add its cards to your collection.");
+            ui.add_space(18.0);
+
+            egui::ScrollArea::horizontal()
+                .id_salt("owned_booster_packs")
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                                for pack in self.unopened_booster_packs.clone() {
+                                    let (rect, response) =
+                                        ui.allocate_exact_size(vec2(175.0, 260.0), egui::Sense::click());
+                                    let mut image_rect = rect;
+                                    image_rect.max.y -= 26.0;
+                                    if let Some(texture) = TextureCache::get_texture_blocking(
+                                        "assets/images/beta_booster_1.webp",
+                                        ui.ctx(),
+                                    ) {
+                                        egui::Image::new(egui::ImageSource::Texture(
+                                            egui::load::SizedTexture::from_handle(&texture),
+                                        ))
+                                        .paint_at(ui, image_rect);
+                                    } else {
+                                        ui.ctx().request_repaint();
+                                    }
+                                    ui.painter().text(
+                                        rect.center_bottom() - vec2(0.0, 12.0),
+                                        egui::Align2::CENTER_CENTER,
+                                        if response.hovered() { "Open pack" } else { "Beta Booster" },
+                                        egui::FontId::proportional(13.0),
+                                        if response.hovered() {
+                                            Color32::from_rgb(255, 200, 80)
+                                        } else {
+                                            Color32::from_rgb(225, 230, 245)
+                                        },
+                                    );
+                                    if response.clicked() {
+                                        self.client
+                                            .send(ClientMessage::OpenBoosterPack { pack_id: pack.id })
+                                            .ok();
+                                    }
+                                    ui.add_space(8.0);
+                                }
+                    });
+                });
+            ui.add_space(18.0);
+            if ui.button("Back").clicked() {
+                self.show_packs = false;
+            }
+        });
+    }
+
+    fn card_preview_data(name: &str) -> CardData {
+        let card = from_name(name, &uuid::Uuid::nil());
+        let base = card.get_base();
+        CardData {
+            id: uuid::Uuid::nil(),
+            name: card.get_name().to_string(),
+            owner_id: PlayerId::nil(),
+            controller_id: PlayerId::nil(),
+            zone_sequence: 0,
+            tapped: false,
+            edition: base.edition.clone(),
+            zone: base.zone.clone(),
+            region: Region::Surface,
+            card_type: card.get_card_type(),
+            abilities: vec![],
+            statuses: vec![],
+            damage_taken: 0,
+            bearer: None,
+            rarity: base.rarity.clone(),
+            power: card.get_unit_base().map(|unit| unit.power).unwrap_or_default(),
+            has_attachments: false,
+            image_path: card.get_image_path(),
+            is_token: base.is_token,
+        }
+    }
+
     pub fn process_message(&mut self, msg: &ServerMessage) -> Option<Scene> {
         match msg {
             ServerMessage::ConnectResponse {
@@ -364,6 +700,7 @@ impl Menu {
                 available_decks,
                 saved_decks,
                 collection,
+                unopened_booster_packs,
             } => {
                 self.available_decks = available_decks.clone();
                 self.saved_decks = saved_decks.clone();
@@ -373,6 +710,13 @@ impl Menu {
                 self.password.clear();
                 self.auth_requested = false;
                 self.auth_error = None;
+                self.unopened_booster_packs = unopened_booster_packs.clone();
+                self.booster_reward = (!unopened_booster_packs.is_empty()).then(|| {
+                    format!(
+                        "Weekly reward: {} unopened Beta booster packs.",
+                        unopened_booster_packs.len()
+                    )
+                });
                 self.selecting_starter_deck = false;
                 None
             }
@@ -390,6 +734,24 @@ impl Menu {
                 self.auth_requested = false;
                 self.selecting_starter_deck = true;
                 self.starter_decks = available_decks.clone();
+                None
+            }
+            ServerMessage::BoosterPackOpened { pack_id, pack } => {
+                self.unopened_booster_packs.retain(|unopened| unopened.id != *pack_id);
+                for booster_card in &pack.cards {
+                    if let Some(card) = self.collection.iter_mut().find(|card| {
+                        card.name == booster_card.name && card.is_foil == booster_card.is_foil
+                    }) {
+                        card.count = card.count.saturating_add(1);
+                    } else {
+                        self.collection.push(CollectedCard {
+                            name: booster_card.name.clone(),
+                            count: 1,
+                            is_foil: booster_card.is_foil,
+                        });
+                    }
+                }
+                self.opened_booster_pack = Some(pack.clone());
                 None
             }
             ServerMessage::GameStarted {
@@ -454,6 +816,14 @@ impl Menu {
             .frame(egui::Frame::NONE.fill(Color32::from_rgb(8, 8, 14)))
             .show_inside(ui, |ui| {
                 let panel_h = ui.available_height();
+                if self.opened_booster_pack.is_some() {
+                    self.render_opened_booster_pack(ui);
+                    return;
+                }
+                if self.show_packs {
+                    self.render_packs(ui);
+                    return;
+                }
                 let deck_selection_visible =
                     !self.available_decks.is_empty() && !self.looking_for_match;
                 if deck_selection_visible {

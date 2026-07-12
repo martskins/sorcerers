@@ -1,6 +1,8 @@
 use crate::{
     card::{Card, CardData, CardType},
-    deck::{CardNameWithCount, Deck, DeckList, precon::PreconDeck},
+    booster::{BoosterPack, UnopenedBoosterPack},
+    collection::CollectedCard,
+    deck::{Deck, DeckList, precon::PreconDeck},
     game::{CardId, Direction, PlayerId, Resources, SoundEffect},
     zone::{Location, Zone},
 };
@@ -116,7 +118,8 @@ pub enum ServerMessage {
         username: String,
         available_decks: Vec<PreconDeck>,
         saved_decks: Vec<DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
+        unopened_booster_packs: Vec<UnopenedBoosterPack>,
     },
     AuthenticationFailure {
         message: String,
@@ -124,6 +127,10 @@ pub enum ServerMessage {
     StarterDeckSelection {
         username: String,
         available_decks: Vec<PreconDeck>,
+    },
+    BoosterPackOpened {
+        pack_id: uuid::Uuid,
+        pack: BoosterPack,
     },
     GameStarted {
         game_id: uuid::Uuid,
@@ -243,6 +250,7 @@ impl ServerMessage {
             ServerMessage::AuthenticationSuccess { player_id, .. } => *player_id,
             ServerMessage::AuthenticationFailure { .. } => uuid::Uuid::nil(),
             ServerMessage::StarterDeckSelection { .. } => uuid::Uuid::nil(),
+            ServerMessage::BoosterPackOpened { .. } => uuid::Uuid::nil(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => *player_id,
@@ -269,6 +277,7 @@ pub enum ClientMessage {
     Register { username: String, password: String },
     Login { username: String, password: String },
     ChooseStarterDeck { deck: PreconDeck },
+    OpenBoosterPack { pack_id: uuid::Uuid },
     ResolveAction {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -382,6 +391,7 @@ impl ClientMessage {
             ClientMessage::Register { .. } => uuid::Uuid::nil(),
             ClientMessage::Login { .. } => uuid::Uuid::nil(),
             ClientMessage::ChooseStarterDeck { .. } => uuid::Uuid::nil(),
+            ClientMessage::OpenBoosterPack { .. } => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
             ClientMessage::PlayerDisconnected { game_id, .. } => *game_id,
             ClientMessage::PickCard { game_id, .. } => *game_id,
@@ -413,6 +423,7 @@ impl ClientMessage {
             ClientMessage::Register { .. } => &NIL,
             ClientMessage::Login { .. } => &NIL,
             ClientMessage::ChooseStarterDeck { .. } => &NIL,
+            ClientMessage::OpenBoosterPack { .. } => &NIL,
             ClientMessage::PlayerDisconnected { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,

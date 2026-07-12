@@ -10,13 +10,7 @@ impl DeckBuilder {
             self.player_name.clone(),
             self.prev_available_decks.clone(),
             self.prev_saved_decks.clone(),
-            self.collection
-                .iter()
-                .map(|(name, &count)| CardNameWithCount {
-                    name: name.clone(),
-                    count,
-                })
-                .collect(),
+            self.collection_entries.clone(),
         ))
     }
 
@@ -27,17 +21,19 @@ impl DeckBuilder {
         let spells = self
             .deck_spells
             .iter()
-            .map(|(card_name, &count)| CardNameWithCount {
+            .map(|((card_name, is_foil), &count)| CardNameWithCount {
                 count,
                 name: card_name.clone(),
+                is_foil: *is_foil,
             })
             .collect();
         let sites = self
             .deck_sites
             .iter()
-            .map(|(card_name, &count)| CardNameWithCount {
+            .map(|((card_name, is_foil), &count)| CardNameWithCount {
                 count,
                 name: card_name.clone(),
+                is_foil: *is_foil,
             })
             .collect();
 

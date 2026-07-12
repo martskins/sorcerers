@@ -1,5 +1,7 @@
 #[allow(clippy::needless_update)]
 pub mod card;
+pub mod booster;
+pub mod collection;
 pub mod deck;
 pub mod effect;
 pub mod error;

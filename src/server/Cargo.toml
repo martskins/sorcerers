@@ -10,6 +10,7 @@ path = "bin/main.rs"
 [dependencies]
 anyhow.workspace = true
 argon2.workspace = true
+chrono.workspace = true
 async-channel.workspace = true
 rmp-serde.workspace = true
 serde_json.workspace = true

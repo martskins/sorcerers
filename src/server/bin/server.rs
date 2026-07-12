@@ -1,6 +1,9 @@
 use async_channel::Sender;
+use chrono::Datelike;
 use sorcerers::{
+    booster::BoosterPack,
     card::{self, *},
+    collection::CollectedCard,
     deck::{CardNameWithCount, DeckList, precon::PreconDeck},
     game::Game,
     networking::{
@@ -21,6 +24,7 @@ pub struct Server {
     pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
+    addr_to_user: HashMap<std::net::SocketAddr, uuid::Uuid>,
     pending_starter_selection: HashMap<std::net::SocketAddr, User>,
     users: UserRepository,
     /// When `true`, seed newly-created games with the local development test board.
@@ -36,6 +40,7 @@ impl Server {
             games: HashMap::new(),
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
+            addr_to_user: HashMap::new(),
             pending_starter_selection: HashMap::new(),
             users,
             test_state,
@@ -81,12 +86,40 @@ impl Server {
                     .complete_starter_selection(user.id, deck, &deck_list, &cards)
                     .await
                 {
-                    Ok(()) => self
-                        .authenticate(user, deck.clone(), vec![deck_list], cards, stream, addr)
-                        .await?,
+                    Ok(()) => {
+                        self.claim_weekly_boosters(user.id).await?;
+                        let collection = self.users.load_collection(user.id).await?;
+                        let unopened_booster_packs =
+                            self.users.load_unopened_booster_packs(user.id).await?;
+                        self.authenticate(
+                            user,
+                            deck.clone(),
+                            vec![deck_list],
+                            collection,
+                            unopened_booster_packs,
+                            stream,
+                            addr,
+                        )
+                        .await?
+                    }
                     Err(error) => self
                         .send_authentication_failure(error.user_message().to_string(), stream)
                         .await?,
+                }
+            }
+            Message::ClientMessage(ClientMessage::OpenBoosterPack { pack_id }) => {
+                let Some(&user_id) = self.addr_to_user.get(addr) else {
+                    return Ok(());
+                };
+                if let Some(pack) = self.users.open_booster_pack(user_id, *pack_id).await? {
+                    Client::send_to_stream(
+                        &ServerMessage::BoosterPackOpened {
+                            pack_id: *pack_id,
+                            pack,
+                        },
+                        stream,
+                    )
+                    .await?;
                 }
             }
             Message::ClientMessage(ClientMessage::JoinQueue {
@@ -121,6 +154,7 @@ impl Server {
                     .unwrap_or(uuid::Uuid::nil());
                 self.looking_for_match.retain(|(id, _)| id != &player_id);
                 self.pending_starter_selection.remove(addr);
+                self.addr_to_user.remove(addr);
                 self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
 
                 if player_id == uuid::Uuid::nil() {
@@ -177,9 +211,19 @@ impl Server {
         match self.users.selected_starter_deck(user.id).await? {
             Some(deck) => {
                 let saved_decks = self.users.load_decks(user.id).await?;
+                self.claim_weekly_boosters(user.id).await?;
                 let collection = self.users.load_collection(user.id).await?;
-                self.authenticate(user, deck, saved_decks, collection, stream, addr)
-                    .await
+                let unopened_booster_packs = self.users.load_unopened_booster_packs(user.id).await?;
+                self.authenticate(
+                    user,
+                    deck,
+                    saved_decks,
+                    collection,
+                    unopened_booster_packs,
+                    stream,
+                    addr,
+                )
+                .await
             }
             None => {
                 Client::send_to_stream(
@@ -206,10 +250,12 @@ impl Server {
         user: User,
         starter_deck: PreconDeck,
         saved_decks: Vec<DeckList>,
-        collection: Vec<CardNameWithCount>,
+        collection: Vec<CollectedCard>,
+        unopened_booster_packs: Vec<sorcerers::booster::UnopenedBoosterPack>,
         stream: Arc<Mutex<OwnedWriteHalf>>,
         addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
+        let user_id = user.id;
         if let Some(previous_player_id) = self.addr_to_player.remove(addr) {
             self.streams.remove(&previous_player_id);
             self.looking_for_match
@@ -223,12 +269,29 @@ impl Server {
                 available_decks: vec![starter_deck],
                 saved_decks,
                 collection,
+                unopened_booster_packs,
             },
             Arc::clone(&stream),
         )
         .await?;
         self.streams.insert(player_id, stream);
         self.addr_to_player.insert(*addr, player_id);
+        self.addr_to_user.insert(*addr, user_id);
+        Ok(())
+    }
+
+    async fn claim_weekly_boosters(
+        &self,
+        user_id: uuid::Uuid,
+    ) -> anyhow::Result<()> {
+        let packs = (0..3).map(|_| BoosterPack::beta()).collect::<Vec<_>>();
+        let today = chrono::Utc::now().date_naive();
+        let week_start = today - chrono::Duration::days(today.weekday().num_days_from_monday().into());
+
+        let _claimed = self
+            .users
+            .claim_weekly_boosters(user_id, week_start, &packs)
+            .await?;
         Ok(())
     }
 
@@ -447,6 +510,7 @@ fn collection_from_deck(deck: &DeckList) -> Vec<CardNameWithCount> {
     cards.push(CardNameWithCount {
         count: 1,
         name: deck.avatar.clone(),
+        is_foil: false,
     });
     cards
 }
@@ -454,6 +518,6 @@ fn collection_from_deck(deck: &DeckList) -> Vec<CardNameWithCount> {
 fn card_counts(cards: BTreeMap<String, u8>) -> Vec<CardNameWithCount> {
     cards
         .into_iter()
-        .map(|(name, count)| CardNameWithCount { name, count })
+        .map(|(name, count)| CardNameWithCount { name, count, is_foil: false })
         .collect()
 }
