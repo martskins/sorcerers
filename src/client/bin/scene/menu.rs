@@ -1,6 +1,7 @@
 use crate::scene::{Scene, game::Game};
 use crate::texture_cache::TextureCache;
-use egui::{Color32, Context, Ui, vec2};
+use crate::theme;
+use egui::{Color32, Context, TextureHandle, TextureOptions, Ui, pos2, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
@@ -16,7 +17,13 @@ use sorcerers::networking::{
     message::{ClientMessage, DeckChoice},
 };
 
-#[derive(Debug)]
+const MENU_BG: Color32 = Color32::from_rgb(8, 8, 14);
+const MENU_BORDER: Color32 = theme::PANEL_BORDER;
+const MENU_TEXT: Color32 = Color32::from_rgb(235, 236, 225);
+const MENU_TEXT_MUTED: Color32 = Color32::from_rgb(171, 179, 168);
+const MENU_GOLD: Color32 = Color32::from_rgb(255, 200, 60);
+const MENU_BACKGROUND: &[u8] = include_bytes!("../../../../assets/images/menu/enchanted_table_v1.png");
+
 pub struct Menu {
     client: networking::client::Client,
     player_id: Option<PlayerId>,
@@ -39,11 +46,26 @@ pub struct Menu {
     selecting_starter_deck: bool,
     starter_decks: Vec<PreconDeck>,
     connect_requested: bool,
+    menu_background: Option<TextureHandle>,
     #[cfg(feature = "name-entry")]
     /// Time (seconds, from `ctx.input`) when the shake was triggered.
     shake_start: Option<f64>,
     /// True while the name field is empty after a failed submit attempt.
     show_name_error: bool,
+}
+
+impl std::fmt::Debug for Menu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Menu")
+            .field("player_id", &self.player_id)
+            .field("available_decks", &self.available_decks)
+            .field("saved_decks", &self.saved_decks)
+            .field("looking_for_match", &self.looking_for_match)
+            .field("player_name", &self.player_name)
+            .field("registering", &self.registering)
+            .field("auth_requested", &self.auth_requested)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Menu {
@@ -70,6 +92,7 @@ impl Menu {
             selecting_starter_deck: false,
             starter_decks: vec![],
             connect_requested: false,
+            menu_background: None,
             #[cfg(feature = "name-entry")]
             shake_start: None,
             show_name_error: false,
@@ -107,6 +130,7 @@ impl Menu {
             selecting_starter_deck: false,
             starter_decks: vec![],
             connect_requested: false,
+            menu_background: None,
             #[cfg(feature = "name-entry")]
             shake_start: None,
             show_name_error: false,
@@ -114,6 +138,211 @@ impl Menu {
     }
 
     pub fn update(&mut self, _ctx: &Context) {}
+
+    fn render_menu_background(&mut self, ui: &mut Ui) {
+        if self.menu_background.is_none() {
+            let image = image::load_from_memory(MENU_BACKGROUND)
+                .expect("menu background asset should decode")
+                .to_rgba8();
+            let size = [image.width() as usize, image.height() as usize];
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+            self.menu_background = Some(ui.ctx().load_texture(
+                "menu_enchanted_table",
+                color_image,
+                TextureOptions::LINEAR,
+            ));
+        }
+
+        let rect = ui.max_rect();
+        let texture = self
+            .menu_background
+            .as_ref()
+            .expect("menu background should be loaded");
+        let image_size = texture.size_vec2();
+        let viewport_ratio = rect.width() / rect.height().max(1.0);
+        let image_ratio = image_size.x / image_size.y.max(1.0);
+        let uv = if viewport_ratio > image_ratio {
+            let visible_height = image_ratio / viewport_ratio;
+            let inset = (1.0 - visible_height) * 0.5;
+            egui::Rect::from_min_max(pos2(0.0, inset), pos2(1.0, 1.0 - inset))
+        } else {
+            let visible_width = viewport_ratio / image_ratio;
+            let inset = (1.0 - visible_width) * 0.5;
+            egui::Rect::from_min_max(pos2(inset, 0.0), pos2(1.0 - inset, 1.0))
+        };
+        ui.painter().image(
+            texture.id(),
+            rect,
+            uv,
+            Color32::from_rgba_unmultiplied(255, 255, 255, 210),
+        );
+        ui.painter().rect_filled(
+            rect,
+            0.0,
+            Color32::from_rgba_unmultiplied(3, 6, 10, 72),
+        );
+    }
+
+    fn render_brand_heading(&self, ui: &mut Ui, compact: bool) {
+        ui.label(
+            egui::RichText::new("✦  Sorcerers  ✦")
+                .color(MENU_GOLD)
+                .font(theme::display_bold_font(if compact { 44.0 } else { 58.0 })),
+        );
+        ui.add_space(if compact { 6.0 } else { 10.0 });
+        ui.label(
+            egui::RichText::new("Play Sorcery online. The rules are handled.")
+                .color(MENU_TEXT_MUTED)
+                .font(theme::display_font(if compact { 16.0 } else { 18.0 })),
+        );
+    }
+
+    fn render_local_mode_notice(&self, ui: &mut Ui) {
+        egui::Frame::new()
+            .fill(Color32::from_rgb(48, 35, 18))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(128, 91, 32)))
+            .corner_radius(4.0)
+            .inner_margin(egui::Margin::symmetric(10, 6))
+            .show(ui, |ui| {
+                ui.label(
+                    egui::RichText::new("Local mode — matches are limited to this server")
+                        .color(Color32::from_rgb(255, 214, 133))
+                        .size(14.0),
+                );
+            });
+    }
+
+    fn render_auth_card(&mut self, ui: &mut Ui) {
+        let title = if self.registering {
+            "Create your player account"
+        } else {
+            "Welcome back"
+        };
+        let supporting_copy = if self.registering {
+            "Create an account to start building a collection and playing online."
+        } else {
+            "Log in to choose a deck and join a match."
+        };
+
+        egui::Frame::new()
+            .fill(theme::PANEL_BG)
+            .stroke(egui::Stroke::new(1.0, MENU_BORDER))
+            .corner_radius(8.0)
+            .inner_margin(egui::Margin::same(20))
+            .show(ui, |ui| {
+                ui.set_width(340.0);
+                ui.label(
+                    egui::RichText::new(title)
+                        .color(MENU_TEXT)
+                        .size(22.0)
+                        .strong(),
+                );
+                ui.add_space(5.0);
+                ui.label(
+                    egui::RichText::new(supporting_copy)
+                        .color(MENU_TEXT_MUTED)
+                        .size(14.0),
+                );
+                ui.add_space(18.0);
+
+                ui.label(
+                    egui::RichText::new("Username")
+                        .color(MENU_TEXT)
+                        .size(13.0)
+                        .strong(),
+                );
+                ui.add_space(5.0);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.username)
+                        .hint_text("Choose a username")
+                        .background_color(theme::SURFACE_INSET)
+                        .margin(egui::Margin::symmetric(12, 9))
+                        .desired_width(340.0),
+                );
+                ui.add_space(12.0);
+                ui.label(
+                    egui::RichText::new("Password")
+                        .color(MENU_TEXT)
+                        .size(13.0)
+                        .strong(),
+                );
+                ui.add_space(5.0);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.password)
+                        .password(true)
+                        .hint_text("Enter your password")
+                        .background_color(theme::SURFACE_INSET)
+                        .margin(egui::Margin::symmetric(12, 9))
+                        .desired_width(340.0),
+                );
+
+                if let Some(error) = &self.auth_error {
+                    ui.add_space(12.0);
+                    egui::Frame::new()
+                        .fill(Color32::from_rgb(62, 29, 31))
+                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(135, 55, 59)))
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::symmetric(10, 7))
+                        .show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(error)
+                                    .color(Color32::from_rgb(255, 195, 192))
+                                    .size(14.0),
+                            );
+                        });
+                }
+
+                ui.add_space(18.0);
+                let can_submit = !self.auth_requested
+                    && !self.username.trim().is_empty()
+                    && !self.password.is_empty();
+                let submit_label = if self.auth_requested {
+                    "Connecting…"
+                } else if self.registering {
+                    "Create account"
+                } else {
+                    "Log in"
+                };
+                let submit = ui.add_enabled(
+                    can_submit,
+                    egui::Button::new(egui::RichText::new(submit_label).size(18.0))
+                        .min_size(vec2(340.0, theme::BUTTON_HEIGHT)),
+                );
+                if submit.clicked() {
+                    let message = if self.registering {
+                        ClientMessage::Register {
+                            username: self.username.clone(),
+                            password: self.password.clone(),
+                        }
+                    } else {
+                        ClientMessage::Login {
+                            username: self.username.clone(),
+                            password: self.password.clone(),
+                        }
+                    };
+                    if self.client.send(message).is_ok() {
+                        self.auth_requested = true;
+                        self.auth_error = None;
+                    } else {
+                        self.auth_error = Some("Unable to reach the server. Check your connection and try again.".to_string());
+                    }
+                }
+
+                ui.add_space(12.0);
+                let switch_label = if self.registering {
+                    "Already have an account? Log in"
+                } else {
+                    "New to Sorcerers? Create an account"
+                };
+                if ui
+                    .link(egui::RichText::new(switch_label).color(Color32::from_rgb(122, 194, 245)))
+                    .clicked()
+                {
+                    self.registering = !self.registering;
+                    self.auth_error = None;
+                }
+            });
+    }
 
     fn play_precon(&mut self, deck: PreconDeck) {
         self.deck_error = None;
@@ -230,8 +459,8 @@ impl Menu {
         height: f32,
     ) {
         egui::Frame::new()
-            .fill(Color32::from_rgb(13, 16, 27))
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
+            .fill(theme::PANEL_BG)
+            .stroke(egui::Stroke::new(1.0, MENU_BORDER))
             .corner_radius(6.0)
             .inner_margin(egui::Margin::same(14))
             .show(ui, |ui| {
@@ -277,7 +506,7 @@ impl Menu {
                 let saved = self.saved_decks.clone();
                 if saved.is_empty() {
                     egui::Frame::new()
-                        .fill(Color32::from_rgb(20, 24, 38))
+                        .fill(Color32::from_rgba_premultiplied(21, 28, 27, 235))
                         .corner_radius(4.0)
                         .inner_margin(egui::Margin::same(18))
                         .show(ui, |ui| {
@@ -314,13 +543,13 @@ impl Menu {
     ) {
         let selected = self.selected_saved_deck == Some(idx);
         let fill = if selected {
-            Color32::from_rgb(36, 45, 66)
+            Color32::from_rgb(31, 42, 43)
         } else {
-            Color32::from_rgb(20, 24, 38)
+            Color32::from_rgb(18, 24, 25)
         };
         egui::Frame::new()
             .fill(fill)
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
+            .stroke(egui::Stroke::new(1.0, MENU_BORDER))
             .corner_radius(4.0)
             .inner_margin(egui::Margin::same(10))
             .show(ui, |ui| {
@@ -429,8 +658,8 @@ impl Menu {
                 egui::Layout::top_down(egui::Align::Center),
                 |ui| {
                     egui::Frame::new()
-                        .fill(Color32::from_rgb(14, 18, 30))
-                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(50, 64, 96)))
+                        .fill(theme::PANEL_BG)
+                        .stroke(egui::Stroke::new(1.0, MENU_BORDER))
                         .corner_radius(8.0)
                         .inner_margin(egui::Margin::same(14))
                         .show(ui, |ui| {
@@ -600,55 +829,100 @@ impl Menu {
 
     fn render_packs(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| {
-            ui.add_space(18.0);
+            ui.add_space(24.0);
             ui.label(
-                egui::RichText::new("Your Packs")
+                egui::RichText::new("Your Booster Packs")
                     .color(Color32::from_rgb(255, 200, 60))
-                    .size(30.0)
-                    .strong(),
+                    .font(theme::display_bold_font(38.0)),
             );
-            ui.label("Choose a pack to open it and add its cards to your collection.");
-            ui.add_space(18.0);
+            ui.add_space(4.0);
+            ui.label(
+                egui::RichText::new(format!(
+                    "{} unopened {} waiting at your table",
+                    self.unopened_booster_packs.len(),
+                    if self.unopened_booster_packs.len() == 1 { "pack is" } else { "packs are" }
+                ))
+                .color(MENU_TEXT_MUTED)
+                .size(15.0),
+            );
+            ui.add_space(20.0);
 
+            ui.label(
+                egui::RichText::new("Choose a pack to open it.")
+                    .color(MENU_TEXT)
+                    .size(16.0),
+            );
+            ui.add_space(12.0);
+            let packs = self.unopened_booster_packs.clone();
+            let pack_size = vec2(170.0, 220.0);
+            let overlap = 58.0;
+            let stack_width = pack_size.x + overlap * packs.len().saturating_sub(1) as f32;
             egui::ScrollArea::horizontal()
                 .id_salt("owned_booster_packs")
+                .auto_shrink([false, true])
                 .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                                for pack in self.unopened_booster_packs.clone() {
-                                    let (rect, response) =
-                                        ui.allocate_exact_size(vec2(175.0, 260.0), egui::Sense::click());
-                                    let mut image_rect = rect;
-                                    image_rect.max.y -= 26.0;
-                                    if let Some(texture) = TextureCache::get_texture_blocking(
-                                        "assets/images/beta_booster_1.webp",
-                                        ui.ctx(),
-                                    ) {
-                                        egui::Image::new(egui::ImageSource::Texture(
-                                            egui::load::SizedTexture::from_handle(&texture),
-                                        ))
-                                        .paint_at(ui, image_rect);
-                                    } else {
-                                        ui.ctx().request_repaint();
-                                    }
-                                    ui.painter().text(
-                                        rect.center_bottom() - vec2(0.0, 12.0),
-                                        egui::Align2::CENTER_CENTER,
-                                        if response.hovered() { "Open pack" } else { "Beta Booster" },
-                                        egui::FontId::proportional(13.0),
-                                        if response.hovered() {
-                                            Color32::from_rgb(255, 200, 80)
-                                        } else {
-                                            Color32::from_rgb(225, 230, 245)
-                                        },
-                                    );
-                                    if response.clicked() {
-                                        self.client
-                                            .send(ClientMessage::OpenBoosterPack { pack_id: pack.id })
-                                            .ok();
-                                    }
-                                    ui.add_space(8.0);
-                                }
-                    });
+                    let (stack_rect, _) = ui.allocate_exact_size(
+                        vec2(stack_width, pack_size.y + 28.0),
+                        egui::Sense::hover(),
+                    );
+                    let mut hovered_index = None;
+                    for (index, pack) in packs.iter().enumerate() {
+                        let rect = egui::Rect::from_min_size(
+                            stack_rect.min + vec2(index as f32 * overlap, 0.0),
+                            pack_size,
+                        );
+                        let response = ui.interact(
+                            rect,
+                            ui.id().with(("owned_booster_pack", pack.id)),
+                            egui::Sense::click(),
+                        );
+                        if response.hovered() {
+                            hovered_index = Some(index);
+                        }
+                        if response.clicked() {
+                            self.client
+                                .send(ClientMessage::OpenBoosterPack { pack_id: pack.id })
+                                .ok();
+                        }
+                    }
+                    let draw_pack = |ui: &mut Ui, rect: egui::Rect| {
+                        if let Some(texture) = TextureCache::get_texture_blocking(
+                            "assets/images/beta_booster_1.webp",
+                            ui.ctx(),
+                        ) {
+                            egui::Image::new(egui::ImageSource::Texture(
+                                egui::load::SizedTexture::from_handle(&texture),
+                            ))
+                            .paint_at(ui, rect);
+                        } else {
+                            ui.ctx().request_repaint();
+                        }
+                    };
+                    for index in 0..packs.len() {
+                        if Some(index) != hovered_index {
+                            draw_pack(
+                                ui,
+                                egui::Rect::from_min_size(
+                                    stack_rect.min + vec2(index as f32 * overlap, 0.0),
+                                    pack_size,
+                                ),
+                            );
+                        }
+                    }
+                    if let Some(index) = hovered_index {
+                        let lifted_rect = egui::Rect::from_min_size(
+                            stack_rect.min + vec2(index as f32 * overlap - 7.0, -9.0),
+                            pack_size + vec2(14.0, 18.0),
+                        );
+                        draw_pack(ui, lifted_rect);
+                        ui.painter().text(
+                            stack_rect.center_bottom() - vec2(0.0, 10.0),
+                            egui::Align2::CENTER_CENTER,
+                            "Open pack",
+                            egui::FontId::proportional(13.0),
+                            MENU_GOLD,
+                        );
+                    }
                 });
             ui.add_space(18.0);
             if ui.button("Back").clicked() {
@@ -813,8 +1087,9 @@ impl Menu {
         let mut next_scene: Option<Scene> = None;
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(Color32::from_rgb(8, 8, 14)))
+            .frame(egui::Frame::NONE.fill(MENU_BG))
             .show_inside(ui, |ui| {
+                self.render_menu_background(ui);
                 let panel_h = ui.available_height();
                 if self.opened_booster_pack.is_some() {
                     self.render_opened_booster_pack(ui);
@@ -833,20 +1108,11 @@ impl Menu {
                         .show(ui, |ui| {
                             ui.add_space(24.0);
                             ui.vertical_centered(|ui| {
-                                ui.label(
-                                    egui::RichText::new("✦  Sorcerers  ✦")
-                                        .color(Color32::from_rgb(255, 200, 60))
-                                        .size(44.0)
-                                        .strong(),
-                                );
+                                self.render_brand_heading(ui, true);
                                 ui.add_space(14.0);
 
                                 if self.client.is_in_local_mode() {
-                                    ui.label(
-                                        egui::RichText::new("⚠  Running in local mode")
-                                            .color(Color32::from_rgb(255, 165, 0))
-                                            .size(16.0),
-                                    );
+                                    self.render_local_mode_notice(ui);
                                     ui.add_space(12.0);
                                 }
 
@@ -860,22 +1126,12 @@ impl Menu {
                 ui.add_space(panel_h * 0.18);
 
                 ui.vertical_centered(|ui| {
-                    // ── Title ─────────────────────────────────────────────────
-                    ui.label(
-                        egui::RichText::new("✦  Sorcerers  ✦")
-                            .color(Color32::from_rgb(255, 200, 60))
-                            .size(58.0)
-                            .strong(),
-                    );
-                    ui.add_space(32.0);
+                    self.render_brand_heading(ui, false);
+                    ui.add_space(28.0);
 
                     if self.client.is_in_local_mode() {
-                        ui.label(
-                            egui::RichText::new("⚠  Running in local mode")
-                                .color(Color32::from_rgb(255, 165, 0))
-                                .size(16.0),
-                        );
-                        ui.add_space(12.0);
+                        self.render_local_mode_notice(ui);
+                        ui.add_space(18.0);
                     }
 
                     if self.looking_for_match {
@@ -889,17 +1145,25 @@ impl Menu {
                     } else if self.selecting_starter_deck {
                         ui.label(
                             egui::RichText::new("Choose your starter deck")
-                                .color(Color32::from_rgb(180, 180, 210))
-                                .size(20.0),
+                                .color(MENU_TEXT)
+                                .size(22.0)
+                                .strong(),
                         );
                         ui.add_space(8.0);
-                        ui.label("Its cards will be added to your collection.");
-                        ui.add_space(16.0);
+                        ui.label(
+                            egui::RichText::new(
+                                "Its cards will be added to your collection and ready for your first match.",
+                            )
+                            .color(MENU_TEXT_MUTED)
+                            .size(15.0),
+                        );
+                        ui.add_space(18.0);
                         for deck in self.starter_decks.clone() {
                             if ui
                                 .add_enabled(
                                     !self.auth_requested,
-                                    egui::Button::new(deck.name()).min_size(vec2(260.0, 42.0)),
+                                    egui::Button::new(deck.name())
+                                        .min_size(vec2(300.0, theme::BUTTON_HEIGHT)),
                                 )
                                 .clicked()
                             {
@@ -916,78 +1180,7 @@ impl Menu {
                             ui.add_space(6.0);
                         }
                     } else if self.available_decks.is_empty() {
-                        ui.label(
-                            egui::RichText::new(if self.registering {
-                                "Create account"
-                            } else {
-                                "Log in"
-                            })
-                            .color(Color32::from_rgb(180, 180, 210))
-                            .size(20.0),
-                        );
-                        ui.add_space(12.0);
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.username)
-                                .hint_text("Username")
-                                .desired_width(320.0),
-                        );
-                        ui.add_space(8.0);
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.password)
-                                .password(true)
-                                .hint_text("Password")
-                                .desired_width(320.0),
-                        );
-                        ui.add_space(10.0);
-
-                        if let Some(error) = &self.auth_error {
-                            ui.label(
-                                egui::RichText::new(error)
-                                    .color(Color32::from_rgb(220, 80, 60)),
-                            );
-                            ui.add_space(6.0);
-                        }
-
-                        let submit = ui.add_enabled(
-                            !self.auth_requested && !self.username.is_empty() && !self.password.is_empty(),
-                            egui::Button::new(if self.registering { "Create account" } else { "Log in" })
-                                .min_size(vec2(180.0, 42.0)),
-                        );
-                        if submit.clicked() {
-                            let message = if self.registering {
-                                ClientMessage::Register {
-                                    username: self.username.clone(),
-                                    password: self.password.clone(),
-                                }
-                            } else {
-                                ClientMessage::Login {
-                                    username: self.username.clone(),
-                                    password: self.password.clone(),
-                                }
-                            };
-                            if self.client.send(message).is_ok() {
-                                self.auth_requested = true;
-                                self.auth_error = None;
-                            } else {
-                                self.auth_error = Some("Unable to reach the server".to_string());
-                            }
-                        }
-                        if self.auth_requested {
-                            ui.add_space(8.0);
-                            ui.label("Authenticating...");
-                        }
-                        ui.add_space(10.0);
-                        if ui
-                            .link(if self.registering {
-                                "Already have an account? Log in"
-                            } else {
-                                "Need an account? Register"
-                            })
-                            .clicked()
-                        {
-                            self.registering = !self.registering;
-                            self.auth_error = None;
-                        }
+                        self.render_auth_card(ui);
                     } else {
                         self.render_deck_selection(ui, &mut next_scene);
                     }

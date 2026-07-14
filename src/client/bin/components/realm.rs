@@ -1025,12 +1025,26 @@ impl RealmComponent {
     }
 
     fn draw_playmat(&self, painter: &Painter) {
+        let board = Rect::from_points(&board_corners(&self.rect));
+        painter.rect_filled(board.expand(12.0), 10.0, theme::TABLE_RAIL);
+        painter.rect_stroke(
+            board.expand(12.0),
+            10.0,
+            Stroke::new(1.0, theme::TABLE_EDGE),
+            egui::StrokeKind::Outside,
+        );
         let corners = board_corners(&self.rect).to_vec();
         painter.add(Shape::convex_polygon(
             corners.clone(),
-            Color32::from_rgb(25, 27, 25),
-            Stroke::new(1.0, Color32::from_rgba_unmultiplied(210, 195, 160, 65)),
+            theme::TABLE_FELT,
+            Stroke::new(1.0, theme::TABLE_EDGE),
         ));
+        painter.rect_stroke(
+            board.shrink(8.0),
+            5.0,
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(220, 225, 210, 40)),
+            egui::StrokeKind::Inside,
+        );
     }
 
     fn draw_zone_guide(&self, painter: &Painter, cell_id: u8, occupied: bool) {

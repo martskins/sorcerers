@@ -1,4 +1,4 @@
-use crate::{element_icon, render, scene::Scene, texture_cache::TextureCache};
+use crate::{element_icon, render, scene::Scene, texture_cache::TextureCache, theme};
 use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
@@ -21,12 +21,14 @@ mod types;
 use types::{CardEntry, ElemFilter, OwnershipFilter, SetFilter, TypeFilter};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
-const BG: Color32 = Color32::from_rgb(8, 8, 14);
-const PANEL_BG: Color32 = Color32::from_rgba_premultiplied(15, 20, 38, 240);
-const BORDER: Color32 = Color32::from_rgb(45, 60, 100);
+const BG: Color32 = theme::APP_BG;
+const PANEL_BG: Color32 = theme::PANEL_BG;
+const BORDER: Color32 = theme::PANEL_BORDER;
 const GOLD: Color32 = Color32::from_rgb(255, 200, 60);
 const TEXT_DIM: Color32 = Color32::from_rgb(160, 165, 190);
 const TEXT_BRIGHT: Color32 = Color32::from_rgb(220, 225, 255);
+const SUCCESS: Color32 = theme::TURN_READY;
+const ERROR: Color32 = Color32::from_rgb(220, 80, 60);
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 const HEADER_H: f32 = 48.0;
@@ -248,11 +250,18 @@ impl DeckBuilder {
                 }
 
                 ui.painter().text(
-                    header_rect.center(),
+                    pos2(header_rect.center().x, header_rect.center().y - 7.0),
                     egui::Align2::CENTER_CENTER,
                     "Deck Builder",
-                    egui::FontId::proportional(24.0),
+                    egui::FontId::proportional(22.0),
                     GOLD,
+                );
+                ui.painter().text(
+                    pos2(header_rect.center().x, header_rect.center().y + 11.0),
+                    egui::Align2::CENTER_CENTER,
+                    "Build from your collection",
+                    egui::FontId::proportional(12.0),
+                    TEXT_DIM,
                 );
 
                 // Save button — active only when avatar, name, and deck sizes meet requirements
@@ -270,9 +279,9 @@ impl DeckBuilder {
                 let use_bg = if !can_use {
                     Color32::from_rgb(30, 35, 55)
                 } else if use_resp.hovered() {
-                    Color32::from_rgb(30, 120, 60)
+                    theme::ACTION_HOVERED
                 } else {
-                    Color32::from_rgb(20, 90, 45)
+                    theme::ACTION
                 };
                 ui.painter()
                     .rect_filled(use_rect, CornerRadius::same(4), use_bg);
@@ -297,7 +306,7 @@ impl DeckBuilder {
 
                 // Show save error or requirement hint below the header
                 let hint = if let Some(ref err) = self.save_error.clone() {
-                    Some((format!("⚠ {err}"), Color32::from_rgb(220, 80, 60)))
+                    Some((format!("⚠ {err}"), ERROR))
                 } else if !can_use
                     && (self.selected_avatar.is_some() || !self.deck_name.trim().is_empty())
                 {
@@ -328,7 +337,7 @@ impl DeckBuilder {
                         None
                     } else {
                         Some((
-                            format!("Need: {}", parts.join(", ")),
+                            format!("Deck checklist: {}", parts.join(", ")),
                             Color32::from_rgb(180, 160, 60),
                         ))
                     }
@@ -480,6 +489,7 @@ impl DeckBuilder {
             let te = egui::TextEdit::singleline(&mut self.search)
                 .hint_text("🔍 Search…")
                 .desired_width(160.0)
+                .background_color(crate::theme::SURFACE_INSET)
                 .font(egui::FontId::proportional(14.0));
             ui.add(te);
             ui.add_space(8.0);
@@ -604,6 +614,36 @@ impl DeckBuilder {
         );
 
         let mut list_ui = ui.new_child(egui::UiBuilder::new().max_rect(list_rect));
+
+        if filtered.is_empty() {
+            let empty_rect = list_rect.shrink2(vec2(16.0, 24.0));
+            list_ui.painter().rect_filled(
+                empty_rect,
+                CornerRadius::same(6),
+                Color32::from_rgba_premultiplied(18, 23, 35, 210),
+            );
+            list_ui.painter().rect_stroke(
+                empty_rect,
+                CornerRadius::same(6),
+                Stroke::new(1.0, BORDER),
+                StrokeKind::Inside,
+            );
+            list_ui.painter().text(
+                pos2(empty_rect.center().x, empty_rect.center().y - 10.0),
+                egui::Align2::CENTER_CENTER,
+                "No cards match these filters",
+                egui::FontId::proportional(16.0),
+                TEXT_BRIGHT,
+            );
+            list_ui.painter().text(
+                pos2(empty_rect.center().x, empty_rect.center().y + 14.0),
+                egui::Align2::CENTER_CENTER,
+                "Try clearing the search or widening a filter.",
+                egui::FontId::proportional(13.0),
+                TEXT_DIM,
+            );
+            return;
+        }
 
         ScrollArea::vertical()
             .id_salt("card_list")
@@ -1048,12 +1088,56 @@ impl DeckBuilder {
         let rows_count = avatars.len().div_ceil(avatars_per_row);
         y += rows_count as f32 * (avatar_sz.y + 28.0) + 12.0;
 
+        let site_count: u32 = self.deck_sites.values().map(|&c| c as u32).sum();
+        let spell_count: u32 = self.deck_spells.values().map(|&c| c as u32).sum();
+
         // Separator
         ui.painter().line_segment(
             [pos2(inner.min.x, y), pos2(inner.max.x, y)],
             Stroke::new(1.0, BORDER),
         );
-        y += 8.0;
+        y += 12.0;
+
+        ui.painter().text(
+            pos2(inner.min.x, y),
+            egui::Align2::LEFT_TOP,
+            "Deck progress",
+            egui::FontId::proportional(14.0),
+            TEXT_BRIGHT,
+        );
+        y += 22.0;
+        for (label, count, required, color) in [
+            ("Atlas", site_count, 30, Color32::from_rgb(100, 200, 100)),
+            ("Spellbook", spell_count, 60, Color32::from_rgb(120, 160, 255)),
+        ] {
+            let label_pos = pos2(inner.min.x, y);
+            ui.painter().text(
+                label_pos,
+                egui::Align2::LEFT_TOP,
+                format!("{label}  {count}/{required}"),
+                egui::FontId::proportional(12.0),
+                if count >= required { SUCCESS } else { TEXT_DIM },
+            );
+            let bar_rect = Rect::from_min_size(
+                pos2(inner.min.x + 108.0, y + 2.0),
+                vec2((inner.width() - 108.0).max(20.0), 8.0),
+            );
+            ui.painter().rect_filled(
+                bar_rect,
+                CornerRadius::same(4),
+                Color32::from_rgb(25, 30, 45),
+            );
+            let fill_width = bar_rect.width() * (count as f32 / required as f32).min(1.0);
+            if fill_width > 0.0 {
+                ui.painter().rect_filled(
+                    Rect::from_min_size(bar_rect.min, vec2(fill_width, bar_rect.height())),
+                    CornerRadius::same(4),
+                    if count >= required { SUCCESS } else { color },
+                );
+            }
+            y += 22.0;
+        }
+        y += 4.0;
 
         // Deck list area
         let deck_list_rect = Rect::from_min_max(
@@ -1062,12 +1146,27 @@ impl DeckBuilder {
         );
         let mut deck_ui = ui.new_child(egui::UiBuilder::new().max_rect(deck_list_rect));
 
-        let site_count: u32 = self.deck_sites.values().map(|&c| c as u32).sum();
-        let spell_count: u32 = self.deck_spells.values().map(|&c| c as u32).sum();
-
         ScrollArea::vertical()
             .id_salt("deck_list")
             .show(&mut deck_ui, |ui| {
+                if site_count == 0 && spell_count == 0 {
+                    ui.add_space(8.0);
+                    ui.label(
+                        egui::RichText::new("Your deck is empty")
+                            .color(TEXT_BRIGHT)
+                            .size(15.0)
+                            .strong(),
+                    );
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(
+                            "Use the + controls in the collection to add cards. Start with 30 sites and 60 spells.",
+                        )
+                        .color(TEXT_DIM)
+                        .size(13.0),
+                    );
+                    ui.add_space(14.0);
+                }
                 // Atlas section
                 ui.horizontal(|ui| {
                     ui.label(

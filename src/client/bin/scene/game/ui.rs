@@ -14,13 +14,31 @@ impl Game {
             ("THEIR TURN", theme::TURN_WAITING)
         };
 
-        let turn_label_pos = pos2(sr.center().x, 28.0);
+        let turn_rect = Rect::from_center_size(pos2(sr.center().x, 30.0), vec2(168.0, 42.0));
+        painter.rect_filled(
+            turn_rect,
+            8.0,
+            Color32::from_rgba_premultiplied(18, 23, 35, 230),
+        );
+        painter.rect_stroke(
+            turn_rect,
+            8.0,
+            egui::Stroke::new(1.0, turn_color),
+            egui::StrokeKind::Outside,
+        );
         painter.text(
-            turn_label_pos,
+            pos2(turn_rect.center().x, turn_rect.center().y - 7.0),
             egui::Align2::CENTER_CENTER,
             turn_label,
-            FontId::proportional(16.0),
+            theme::display_font(18.0),
             turn_color,
+        );
+        painter.text(
+            pos2(turn_rect.center().x, turn_rect.center().y + 10.0),
+            egui::Align2::CENTER_CENTER,
+            if is_in_turn { "Take the initiative" } else { "Watching the table" },
+            FontId::proportional(11.0),
+            theme::TEXT_BRIGHT,
         );
 
         self.render_controls_button(ui, sr);

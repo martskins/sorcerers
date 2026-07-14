@@ -13,6 +13,9 @@ use tokio::sync::mpsc;
 // Embedded fonts — compiled into the binary so they're always available.
 static NOTO_SANS: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf");
 static NOTO_SYMBOLS: &[u8] = include_bytes!("../../../assets/fonts/NotoSansSymbols2-Regular.ttf");
+static SPECTRAL_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/Spectral-Regular.ttf");
+static SPECTRAL_SEMIBOLD: &[u8] = include_bytes!("../../../assets/fonts/Spectral-SemiBold.ttf");
+static SPECTRAL_BOLD: &[u8] = include_bytes!("../../../assets/fonts/Spectral-Bold.ttf");
 
 pub struct SorcerersApp {
     scene: Scene,
@@ -54,9 +57,8 @@ impl SorcerersApp {
         use egui::{Color32, FontId, Stroke, TextStyle, style::WidgetVisuals};
 
         // ── Embedded fonts ───────────────────────────────────────────────────
-        // Start from egui's defaults (which include its own compact Latin font),
-        // then append Noto Sans and Noto Sans Symbols 2 as fallbacks so every
-        // Unicode character we use in the UI renders correctly.
+        // Noto Sans is the primary UI face; its broad glyph coverage keeps game
+        // information readable. Spectral is kept for a few identity moments.
         {
             let mut fonts = egui::FontDefinitions::default();
             fonts.font_data.insert(
@@ -67,13 +69,42 @@ impl SorcerersApp {
                 "NotoSymbols2".to_owned(),
                 std::sync::Arc::new(egui::FontData::from_static(NOTO_SYMBOLS)),
             );
-            // Append after the built-in font so basic Latin keeps the default look;
-            // missing glyphs (symbols, dingbats, etc.) fall through to these fonts.
+            fonts.font_data.insert(
+                "SpectralRegular".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_static(SPECTRAL_REGULAR)),
+            );
+            fonts.font_data.insert(
+                "SpectralSemiBold".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_static(SPECTRAL_SEMIBOLD)),
+            );
+            fonts.font_data.insert(
+                "SpectralBold".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_static(SPECTRAL_BOLD)),
+            );
+
+            // Noto Sans owns all product UI. Symbols remain a final fallback;
+            // Spectral is reserved for the Sorcerers identity display face.
             for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
                 let list = fonts.families.entry(family).or_default();
-                list.push("NotoSans".to_owned());
+                list.insert(0, "NotoSans".to_owned());
                 list.push("NotoSymbols2".to_owned());
             }
+            fonts.families.insert(
+                egui::FontFamily::Name("SpectralDisplay".into()),
+                vec![
+                    "SpectralSemiBold".to_owned(),
+                    "NotoSans".to_owned(),
+                    "NotoSymbols2".to_owned(),
+                ],
+            );
+            fonts.families.insert(
+                egui::FontFamily::Name("SpectralDisplayBold".into()),
+                vec![
+                    "SpectralBold".to_owned(),
+                    "NotoSans".to_owned(),
+                    "NotoSymbols2".to_owned(),
+                ],
+            );
             ctx.set_fonts(fonts);
         }
 
@@ -83,18 +114,19 @@ impl SorcerersApp {
         // Overall background / window chrome
         visuals.window_corner_radius = CornerRadius::same(8);
         visuals.window_shadow = egui::Shadow::NONE;
-        visuals.window_fill = Color32::from_rgb(18, 20, 28);
-        visuals.window_stroke = Stroke::new(1.0, Color32::from_rgb(72, 84, 116));
+        visuals.window_fill = theme::PANEL_BG;
+        visuals.window_stroke = Stroke::new(1.0, theme::PANEL_BORDER);
         visuals.panel_fill = Color32::TRANSPARENT;
-        visuals.extreme_bg_color = Color32::from_rgb(9, 10, 16);
+        visuals.extreme_bg_color = theme::SURFACE_INSET;
+        visuals.text_edit_bg_color = Some(theme::SURFACE_INSET);
 
         let btn_text = Stroke::new(1.0, Color32::WHITE);
-        let cr = CornerRadius::same(4);
+        let cr = CornerRadius::same(6);
 
         visuals.widgets.inactive = WidgetVisuals {
             bg_fill: theme::ACTION,
-            weak_bg_fill: Color32::from_rgb(35, 46, 66),
-            bg_stroke: Stroke::NONE,
+            weak_bg_fill: Color32::from_rgb(29, 47, 68),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(91, 143, 181)),
             fg_stroke: btn_text,
             corner_radius: cr,
             expansion: 0.0,
@@ -102,33 +134,33 @@ impl SorcerersApp {
         visuals.widgets.hovered = WidgetVisuals {
             bg_fill: theme::ACTION_HOVERED,
             weak_bg_fill: Color32::from_rgb(55, 72, 98),
-            bg_stroke: Stroke::new(1.0, Color32::from_rgb(150, 180, 205)),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(201, 227, 244)),
             fg_stroke: btn_text,
             corner_radius: cr,
             expansion: 1.0,
         };
         visuals.widgets.active = WidgetVisuals {
             bg_fill: theme::ACTION_ACTIVE,
-            weak_bg_fill: Color32::from_rgb(30, 40, 60),
-            bg_stroke: Stroke::NONE,
+            weak_bg_fill: theme::SURFACE_INSET_FOCUSED,
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(122, 181, 208)),
             fg_stroke: btn_text,
             corner_radius: cr,
             expansion: 0.0,
         };
         // Open (non-interactive) widgets — used for text inputs, labels inside frames
         visuals.widgets.open = WidgetVisuals {
-            bg_fill: Color32::from_rgb(26, 30, 42),
-            weak_bg_fill: Color32::from_rgb(26, 30, 42),
-            bg_stroke: Stroke::new(1.0, Color32::from_rgb(88, 98, 130)),
-            fg_stroke: Stroke::new(1.0, Color32::WHITE),
+            bg_fill: theme::SURFACE_INSET,
+            weak_bg_fill: theme::SURFACE_INSET,
+            bg_stroke: Stroke::new(1.0, theme::INPUT_BORDER),
+            fg_stroke: Stroke::new(1.0, theme::TEXT_BRIGHT),
             corner_radius: cr,
             expansion: 0.0,
         };
         visuals.widgets.noninteractive = WidgetVisuals {
-            bg_fill: Color32::from_rgb(24, 27, 38),
-            weak_bg_fill: Color32::from_rgb(17, 20, 30),
-            bg_stroke: Stroke::new(1.0, Color32::from_rgb(62, 72, 100)),
-            fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 218, 232)),
+            bg_fill: Color32::from_rgb(19, 23, 23),
+            weak_bg_fill: Color32::from_rgb(13, 17, 18),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(56, 63, 61)),
+            fg_stroke: Stroke::new(1.0, theme::TEXT_BRIGHT),
             corner_radius: cr,
             expansion: 0.0,
         };
@@ -138,22 +170,23 @@ impl SorcerersApp {
 
         // ── Spacing / style ──────────────────────────────────────────────────
         let mut style = (*ctx.global_style()).clone();
-        style.spacing.button_padding = egui::vec2(14.0, 8.0);
+        style.spacing.button_padding = egui::vec2(16.0, 10.0);
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.text_edit_width = 300.0;
+        style.spacing.interact_size.y = 42.0;
 
         style
             .text_styles
-            .insert(TextStyle::Body, FontId::proportional(18.0));
+            .insert(TextStyle::Body, FontId::proportional(17.0));
         style
             .text_styles
-            .insert(TextStyle::Button, FontId::proportional(22.0));
+            .insert(TextStyle::Button, FontId::proportional(17.0));
         style
             .text_styles
             .insert(TextStyle::Heading, FontId::proportional(24.0));
         style
             .text_styles
-            .insert(TextStyle::Small, FontId::proportional(14.0));
+            .insert(TextStyle::Small, FontId::proportional(12.0));
 
         ctx.set_global_style(style);
     }

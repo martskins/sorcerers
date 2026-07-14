@@ -18,7 +18,7 @@ use crate::{
     texture_cache::TextureCache,
     theme,
 };
-use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
+use egui::{Color32, Context, FontId, Painter, Rect, RichText, TextureHandle, TextureOptions, Ui, pos2, vec2};
 use kira::{AudioManager, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::{
     card::{CardData, CardType, Region},
@@ -30,6 +30,8 @@ use sorcerers::{
     zone::{Location, Zone},
 };
 use std::collections::HashMap;
+
+const MATCH_STAGE_BACKGROUND: &[u8] = include_bytes!("../../../../assets/images/menu/match_stage_v1.png");
 
 mod messages;
 mod ui;
@@ -244,6 +246,7 @@ pub struct Game {
     card_toast: Vec<Toast>,
     prompt_stack_pos: Option<egui::Pos2>,
     controlled_hand_opened_for: Option<PlayerId>,
+    match_stage_background: Option<TextureHandle>,
 }
 
 enum GameOverlay {
@@ -413,7 +416,52 @@ impl Game {
             card_toast: Vec::new(),
             prompt_stack_pos: None,
             controlled_hand_opened_for: None,
+            match_stage_background: None,
         }
+    }
+
+    fn render_match_stage(&mut self, ui: &mut Ui) {
+        if self.match_stage_background.is_none() {
+            let image = image::load_from_memory(MATCH_STAGE_BACKGROUND)
+                .expect("match stage background asset should decode")
+                .to_rgba8();
+            let size = [image.width() as usize, image.height() as usize];
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+            self.match_stage_background = Some(ui.ctx().load_texture(
+                "match_stage_background",
+                color_image,
+                TextureOptions::LINEAR,
+            ));
+        }
+
+        let rect = ui.max_rect();
+        let texture = self
+            .match_stage_background
+            .as_ref()
+            .expect("match stage background should be loaded");
+        let image_size = texture.size_vec2();
+        let viewport_ratio = rect.width() / rect.height().max(1.0);
+        let image_ratio = image_size.x / image_size.y.max(1.0);
+        let uv = if viewport_ratio > image_ratio {
+            let visible_height = image_ratio / viewport_ratio;
+            let inset = (1.0 - visible_height) * 0.5;
+            Rect::from_min_max(pos2(0.0, inset), pos2(1.0, 1.0 - inset))
+        } else {
+            let visible_width = viewport_ratio / image_ratio;
+            let inset = (1.0 - visible_width) * 0.5;
+            Rect::from_min_max(pos2(inset, 0.0), pos2(1.0 - inset, 1.0))
+        };
+        ui.painter().image(
+            texture.id(),
+            rect,
+            uv,
+            Color32::from_rgba_unmultiplied(255, 255, 255, 190),
+        );
+        ui.painter().rect_filled(
+            rect,
+            0.0,
+            Color32::from_rgba_unmultiplied(2, 5, 9, 52),
+        );
     }
 
     /// Push a toast to the queue, dropping the oldest if the cap is exceeded.
@@ -478,6 +526,8 @@ impl Game {
             );
             return None;
         }
+
+        self.render_match_stage(ui);
 
         let component_actions = self.components.render(&mut self.data, ui, &painter);
 

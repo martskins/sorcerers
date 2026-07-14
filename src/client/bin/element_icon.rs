@@ -4,6 +4,7 @@
 /// Air   = upward triangle + midline         purple
 /// Earth = downward triangle + midline       brown
 /// Water = downward triangle            (▽)  blue
+use crate::theme;
 use egui::{Color32, Painter, Pos2, Sense, Shape, Stroke, Ui, Vec2, pos2, vec2};
 use sorcerers::game::{Element, Thresholds};
 
@@ -11,10 +12,10 @@ use sorcerers::game::{Element, Thresholds};
 
 pub fn element_color(element: &Element) -> Color32 {
     match element {
-        Element::Fire => Color32::from_rgb(220, 70, 40),
-        Element::Air => Color32::from_rgb(160, 90, 220),
-        Element::Earth => Color32::from_rgb(140, 100, 40),
-        Element::Water => Color32::from_rgb(50, 150, 230),
+        Element::Fire => theme::ELEMENT_FIRE,
+        Element::Air => theme::ELEMENT_AIR,
+        Element::Earth => theme::ELEMENT_EARTH,
+        Element::Water => theme::ELEMENT_WATER,
     }
 }
 
