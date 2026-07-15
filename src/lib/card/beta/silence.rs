@@ -58,11 +58,14 @@ impl Card for Silence {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
+
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
-            affected_cards: Box::new(CardQuery::new()
-                .units()
-                .in_affected_zones_of_card(self.get_id())),
+            affected_cards: Box::new(
+                CardQuery::new()
+                    .minions()
+                    .in_affected_zones_of_card(self.get_id()),
+            ),
         }])
     }
 }

@@ -91,7 +91,7 @@ impl Card for PuppetMaster {
                 let controller_id = self.get_controller_id(state);
                 let self_id = *self.get_id();
                 let controlled_minions = CardQuery::new()
-                    .units()
+                    .minions()
                     .tapped()
                     .in_zone(self.get_zone())
                     .id_not(self_id)

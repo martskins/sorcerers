@@ -60,7 +60,7 @@ impl Magic for Riptide {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let Some(picked_site_id) = CardQuery::new()
-            .with_affinity(Element::Water)
+            .water_sites()
             .with_prompt("Pick a water site to pull a unit into")
             .with_source_card(*self.get_id())
             .sites()
@@ -71,8 +71,9 @@ impl Magic for Riptide {
         };
         let site = state.get_card(&picked_site_id);
         let Some(picked_unit_id) = CardQuery::new()
-            .minions()
+            .units()
             .adjacent_to(site.get_location())
+            .in_region(Region::Surface)
             .with_prompt("Pick a unit to pull")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state)

@@ -59,7 +59,7 @@ impl Magic for Teleport {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let card_id = CardQuery::new()
-            .count(1)
+            .in_play()
             .with_prompt("Choose an ally to teleport")
             .with_source_card(*self.get_id())
             .units()
@@ -67,19 +67,15 @@ impl Magic for Teleport {
             .pick(&controller_id, state)
             .await?;
         let card_id = card_id.expect("value not to be None");
-        let zone = ZoneQuery::any_site(
-            None,
-            Some("Teleport: Choose site to teleport to".to_string()),
-        )
-        .pick(&controller_id, state)
-        .await?;
+        let zone = LocationQuery::any_site(None, None)
+            .with_prompt("Choose site to teleport to")
+            .with_source_card(*self.get_id())
+            .pick(&controller_id, state)
+            .await?;
         Ok(vec![Effect::TeleportCard {
             player_id: *self.get_owner_id(),
             card_id,
-            to_location: zone
-                .location()
-                .cloned()
-                .expect("teleport target must be a location"),
+            to_location: zone.with_region(Region::Surface),
         }])
     }
 }

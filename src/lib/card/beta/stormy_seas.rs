@@ -67,17 +67,23 @@ impl Magic for StormySeas {
             Some(id) => id,
             None => return Ok(vec![]),
         };
-        let site_zone = state.get_card(&site_id).get_zone().clone();
+        let site_location = state.get_card(&site_id).get_location().clone();
         let mut effects = vec![];
-        let units = CardQuery::new().units().in_zone(&site_zone).all(state);
-        for card_id in units {
+        let minions = CardQuery::new()
+            .minions()
+            .occupying_site_at_location(site_location.clone())
+            .all(state);
+        for card_id in minions {
             effects.push(Effect::SetCardRegion {
                 card_id,
                 destination: Region::Underwater,
                 tap: false,
             });
         }
-        let artifacts = CardQuery::new().artifacts().in_zone(&site_zone).all(state);
+        let artifacts = CardQuery::new()
+            .artifacts()
+            .occupying_site_at_location(site_location)
+            .all(state);
         for card_id in artifacts {
             effects.push(Effect::SetCardRegion {
                 card_id,

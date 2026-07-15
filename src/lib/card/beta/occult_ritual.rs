@@ -63,6 +63,7 @@ impl Magic for OccultRitual {
         let count = CardQuery::new()
             .in_location(caster.get_location().clone())
             .spellcasters(None)
+            .controlled_by(&controller_id)
             .all(state)
             .len() as i8;
         if count == 0 {

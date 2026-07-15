@@ -86,19 +86,13 @@ impl Card for PurgeJuggernaut {
                     return Ok(vec![]);
                 }
                 let self_id = *self.get_id();
-                let adjacent_locations = self.get_location().get_adjacent_sites(state);
-                if adjacent_locations.is_empty() {
-                    return Ok(vec![]);
-                }
-
-                let target_zone = LocationQuery::from_locations(adjacent_locations)
-                    .with_prompt("Pick an adjacent location")
-                    .with_source_card(*self.get_id())
+                let target_location = LocationQuery::new()
+                    .adjacent_to(self.get_zone())
                     .pick(&controller_id, state)
                     .await?;
-                let killed_units: Vec<Effect> = CardQuery::new()
-                    .units()
-                    .in_zone(&target_zone)
+                let target_minions: Vec<Effect> = CardQuery::new()
+                    .minions()
+                    .in_location(target_location.clone())
                     .id_not(*self.get_id())
                     .all(state)
                     .into_iter()
@@ -111,17 +105,12 @@ impl Card for PurgeJuggernaut {
                 let mut effects = vec![Effect::MoveCard {
                     player_id: controller_id,
                     card_id: self_id,
-                    from: (self.get_zone().clone())
-                        .location()
-                        .cloned()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_location(
-                        (target_zone.clone()).with_region(self.get_region(state).clone()),
-                    ),
+                    from: self.get_location().clone(),
+                    to: target_location.into(),
                     tap: true,
                     through_path: None,
                 }];
-                effects.extend(killed_units);
+                effects.extend(target_minions);
                 Ok(effects)
             }
             _ => Ok(vec![]),

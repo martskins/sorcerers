@@ -61,6 +61,7 @@ impl Card for RootSpider {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
+
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
@@ -69,7 +70,7 @@ impl Card for RootSpider {
             return Ok(vec![]);
         }
         let surface_minions = CardQuery::new()
-            .units()
+            .minions()
             .in_location(self.get_location().clone().with_region(Region::Surface));
         Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
