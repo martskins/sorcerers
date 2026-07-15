@@ -847,6 +847,7 @@ impl Menu {
                         egui::Sense::hover(),
                     );
                     let mut hovered_index = None;
+                    let mut lifts = Vec::with_capacity(packs.len());
                     for (index, pack) in packs.iter().enumerate() {
                         let rect = egui::Rect::from_min_size(
                             stack_rect.min + vec2(index as f32 * overlap, 0.0),
@@ -860,6 +861,12 @@ impl Menu {
                         if response.hovered() {
                             hovered_index = Some(index);
                         }
+                        lifts.push(ui.ctx().animate_bool_with_time_and_easing(
+                            ui.id().with(("booster_pack_lift", pack.id)),
+                            response.hovered(),
+                            theme::animation_time(ui.ctx(), 0.18),
+                            egui::emath::easing::cubic_out,
+                        ));
                         if response.clicked() {
                             self.client
                                 .send(ClientMessage::OpenBoosterPack { pack_id: pack.id })
@@ -880,7 +887,7 @@ impl Menu {
                         }
                     };
                     for index in 0..packs.len() {
-                        if Some(index) != hovered_index {
+                        if lifts[index] <= f32::EPSILON {
                             draw_pack(
                                 ui,
                                 egui::Rect::from_min_size(
@@ -890,10 +897,23 @@ impl Menu {
                             );
                         }
                     }
+                    for index in 0..packs.len() {
+                        if lifts[index] > f32::EPSILON && Some(index) != hovered_index {
+                            let lift = lifts[index];
+                            let lifted_rect = egui::Rect::from_min_size(
+                                stack_rect.min
+                                    + vec2(index as f32 * overlap - 7.0 * lift, -9.0 * lift),
+                                pack_size + vec2(14.0 * lift, 18.0 * lift),
+                            );
+                            draw_pack(ui, lifted_rect);
+                        }
+                    }
                     if let Some(index) = hovered_index {
+                        let lift = lifts[index];
                         let lifted_rect = egui::Rect::from_min_size(
-                            stack_rect.min + vec2(index as f32 * overlap - 7.0, -9.0),
-                            pack_size + vec2(14.0, 18.0),
+                            stack_rect.min
+                                + vec2(index as f32 * overlap - 7.0 * lift, -9.0 * lift),
+                            pack_size + vec2(14.0 * lift, 18.0 * lift),
                         );
                         draw_pack(ui, lifted_rect);
                         ui.painter().text(

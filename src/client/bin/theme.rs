@@ -1,4 +1,4 @@
-use egui::{Color32, FontFamily, FontId};
+use egui::{Color32, Context, FontFamily, FontId};
 
 pub const APP_BG: Color32 = Color32::from_rgb(8, 9, 13);
 // Interface surfaces are soot-black and slightly translucent, so the table art
@@ -31,6 +31,21 @@ pub const TABLE_FELT: Color32 = Color32::from_rgb(22, 33, 28);
 pub const TABLE_EDGE: Color32 = Color32::from_rgb(103, 86, 48);
 
 pub const BUTTON_HEIGHT: f32 = 48.0;
+
+/// Animation can be disabled for assistive technology or by launching with
+/// `SORCERERS_REDUCE_MOTION=1`.
+pub fn animations_enabled(ctx: &Context) -> bool {
+    !ctx.memory(|memory| memory.options.screen_reader)
+        && std::env::var_os("SORCERERS_REDUCE_MOTION").as_deref() != Some("1".as_ref())
+}
+
+pub fn animation_time(ctx: &Context, standard_time: f32) -> f32 {
+    if animations_enabled(ctx) {
+        standard_time
+    } else {
+        0.0
+    }
+}
 
 pub fn display_font(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("SpectralDisplay".into()))
