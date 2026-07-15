@@ -20,8 +20,7 @@ const THRESH_SYM: f32 = 13.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
 
-// Panel background / border
-const BG: Color32 = theme::PANEL_BG;
+// Shared side rail provides the panel background; the status widgets retain its border color.
 const BORDER: Color32 = theme::PANEL_BORDER;
 
 #[derive(Debug)]
@@ -255,7 +254,9 @@ impl Component for PlayerStatusComponent {
         } else {
             top_margin
         };
-        let panel_x = 12.0;
+        // The fixed player rail spans x=12..128 (116px). Center this 98px HUD
+        // within it rather than inheriting the rail's left edge.
+        let panel_x = 21.0;
         let panel_pos = pos2(panel_x, panel_y);
         let panel_rect = Rect::from_min_size(panel_pos, vec2(panel_w, panel_h));
         self.rect = panel_rect;
@@ -308,9 +309,9 @@ impl Component for PlayerStatusComponent {
             .order(egui::Order::Foreground)
             .show(&ctx, |ui| {
                 egui::Frame::new()
-                    .fill(BG)
-                    .stroke(Stroke::new(1.0, BORDER))
-                    .corner_radius(CornerRadius::same(8))
+                    .fill(Color32::TRANSPARENT)
+                    .stroke(Stroke::NONE)
+                    .corner_radius(CornerRadius::ZERO)
                     .inner_margin(egui::Margin::symmetric(PAD_H, PAD_V))
                     .show(ui, |ui| {
                         ui.set_min_width(panel_w - (PAD_H as f32) * 2.0);
@@ -398,15 +399,17 @@ impl Component for PlayerStatusComponent {
                             }
 
                             ui.add_space(3.0);
-                            ui.vertical_centered(|ui| {
-                                ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
-                                ui.horizontal(|ui| {
-                                    element_symbol(ui, resources.thresholds.fire, Element::Fire);
-                                    element_symbol(ui, resources.thresholds.air, Element::Air);
-                                });
-                                ui.horizontal(|ui| {
-                                    element_symbol(ui, resources.thresholds.earth, Element::Earth);
-                                    element_symbol(ui, resources.thresholds.water, Element::Water);
+                            ui.horizontal_centered(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
+                                    ui.horizontal(|ui| {
+                                        element_symbol(ui, resources.thresholds.fire, Element::Fire);
+                                        element_symbol(ui, resources.thresholds.air, Element::Air);
+                                    });
+                                    ui.horizontal(|ui| {
+                                        element_symbol(ui, resources.thresholds.earth, Element::Earth);
+                                        element_symbol(ui, resources.thresholds.water, Element::Water);
+                                    });
                                 });
                             });
 

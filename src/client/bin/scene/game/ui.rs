@@ -1,6 +1,32 @@
 use super::*;
 
 impl Game {
+    pub(super) fn render_match_chrome(&self, painter: &Painter) {
+        let sr = screen_rect().unwrap_or(Rect::ZERO);
+        let top_bar = Rect::from_min_size(sr.min, vec2(sr.width(), 54.0));
+        painter.rect_filled(
+            top_bar,
+            0.0,
+            Color32::from_rgba_premultiplied(7, 10, 12, 236),
+        );
+        painter.line_segment(
+            [top_bar.left_bottom(), top_bar.right_bottom()],
+            egui::Stroke::new(1.0, theme::PANEL_BORDER),
+        );
+
+        let player_rail = Rect::from_min_max(
+            pos2(sr.min.x + 12.0, top_bar.max.y + 10.0),
+            pos2(sr.min.x + 128.0, sr.max.y - 26.0),
+        );
+        painter.rect_filled(player_rail, 8.0, theme::PANEL_BG);
+        painter.rect_stroke(
+            player_rail,
+            8.0,
+            egui::Stroke::new(1.0, theme::PANEL_BORDER),
+            egui::StrokeKind::Outside,
+        );
+    }
+
     pub(super) fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
         let is_in_turn = self.current_player == self.data.player_id;
@@ -13,30 +39,26 @@ impl Game {
         } else {
             ("THEIR TURN", theme::TURN_WAITING)
         };
+        let turn_hint = if self.data.status == Status::Mulligan {
+            "Choose any cards to replace"
+        } else if is_in_turn {
+            "Take the initiative"
+        } else {
+            "Watching the table"
+        };
 
-        let turn_rect = Rect::from_center_size(pos2(sr.center().x, 30.0), vec2(168.0, 42.0));
-        painter.rect_filled(
-            turn_rect,
-            8.0,
-            Color32::from_rgba_premultiplied(18, 23, 35, 230),
-        );
-        painter.rect_stroke(
-            turn_rect,
-            8.0,
-            egui::Stroke::new(1.0, turn_color),
-            egui::StrokeKind::Outside,
-        );
+        let turn_center = pos2(sr.center().x, sr.min.y + 27.0);
         painter.text(
-            pos2(turn_rect.center().x, turn_rect.center().y - 7.0),
+            pos2(turn_center.x, turn_center.y - 8.0),
             egui::Align2::CENTER_CENTER,
             turn_label,
-            theme::display_font(18.0),
+            theme::display_font(17.0),
             turn_color,
         );
         painter.text(
-            pos2(turn_rect.center().x, turn_rect.center().y + 10.0),
+            pos2(turn_center.x, turn_center.y + 12.0),
             egui::Align2::CENTER_CENTER,
-            if is_in_turn { "Take the initiative" } else { "Watching the table" },
+            turn_hint,
             FontId::proportional(11.0),
             theme::TEXT_BRIGHT,
         );
@@ -55,14 +77,14 @@ impl Game {
             let client = self.client.clone();
             let player_id = self.data.player_id;
             let game_id = self.game_id;
-            let btn_size = vec2(160.0, theme::BUTTON_HEIGHT);
-            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, 18.0);
+            let btn_size = vec2(160.0, 42.0);
+            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, sr.min.y + 6.0);
             egui::Area::new(egui::Id::new("pass_turn_btn"))
                 .fixed_pos(btn_pos)
                 .show(ui, |ui| {
                     let btn = egui::Button::new(
                         egui::RichText::new("Pass Turn")
-                            .size(18.0)
+                            .size(16.0)
                             .color(Color32::WHITE),
                     )
                     .min_size(btn_size);
@@ -78,14 +100,19 @@ impl Game {
         ) || self.data.status == Status::Mulligan
         {
             let mut done = false;
-            let btn_size = vec2(180.0, theme::BUTTON_HEIGHT);
-            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, 18.0);
+            let done_label = if self.data.status == Status::Mulligan {
+                "Confirm mulligan"
+            } else {
+                "Done selecting"
+            };
+            let btn_size = vec2(192.0, 42.0);
+            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, sr.min.y + 6.0);
             egui::Area::new(egui::Id::new("done_selecting_btn"))
                 .fixed_pos(btn_pos)
                 .show(ui, |ui| {
                     let btn = egui::Button::new(
-                        egui::RichText::new("Done Selecting")
-                            .size(18.0)
+                        egui::RichText::new(done_label)
+                            .size(16.0)
                             .color(Color32::WHITE),
                     )
                     .min_size(btn_size);
@@ -176,7 +203,7 @@ impl Game {
 
     fn render_debug_effects_button(&mut self, ui: &mut Ui, sr: Rect) {
         let icon_size = vec2(24.0, 24.0);
-        let icon_pos = pos2(sr.center().x + 124.0, 16.0);
+        let icon_pos = pos2(sr.center().x + 174.0, sr.min.y + 15.0);
         let mut hovered = false;
         egui::Area::new(egui::Id::new("debug_effects_btn"))
             .fixed_pos(icon_pos)
@@ -257,7 +284,7 @@ impl Game {
 
     fn render_controls_button(&mut self, ui: &mut Ui, sr: Rect) {
         let icon_size = vec2(24.0, 24.0);
-        let icon_pos = pos2(sr.center().x + 92.0, 16.0);
+        let icon_pos = pos2(sr.center().x + 142.0, sr.min.y + 15.0);
         let mut hovered = false;
         egui::Area::new(egui::Id::new("controls_help_btn"))
             .fixed_pos(icon_pos)

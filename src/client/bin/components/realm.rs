@@ -1282,38 +1282,40 @@ impl RealmComponent {
         ui: &mut Ui,
     ) -> anyhow::Result<Option<OngoingEffectData>> {
         let mut hovered_effect = None;
-        let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 18.0);
+        let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 8.0);
         egui::Area::new(egui::Id::new("realm_view_controls"))
             .fixed_pos(button_pos)
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
+                ui.spacing_mut().interact_size.y = 32.0;
+                ui.spacing_mut().button_padding = vec2(10.0, 4.0);
                 ui.horizontal(|ui| {
-                    for filter in [
-                        RealmCardFilter::All,
-                        RealmCardFilter::Surface,
-                        RealmCardFilter::Underground,
-                        RealmCardFilter::Underwater,
-                    ] {
-                        let selected = self.card_filter == filter;
-                        if ui
-                            .selectable_label(selected, filter.label())
-                            .on_hover_text("Filter cards shown on the realm")
-                            .clicked()
-                        {
-                            self.card_filter = filter;
-                        }
-                    }
-                    ui.separator();
-                    let effects_clicked = ui
-                        .selectable_label(data.show_ongoing_effects, "Effects")
-                        .on_hover_text("Show active ongoing effects")
-                        .clicked();
-                    if effects_clicked {
-                        data.show_ongoing_effects = !data.show_ongoing_effects;
-                        if data.show_ongoing_effects {
-                            data.ongoing_effects = None;
-                        }
-                    }
+                            for filter in [
+                                RealmCardFilter::All,
+                                RealmCardFilter::Surface,
+                                RealmCardFilter::Underground,
+                                RealmCardFilter::Underwater,
+                            ] {
+                                let selected = self.card_filter == filter;
+                                if ui
+                                    .selectable_label(selected, filter.label())
+                                    .on_hover_text("Filter cards shown on the realm")
+                                    .clicked()
+                                {
+                                    self.card_filter = filter;
+                                }
+                            }
+                            ui.separator();
+                            let effects_clicked = ui
+                                .selectable_label(data.show_ongoing_effects, "Effects")
+                                .on_hover_text("Show active ongoing effects")
+                                .clicked();
+                            if effects_clicked {
+                                data.show_ongoing_effects = !data.show_ongoing_effects;
+                                if data.show_ongoing_effects {
+                                    data.ongoing_effects = None;
+                                }
+                            }
                 });
             });
         if data.show_ongoing_effects {

@@ -48,5 +48,11 @@ pub fn hand_rect() -> anyhow::Result<Rect> {
 }
 
 pub fn realm_rect() -> anyhow::Result<Rect> {
-    screen_rect()
+    let sr = screen_rect()?;
+    // The realm geometry carries its own inset. Reserve a slim left gutter so
+    // its outer rail never crowds the persistent player-status rail.
+    Ok(Rect::from_min_max(
+        pos2(sr.min.x + 36.0, sr.min.y),
+        sr.max,
+    ))
 }

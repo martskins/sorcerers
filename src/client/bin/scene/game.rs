@@ -528,6 +528,7 @@ impl Game {
         }
 
         self.render_match_stage(ui);
+        self.render_match_chrome(&painter);
 
         let component_actions = self.components.render(&mut self.data, ui, &painter);
 
