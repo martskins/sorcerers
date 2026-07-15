@@ -5,12 +5,12 @@ use egui::{Color32, Context, TextureHandle, TextureOptions, Ui, pos2, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
+use sorcerers::booster::{BoosterCard, BoosterPack, UnopenedBoosterPack};
+use sorcerers::card::{CardData, Region, from_name};
 use sorcerers::collection::CollectedCard;
 use sorcerers::deck::DeckList;
 use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
-use sorcerers::booster::{BoosterCard, BoosterPack, UnopenedBoosterPack};
-use sorcerers::card::{CardData, Region, from_name};
 use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
     self,
@@ -22,7 +22,8 @@ const MENU_BORDER: Color32 = theme::PANEL_BORDER;
 const MENU_TEXT: Color32 = Color32::from_rgb(235, 236, 225);
 const MENU_TEXT_MUTED: Color32 = Color32::from_rgb(171, 179, 168);
 const MENU_GOLD: Color32 = Color32::from_rgb(255, 200, 60);
-const MENU_BACKGROUND: &[u8] = include_bytes!("../../../../assets/images/menu/enchanted_table_v1.png");
+const MENU_BACKGROUND: &[u8] =
+    include_bytes!("../../../../assets/images/menu/enchanted_table_v1.png");
 
 pub struct Menu {
     client: networking::client::Client,
@@ -176,11 +177,8 @@ impl Menu {
             uv,
             Color32::from_rgba_unmultiplied(255, 255, 255, 210),
         );
-        ui.painter().rect_filled(
-            rect,
-            0.0,
-            Color32::from_rgba_unmultiplied(3, 6, 10, 72),
-        );
+        ui.painter()
+            .rect_filled(rect, 0.0, Color32::from_rgba_unmultiplied(3, 6, 10, 72));
     }
 
     fn render_brand_heading(&self, ui: &mut Ui, compact: bool) {
@@ -195,21 +193,6 @@ impl Menu {
                 .color(MENU_TEXT_MUTED)
                 .font(theme::display_font(if compact { 16.0 } else { 18.0 })),
         );
-    }
-
-    fn render_local_mode_notice(&self, ui: &mut Ui) {
-        egui::Frame::new()
-            .fill(Color32::from_rgb(48, 35, 18))
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(128, 91, 32)))
-            .corner_radius(4.0)
-            .inner_margin(egui::Margin::symmetric(10, 6))
-            .show(ui, |ui| {
-                ui.label(
-                    egui::RichText::new("Local mode — matches are limited to this server")
-                        .color(Color32::from_rgb(255, 214, 133))
-                        .size(14.0),
-                );
-            });
     }
 
     fn render_auth_card(&mut self, ui: &mut Ui) {
@@ -324,7 +307,10 @@ impl Menu {
                         self.auth_requested = true;
                         self.auth_error = None;
                     } else {
-                        self.auth_error = Some("Unable to reach the server. Check your connection and try again.".to_string());
+                        self.auth_error = Some(
+                            "Unable to reach the server. Check your connection and try again."
+                                .to_string(),
+                        );
                     }
                 }
 
@@ -418,12 +404,9 @@ impl Menu {
             ui.add_space(10.0);
             if ui
                 .add(
-                    egui::Button::new(format!(
-                        "Packs ({})",
-                        self.unopened_booster_packs.len()
-                    ))
-                    .min_size(vec2(250.0, 36.0)),
-            )
+                    egui::Button::new(format!("Packs ({})", self.unopened_booster_packs.len()))
+                        .min_size(vec2(250.0, 36.0)),
+                )
                 .clicked()
             {
                 self.show_packs = true;
@@ -511,11 +494,9 @@ impl Menu {
                         .inner_margin(egui::Margin::same(18))
                         .show(ui, |ui| {
                             ui.label(
-                                egui::RichText::new(
-                                    "No decks in your collection yet.",
-                                )
-                                .color(Color32::from_rgb(150, 165, 195))
-                                .size(14.0),
+                                egui::RichText::new("No decks in your collection yet.")
+                                    .color(Color32::from_rgb(150, 165, 195))
+                                    .size(14.0),
                             );
                         });
                     return;
@@ -586,9 +567,11 @@ impl Menu {
                                     .size(12.0),
                             );
                         }
-                        if self.available_decks.iter().any(|starter| {
-                            deck_list.name == format!("{} Precon", starter.name())
-                        }) {
+                        if self
+                            .available_decks
+                            .iter()
+                            .any(|starter| deck_list.name == format!("{} Precon", starter.name()))
+                        {
                             ui.label(
                                 egui::RichText::new("Preconstructed starter deck")
                                     .color(Color32::from_rgb(255, 200, 80))
@@ -690,10 +673,8 @@ impl Menu {
         let card_name = &booster_card.name;
         let card = Self::card_preview_data(card_name);
         let image_size = vec2(135.0, 178.0);
-        let response = ui.allocate_ui_with_layout(
-            size,
-            egui::Layout::top_down(egui::Align::Center),
-            |ui| {
+        let response =
+            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
                 if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
                     let image = ui.add(
                         egui::Image::new(egui::ImageSource::Texture(
@@ -709,17 +690,16 @@ impl Menu {
                     ui.allocate_space(image_size);
                 }
                 ui.label(
-                        egui::RichText::new(card_name)
-                            .color(if booster_card.is_foil {
-                                Color32::from_rgb(255, 222, 125)
-                            } else {
-                                Color32::from_rgb(230, 235, 250)
-                            })
+                    egui::RichText::new(card_name)
+                        .color(if booster_card.is_foil {
+                            Color32::from_rgb(255, 222, 125)
+                        } else {
+                            Color32::from_rgb(230, 235, 250)
+                        })
                         .size(11.0)
                         .strong(),
                 );
-            },
-        );
+            });
         response.response.on_hover_ui(|ui| {
             ui.label(
                 egui::RichText::new(if booster_card.is_foil {
@@ -727,8 +707,8 @@ impl Menu {
                 } else {
                     card_name.to_owned()
                 })
-                    .color(Color32::from_rgb(255, 200, 80))
-                    .strong(),
+                .color(Color32::from_rgb(255, 200, 80))
+                .strong(),
             );
             if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
                 let preview = ui.add(
@@ -819,10 +799,7 @@ impl Menu {
         painter.rect_stroke(
             rect.shrink(0.5),
             3.0,
-            egui::Stroke::new(
-                1.0,
-                Color32::from_rgba_unmultiplied(205, 235, 245, 185),
-            ),
+            egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(205, 235, 245, 185)),
             egui::StrokeKind::Inside,
         );
     }
@@ -840,7 +817,11 @@ impl Menu {
                 egui::RichText::new(format!(
                     "{} unopened {} waiting at your table",
                     self.unopened_booster_packs.len(),
-                    if self.unopened_booster_packs.len() == 1 { "pack is" } else { "packs are" }
+                    if self.unopened_booster_packs.len() == 1 {
+                        "pack is"
+                    } else {
+                        "packs are"
+                    }
                 ))
                 .color(MENU_TEXT_MUTED)
                 .size(15.0),
@@ -950,7 +931,10 @@ impl Menu {
             damage_taken: 0,
             bearer: None,
             rarity: base.rarity.clone(),
-            power: card.get_unit_base().map(|unit| unit.power).unwrap_or_default(),
+            power: card
+                .get_unit_base()
+                .map(|unit| unit.power)
+                .unwrap_or_default(),
             has_attachments: false,
             image_path: card.get_image_path(),
             is_token: base.is_token,
@@ -1011,7 +995,8 @@ impl Menu {
                 None
             }
             ServerMessage::BoosterPackOpened { pack_id, pack } => {
-                self.unopened_booster_packs.retain(|unopened| unopened.id != *pack_id);
+                self.unopened_booster_packs
+                    .retain(|unopened| unopened.id != *pack_id);
                 for booster_card in &pack.cards {
                     if let Some(card) = self.collection.iter_mut().find(|card| {
                         card.name == booster_card.name && card.is_foil == booster_card.is_foil
@@ -1111,11 +1096,6 @@ impl Menu {
                                 self.render_brand_heading(ui, true);
                                 ui.add_space(14.0);
 
-                                if self.client.is_in_local_mode() {
-                                    self.render_local_mode_notice(ui);
-                                    ui.add_space(12.0);
-                                }
-
                                 self.render_deck_selection(ui, &mut next_scene);
                             });
                             ui.add_space(24.0);
@@ -1128,11 +1108,6 @@ impl Menu {
                 ui.vertical_centered(|ui| {
                     self.render_brand_heading(ui, false);
                     ui.add_space(28.0);
-
-                    if self.client.is_in_local_mode() {
-                        self.render_local_mode_notice(ui);
-                        ui.add_space(18.0);
-                    }
 
                     if self.looking_for_match {
                         let dot_count = ((time * 2.0) as usize % 3) + 1;
