@@ -690,72 +690,159 @@ impl Game {
         winner_name: &str,
     ) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
-        let panel_w = 360.0_f32.min(sr.width() - 32.0);
-        let panel_h = 190.0_f32.min(sr.height() - 32.0);
-        let origin = pos2(sr.center().x - panel_w / 2.0, sr.center().y - panel_h / 2.0);
-        let mut new_scene = None;
-        let result = if winner_id == self.data.player_id {
-            "Victory"
+        let won = winner_id == self.data.player_id;
+        let accent = if won {
+            Color32::from_rgb(195, 166, 88)
         } else {
-            "Defeat"
+            Color32::from_rgb(171, 77, 77)
         };
-        let winner_text = if winner_id == self.data.player_id {
-            "You win".to_string()
+        let result = if won { "VICTORY" } else { "DEFEAT" };
+        let outcome_text = if won {
+            "You claimed the table.".to_string()
         } else if winner_name.trim().is_empty() {
-            "Opponent wins".to_string()
+            "The opposing sorcerer prevailed.".to_string()
         } else {
-            format!("{winner_name} wins")
+            format!("{winner_name} claimed the table.")
         };
+
+        let now = ui.ctx().input(|input| input.time);
+        let started_at = *self.game_over_started_at.get_or_insert(now);
+        let duration = theme::animation_time(ui.ctx(), 0.68) as f64;
+        let raw_progress = if duration <= f64::EPSILON {
+            1.0
+        } else {
+            ((now - started_at) / duration).clamp(0.0, 1.0) as f32
+        };
+        if raw_progress < 1.0 {
+            ui.ctx().request_repaint();
+        }
+        let progress = egui::emath::easing::exponential_out(raw_progress);
+        let opacity = (raw_progress * 2.4).clamp(0.0, 1.0);
+
+        let base_w = 448.0_f32.min(sr.width() - 32.0);
+        let base_h = 278.0_f32.min(sr.height() - 32.0);
+        let scale = 0.94 + progress * 0.06;
+        let panel_w = base_w * scale;
+        let panel_h = base_h * scale;
+        let origin = pos2(
+            sr.center().x - panel_w / 2.0,
+            sr.center().y - panel_h / 2.0 - (1.0 - progress) * 20.0,
+        );
+
+        let pulse_alpha = ((1.0 - raw_progress) * 110.0) as u8;
+        if pulse_alpha > 0 {
+            ui.painter().circle_stroke(
+                sr.center(),
+                72.0 + raw_progress * 150.0,
+                egui::Stroke::new(
+                    1.5,
+                    Color32::from_rgba_unmultiplied(
+                        accent.r(),
+                        accent.g(),
+                        accent.b(),
+                        pulse_alpha,
+                    ),
+                ),
+            );
+        }
+
+        let mut return_clicked = false;
 
         egui::Area::new(egui::Id::new("game_over_window"))
             .fixed_pos(origin)
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
+                ui.set_opacity(opacity);
                 egui::Frame::new()
-                    .fill(theme::PANEL_BG)
-                    .stroke(egui::Stroke::new(1.0, theme::PANEL_BORDER))
-                    .corner_radius(8.0)
-                    .inner_margin(egui::Margin::same(18))
+                    .fill(Color32::from_rgba_unmultiplied(7, 11, 12, 246))
+                    .stroke(egui::Stroke::new(1.5, accent))
+                    .corner_radius(10.0)
+                    .inner_margin(egui::Margin::same(24))
                     .show(ui, |ui| {
-                        ui.set_min_size(vec2(panel_w - 36.0, panel_h - 36.0));
+                        ui.set_min_size(vec2(panel_w - 48.0, panel_h - 48.0));
                         ui.vertical_centered(|ui| {
                             ui.label(
-                                RichText::new("Game Over")
-                                    .size(17.0)
+                                RichText::new("MATCH COMPLETE")
+                                    .size(11.0)
+                                    .strong()
                                     .color(theme::TURN_WAITING),
                             );
-                            ui.add_space(8.0);
-                            ui.label(RichText::new(result).size(30.0).strong().color(
-                                if winner_id == self.data.player_id {
-                                    theme::TURN_READY
-                                } else {
-                                    Color32::from_rgb(224, 96, 104)
-                                },
-                            ));
-                            ui.add_space(8.0);
+                            ui.add_space(6.0);
                             ui.label(
-                                RichText::new(winner_text.as_str())
-                                    .size(16.0)
+                                RichText::new(result)
+                                    .font(theme::display_bold_font(44.0))
+                                    .color(accent),
+                            );
+                            ui.add_space(5.0);
+
+                            let (divider, _) = ui.allocate_exact_size(
+                                vec2((panel_w - 100.0).min(280.0), 14.0),
+                                egui::Sense::hover(),
+                            );
+                            let center = divider.center();
+                            let stroke = egui::Stroke::new(
+                                1.0,
+                                Color32::from_rgba_unmultiplied(
+                                    accent.r(),
+                                    accent.g(),
+                                    accent.b(),
+                                    150,
+                                ),
+                            );
+                            ui.painter().line_segment(
+                                [divider.left_center(), pos2(center.x - 12.0, center.y)],
+                                stroke,
+                            );
+                            ui.painter().line_segment(
+                                [pos2(center.x + 12.0, center.y), divider.right_center()],
+                                stroke,
+                            );
+                            ui.painter().add(egui::epaint::Shape::convex_polygon(
+                                vec![
+                                    pos2(center.x, center.y - 5.0),
+                                    pos2(center.x + 5.0, center.y),
+                                    pos2(center.x, center.y + 5.0),
+                                    pos2(center.x - 5.0, center.y),
+                                ],
+                                Color32::from_rgba_unmultiplied(
+                                    accent.r(),
+                                    accent.g(),
+                                    accent.b(),
+                                    45,
+                                ),
+                                stroke,
+                            ));
+
+                            ui.add_space(7.0);
+                            ui.label(
+                                RichText::new(outcome_text.as_str())
+                                    .size(17.0)
                                     .color(theme::TEXT_BRIGHT),
                             );
-                            ui.add_space(18.0);
+                            ui.add_space(22.0);
                             if ui
                                 .add(
                                     egui::Button::new(
-                                        RichText::new("Back to Menu")
-                                            .size(15.0)
+                                        RichText::new("Return to Menu")
+                                            .size(16.0)
                                             .color(Color32::WHITE),
                                     )
-                                    .min_size(vec2(150.0, 34.0)),
+                                    .min_size(vec2(176.0, 42.0)),
                                 )
                                 .clicked()
                             {
-                                new_scene = Some(Scene::Menu(Menu::new(self.client.clone())));
+                                return_clicked = true;
                             }
                         });
                     });
             });
 
-        new_scene
+        if return_clicked {
+            self.play_button_click();
+            self.data.status = Status::Idle;
+            return Some(Scene::Menu(Menu::new(self.client.clone())));
+        }
+
+        None
     }
 }

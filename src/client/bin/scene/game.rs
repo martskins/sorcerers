@@ -247,6 +247,7 @@ pub struct Game {
     prompt_stack_pos: Option<egui::Pos2>,
     controlled_hand_opened_for: Option<PlayerId>,
     match_stage_background: Option<TextureHandle>,
+    game_over_started_at: Option<f64>,
 }
 
 enum GameOverlay {
@@ -417,6 +418,7 @@ impl Game {
             prompt_stack_pos: None,
             controlled_hand_opened_for: None,
             match_stage_background: None,
+            game_over_started_at: None,
         }
     }
 

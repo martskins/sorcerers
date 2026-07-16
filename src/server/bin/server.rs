@@ -474,10 +474,10 @@ impl Server {
         );
         game.state.add_card(card);
 
-        let avatar_id = game.state.get_player_avatar_id(&player_one).unwrap();
-        let avatar_card = game.state.get_card_mut(&avatar_id);
-        avatar_card.get_unit_base_mut().unwrap().damage = 20;
-        avatar_card.get_avatar_base_mut().unwrap().deaths_door = true;
+        // let avatar_id = game.state.get_player_avatar_id(&player_one).unwrap();
+        // let avatar_card = game.state.get_card_mut(&avatar_id);
+        // avatar_card.get_unit_base_mut().unwrap().damage = 20;
+        // avatar_card.get_avatar_base_mut().unwrap().deaths_door = true;
 
         let player_mana = game.state.get_player_mana_mut(&player_one);
         *player_mana = 10;

@@ -17,7 +17,6 @@ use crate::{
 };
 
 // ── Layout ─────────────────────────────────────────────────────────────────────
-const NAME_FONT: f32 = 13.0;
 const THRESH_SYM: f32 = 13.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
@@ -311,6 +310,32 @@ fn draw_seat_housing(painter: &Painter, rect: Rect, is_self: bool) {
     }
 }
 
+fn liquid_segment(
+    painter: &Painter,
+    center: egui::Pos2,
+    radius: f32,
+    surface_y: f32,
+    color: Color32,
+) {
+    if surface_y >= center.y + radius {
+        return;
+    }
+    if surface_y <= center.y - radius {
+        painter.circle_filled(center, radius, color);
+        return;
+    }
+
+    let normalized = ((surface_y - center.y) / radius).clamp(-1.0, 1.0);
+    let start = normalized.asin();
+    let end = std::f32::consts::PI - start;
+    let mut points = Vec::with_capacity(26);
+    for step in 0..=24 {
+        let angle = start + (end - start) * step as f32 / 24.0;
+        points.push(center + vec2(angle.cos() * radius, angle.sin() * radius));
+    }
+    painter.add(Shape::convex_polygon(points, color, Stroke::NONE));
+}
+
 fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool, texture: Option<&TextureHandle>) {
     let max_health = 20.0;
     let fill_fraction = if deaths_door {
@@ -318,7 +343,7 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool, texture: Option<&Textu
     } else {
         (health as f32 / max_health).clamp(0.0, 1.0)
     };
-    let (rect, response) = ui.allocate_exact_size(vec2(78.0, 66.0), egui::Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(vec2(82.0, 84.0), egui::Sense::hover());
     let painter = ui.painter();
     let center = pos2(rect.center().x, rect.center().y + 3.0);
     let rim = if deaths_door {
@@ -326,52 +351,78 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool, texture: Option<&Textu
     } else {
         Color32::from_rgb(147, 54, 61)
     };
-    painter.circle_filled(center, 31.0, Color32::from_rgb(7, 9, 10));
+    painter.circle_filled(center, 40.0, Color32::from_rgb(7, 9, 10));
     painter.circle_stroke(
         center,
-        30.0,
+        39.0,
         Stroke::new(2.0, Color32::from_rgb(78, 82, 74)),
     );
-    painter.circle_stroke(center, 27.0, Stroke::new(1.5, rim));
+    painter.circle_stroke(center, 36.0, Stroke::new(1.5, rim));
     if deaths_door {
         if let Some(texture) = texture {
             painter.image(
                 texture.id(),
-                Rect::from_center_size(center, vec2(54.0, 54.0)),
+                Rect::from_center_size(center, vec2(70.0, 70.0)),
                 Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                 Color32::from_rgb(226, 226, 218),
             );
             painter.circle_stroke(
                 center,
-                25.0,
+                34.0,
                 Stroke::new(1.0, Color32::from_rgba_unmultiplied(186, 76, 58, 90)),
             );
         }
         return;
     }
+    let liquid_radius = 33.0;
+    let surface_y = center.y + liquid_radius - liquid_radius * 2.0 * fill_fraction;
+    painter.circle_filled(center, liquid_radius, Color32::from_rgb(18, 12, 15));
     for (radius, color) in [
-        (24.5, Color32::from_rgb(49, 15, 19)),
-        (21.0, Color32::from_rgb(75, 19, 24)),
-        (17.0, Color32::from_rgb(101, 25, 31)),
-        (13.0, Color32::from_rgb(126, 30, 37)),
+        (33.0, Color32::from_rgb(55, 13, 18)),
+        (29.0, Color32::from_rgb(82, 18, 24)),
+        (24.0, Color32::from_rgb(108, 23, 30)),
+        (18.0, Color32::from_rgb(132, 29, 37)),
     ] {
-        painter.circle_filled(center, radius, color);
+        liquid_segment(painter, center, radius, surface_y, color);
     }
-    if fill_fraction > 0.45 {
-        painter.circle_filled(
-            center + vec2(-7.0, -8.0),
-            7.5,
-            Color32::from_rgba_unmultiplied(240, 116, 106, 72),
-        );
-        painter.circle_filled(
-            center + vec2(-9.5, -10.5),
-            3.0,
-            Color32::from_rgba_unmultiplied(255, 226, 206, 110),
+    if fill_fraction > 0.0 && fill_fraction < 1.0 {
+        let half_width = (liquid_radius * liquid_radius
+            - (surface_y - center.y) * (surface_y - center.y))
+            .max(0.0)
+            .sqrt();
+        painter.line_segment(
+            [
+                pos2(center.x - half_width, surface_y),
+                pos2(center.x + half_width, surface_y),
+            ],
+            Stroke::new(1.2, Color32::from_rgba_unmultiplied(222, 76, 75, 175)),
         );
     }
+    // The reflection belongs to the glass, so it remains visible regardless of
+    // how much liquid is left in the orb.
+    painter.circle_filled(
+        center + vec2(-11.0, -13.0),
+        10.0,
+        Color32::from_rgba_unmultiplied(232, 239, 238, 25),
+    );
+    painter.circle_filled(
+        center + vec2(-14.0, -16.0),
+        3.5,
+        Color32::from_rgba_unmultiplied(255, 255, 246, 105),
+    );
+    let reflection_arc: Vec<egui::Pos2> = (0..=12)
+        .map(|step| {
+            let angle = 3.55 + (4.42 - 3.55) * step as f32 / 12.0;
+            center + vec2(angle.cos() * 30.5, angle.sin() * 30.5)
+        })
+        .collect();
+    painter.add(Shape::line(
+        reflection_arc,
+        Stroke::new(1.5, Color32::from_rgba_unmultiplied(238, 244, 238, 90)),
+    ));
     painter.circle_stroke(
         center,
-        24.5,
+        33.0,
         Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 206, 192, 45)),
     );
     if response.hovered() {
@@ -501,13 +552,6 @@ impl Component for PlayerStatusComponent {
             .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Cemetery)
             .count();
         let is_self = data.player_id == self.player_id;
-        let name = if is_self { "YOUR TABLE" } else { "OPPONENT" };
-        let seat_label = if is_self {
-            "YOUR SIDE"
-        } else {
-            "OPPOSING SIDE"
-        };
-
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
         let mut open_hand = false;
         let mut open_cemetery = false;
@@ -531,20 +575,9 @@ impl Component for PlayerStatusComponent {
                         ui.vertical_centered(|ui| {
                             ui.spacing_mut().item_spacing = vec2(4.0, 3.0);
                             seat_crest(ui, is_self);
-                            ui.label(
-                                egui::RichText::new(name)
-                                    .color(Color32::from_rgb(190, 210, 255))
-                                    .size(NAME_FONT)
-                                    .strong(),
-                            );
-                            ui.label(
-                                egui::RichText::new(seat_label)
-                                    .color(theme::TURN_WAITING)
-                                    .size(9.0),
-                            );
-                            ui.add_space(4.0);
+                            ui.add_space(8.0);
                             life_vial(ui, health, deaths_door, deaths_door_texture.as_ref());
-                            ui.add_space(4.0);
+                            ui.add_space(10.0);
                             side_stat(
                                 ui,
                                 StatIcon::Mana,
@@ -603,7 +636,7 @@ impl Component for PlayerStatusComponent {
                                 open_banish = true;
                             }
 
-                            ui.add_space(3.0);
+                            ui.add_space(10.0);
                             threshold_grid(ui, resources.thresholds);
                         });
                     });

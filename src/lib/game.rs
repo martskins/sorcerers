@@ -2356,20 +2356,14 @@ impl Game {
         self.state.into_sync()
     }
 
-    pub(crate) fn game_over_messages(&self) -> Option<Vec<ServerMessage>> {
+    pub(crate) fn game_over_message(&self) -> Option<ServerMessage> {
         let winner = self.state.winner_if_game_over()?;
 
-        Some(
-            self.state
-                .players
-                .iter()
-                .map(|player| ServerMessage::GameOver {
-                    player_id: player.id,
-                    winner_id: winner.id,
-                    winner_name: winner.name.clone(),
-                })
-                .collect(),
-        )
+        Some(ServerMessage::GameOver {
+            player_id: winner.id,
+            winner_id: winner.id,
+            winner_name: winner.name.clone(),
+        })
     }
 
     pub fn draw_initial_six(&self) -> Vec<Effect> {

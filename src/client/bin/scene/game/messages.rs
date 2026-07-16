@@ -19,6 +19,15 @@ fn retain_aura_affected_zones(
 
 impl Game {
     pub fn process_message(&mut self, message: &ServerMessage) -> Option<Scene> {
+        // Gameplay prompts and resume messages can already be queued when the final
+        // effect eliminates a player. Once the outcome arrives it must remain the
+        // terminal client state instead of being overwritten before the next frame.
+        if matches!(self.data.status, Status::GameOver { .. })
+            && !matches!(message, ServerMessage::GameOver { .. })
+        {
+            return None;
+        }
+
         match message {
             ServerMessage::MulligansEnded => {
                 self.data.status = Status::Idle;
@@ -64,6 +73,15 @@ impl Game {
                 winner_name,
                 ..
             } => {
+                self.game_over_started_at = None;
+                let sound = if *winner_id == self.data.player_id {
+                    "assets/sounds/confirm.wav"
+                } else {
+                    "assets/sounds/error.wav"
+                };
+                if let Ok(sound_data) = StaticSoundData::from_file(sound) {
+                    self.audio_manager.play(sound_data).ok();
+                }
                 self.data.status = Status::GameOver {
                     winner_id: *winner_id,
                     winner_name: winner_name.clone(),
