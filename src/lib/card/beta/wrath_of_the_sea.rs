@@ -78,7 +78,9 @@ impl Magic for WrathOfTheSea {
             .filter_map(Zone::location)
             .cloned()
             .collect::<Vec<_>>();
-        let sites = CardQuery::new().adjacent_to_locations(&picked_body_locations);
+        let sites = CardQuery::new()
+            .sites()
+            .adjacent_to_locations(&picked_body_locations);
         let other_water_sites = CardQuery::new().water_sites().all(state);
         let zones: Vec<Zone> = sites
             .all(state)

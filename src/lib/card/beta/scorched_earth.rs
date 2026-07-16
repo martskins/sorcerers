@@ -55,14 +55,14 @@ impl Magic for ScorchedEarth {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
+        // TODO: Add a way to select an undetermined amonut of cards in CardQuery
         let controller_id = state.get_card(caster_id).get_controller_id(state);
         let mut remaining_sites = CardQuery::new()
             .sites()
             .in_play()
             .controlled_by(&controller_id)
             .all(state);
-        let mut chosen_sites = vec![];
-
+        let mut destroy_effects = vec![];
         loop {
             let Some(site_id) = CardQuery::from_ids(remaining_sites.clone())
                 .with_prompt("Choose a site to destroy (or cancel)")
@@ -73,26 +73,23 @@ impl Magic for ScorchedEarth {
                 break;
             };
 
-            chosen_sites.push(site_id);
+            let site = state.get_card(&site_id);
+            let cards_on_site = CardQuery::new()
+                .occupying_site_at_location(site.get_location().clone())
+                .all(state);
+            destroy_effects.extend(
+                cards_on_site
+                    .into_iter()
+                    .map(|id| Effect::BuryCard { card_id: id }),
+            );
+
             remaining_sites.retain(|id| *id != site_id);
             if remaining_sites.is_empty() {
                 break;
             }
         }
 
-        let mut effects = vec![];
-        for site_id in chosen_sites {
-            let site_zone = state.get_card(&site_id).get_zone().clone();
-            effects.push(Effect::BuryCard { card_id: site_id });
-            for card_id in CardQuery::new().units().in_zone(&site_zone).all(state) {
-                effects.push(Effect::BuryCard { card_id });
-            }
-            for card_id in CardQuery::new().artifacts().in_zone(&site_zone).all(state) {
-                effects.push(Effect::BuryCard { card_id });
-            }
-        }
-
-        Ok(effects)
+        Ok(destroy_effects)
     }
 }
 

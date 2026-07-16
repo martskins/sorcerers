@@ -62,10 +62,12 @@ impl Card for ScourgeZombies {
         Ok(vec![Hook {
             id: ON_ALLIED_DEATH_HOOK,
             trigger: EffectQuery::UnitKilled {
-                unit: Box::new(CardQuery::new()
-                    .minions()
-                    .minion_type(&MinionType::Mortal)
-                    .controlled_by(&controller_id)),
+                unit: Box::new(
+                    CardQuery::new()
+                        .minions()
+                        .minion_type(&MinionType::Mortal)
+                        .controlled_by(&controller_id),
+                ),
                 killer: None,
                 from_attack: None,
             },
@@ -86,11 +88,14 @@ impl Card for ScourgeZombies {
                     return Ok(vec![]);
                 };
 
-                // TODO: Check if ally died on land.
+                // TODO: Does on land include underground?
                 let controller_id = self.get_controller_id(state);
                 let killed_card = state.get_card(card_id);
                 if killed_card.get_controller_id(state) != controller_id
-                    || killed_card.get_region(state) != &Region::Surface
+                    || killed_card
+                        .get_location()
+                        .get_site(state)
+                        .is_some_and(|s| s.provided_affinity(state).unwrap_or_default().earth > 0)
                     || !killed_card.get_zone().is_in_play()
                 {
                     return Ok(vec![]);
