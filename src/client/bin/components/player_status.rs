@@ -1,5 +1,8 @@
 use egui::epaint::{CornerRadius, Shape};
-use egui::{Align2, Color32, Context, FontId, Painter, Rect, Response, Stroke, Ui, pos2, vec2};
+use egui::{
+    Align2, Color32, Context, FontId, Painter, Rect, Response, Stroke, TextureHandle, Ui, pos2,
+    vec2,
+};
 use sorcerers::{
     game::PlayerId,
     game::{Element, Resources, Thresholds},
@@ -15,21 +18,33 @@ use crate::{
 
 // ── Layout ─────────────────────────────────────────────────────────────────────
 const NAME_FONT: f32 = 13.0;
-const DEATHS_DOOR_FONT: f32 = 11.0;
 const THRESH_SYM: f32 = 13.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
+const DEATHS_DOOR_MEDALLION: &[u8] =
+    include_bytes!("../../../../assets/images/hud/deaths_door_reaper_v3.png");
 
 // Shared side rail provides the panel background; the status widgets retain its border color.
 const BORDER: Color32 = theme::PANEL_BORDER;
 
-#[derive(Debug)]
 pub struct PlayerStatusComponent {
     visible: bool,
     player_id: PlayerId,
     /// `true` = local player (left rail), `false` = opponent (right rail).
     player: bool,
     rect: Rect,
+    deaths_door_texture: Option<TextureHandle>,
+}
+
+impl std::fmt::Debug for PlayerStatusComponent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PlayerStatusComponent")
+            .field("visible", &self.visible)
+            .field("player_id", &self.player_id)
+            .field("player", &self.player)
+            .field("rect", &self.rect)
+            .finish()
+    }
 }
 
 impl PlayerStatusComponent {
@@ -39,6 +54,7 @@ impl PlayerStatusComponent {
             player_id,
             rect,
             player,
+            deaths_door_texture: None,
         }
     }
 }
@@ -295,7 +311,7 @@ fn draw_seat_housing(painter: &Painter, rect: Rect, is_self: bool) {
     }
 }
 
-fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
+fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool, texture: Option<&TextureHandle>) {
     let max_health = 20.0;
     let fill_fraction = if deaths_door {
         0.05
@@ -306,7 +322,7 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
     let painter = ui.painter();
     let center = pos2(rect.center().x, rect.center().y + 3.0);
     let rim = if deaths_door {
-        Color32::from_rgb(235, 184, 58)
+        Color32::from_rgb(126, 104, 70)
     } else {
         Color32::from_rgb(147, 54, 61)
     };
@@ -317,6 +333,22 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
         Stroke::new(2.0, Color32::from_rgb(78, 82, 74)),
     );
     painter.circle_stroke(center, 27.0, Stroke::new(1.5, rim));
+    if deaths_door {
+        if let Some(texture) = texture {
+            painter.image(
+                texture.id(),
+                Rect::from_center_size(center, vec2(54.0, 54.0)),
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                Color32::from_rgb(226, 226, 218),
+            );
+            painter.circle_stroke(
+                center,
+                25.0,
+                Stroke::new(1.0, Color32::from_rgba_unmultiplied(186, 76, 58, 90)),
+            );
+        }
+        return;
+    }
     for (radius, color) in [
         (24.5, Color32::from_rgb(49, 15, 19)),
         (21.0, Color32::from_rgb(75, 19, 24)),
@@ -441,6 +473,18 @@ impl Component for PlayerStatusComponent {
             .copied()
             .unwrap_or(0);
         let deaths_door = health == 0;
+        if deaths_door && self.deaths_door_texture.is_none() {
+            let image = image::load_from_memory(DEATHS_DOOR_MEDALLION)
+                .expect("Death's Door medallion should decode")
+                .to_rgba8();
+            let size = [image.width() as usize, image.height() as usize];
+            self.deaths_door_texture = Some(ctx.load_texture(
+                "deaths_door_reaper_v3",
+                egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw()),
+                egui::TextureOptions::LINEAR,
+            ));
+        }
+        let deaths_door_texture = self.deaths_door_texture.clone();
         let hand_count = data
             .cards
             .iter()
@@ -499,15 +543,7 @@ impl Component for PlayerStatusComponent {
                                     .size(9.0),
                             );
                             ui.add_space(4.0);
-                            life_vial(ui, health, deaths_door);
-                            if deaths_door {
-                                ui.label(
-                                    egui::RichText::new("DOOR")
-                                        .color(Color32::from_rgb(255, 210, 80))
-                                        .size(DEATHS_DOOR_FONT)
-                                        .strong(),
-                                );
-                            }
+                            life_vial(ui, health, deaths_door, deaths_door_texture.as_ref());
                             ui.add_space(4.0);
                             side_stat(
                                 ui,

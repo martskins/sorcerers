@@ -13,7 +13,10 @@ use sorcerers::{
     state::{Player, PlayerWithDeck},
     zone::{Location, Zone},
 };
-use std::{collections::{BTreeMap, HashMap}, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 use crate::repository::{User, UserRepository};
@@ -57,23 +60,28 @@ impl Server {
             Message::ClientMessage(ClientMessage::Register { username, password }) => {
                 match self.users.register(username, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
-                    Err(error) => self
-                        .send_authentication_failure(error.user_message().to_string(), stream)
-                        .await?,
+                    Err(error) => {
+                        self.send_authentication_failure(error.user_message().to_string(), stream)
+                            .await?
+                    }
                 }
             }
             Message::ClientMessage(ClientMessage::Login { username, password }) => {
                 match self.users.verify_login(username, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
-                    Err(error) => self
-                        .send_authentication_failure(error.user_message().to_string(), stream)
-                        .await?,
+                    Err(error) => {
+                        self.send_authentication_failure(error.user_message().to_string(), stream)
+                            .await?
+                    }
                 }
             }
             // Authentication must precede all gameplay messages.
             Message::ClientMessage(ClientMessage::Connect) => {
-                self.send_authentication_failure("register or log in before connecting".to_string(), stream)
-                    .await?;
+                self.send_authentication_failure(
+                    "register or log in before connecting".to_string(),
+                    stream,
+                )
+                .await?;
             }
             Message::ClientMessage(ClientMessage::ChooseStarterDeck { deck }) => {
                 let Some(user) = self.pending_starter_selection.remove(addr) else {
@@ -102,9 +110,10 @@ impl Server {
                         )
                         .await?
                     }
-                    Err(error) => self
-                        .send_authentication_failure(error.user_message().to_string(), stream)
-                        .await?,
+                    Err(error) => {
+                        self.send_authentication_failure(error.user_message().to_string(), stream)
+                            .await?
+                    }
                 }
             }
             Message::ClientMessage(ClientMessage::OpenBoosterPack { pack_id }) => {
@@ -213,7 +222,8 @@ impl Server {
                 let saved_decks = self.users.load_decks(user.id).await?;
                 self.claim_weekly_boosters(user.id).await?;
                 let collection = self.users.load_collection(user.id).await?;
-                let unopened_booster_packs = self.users.load_unopened_booster_packs(user.id).await?;
+                let unopened_booster_packs =
+                    self.users.load_unopened_booster_packs(user.id).await?;
                 self.authenticate(
                     user,
                     deck,
@@ -280,13 +290,11 @@ impl Server {
         Ok(())
     }
 
-    async fn claim_weekly_boosters(
-        &self,
-        user_id: uuid::Uuid,
-    ) -> anyhow::Result<()> {
+    async fn claim_weekly_boosters(&self, user_id: uuid::Uuid) -> anyhow::Result<()> {
         let packs = (0..3).map(|_| BoosterPack::beta()).collect::<Vec<_>>();
         let today = chrono::Utc::now().date_naive();
-        let week_start = today - chrono::Duration::days(today.weekday().num_days_from_monday().into());
+        let week_start =
+            today - chrono::Duration::days(today.weekday().num_days_from_monday().into());
 
         let _claimed = self
             .users
@@ -465,6 +473,12 @@ impl Server {
             Zone::Location(Location::Square(13, Region::Surface)),
         );
         game.state.add_card(card);
+
+        let avatar_id = game.state.get_player_avatar_id(&player_one).unwrap();
+        let avatar_card = game.state.get_card_mut(&avatar_id);
+        avatar_card.get_unit_base_mut().unwrap().damage = 20;
+        avatar_card.get_avatar_base_mut().unwrap().deaths_door = true;
+
         let player_mana = game.state.get_player_mana_mut(&player_one);
         *player_mana = 10;
     }
@@ -518,6 +532,10 @@ fn collection_from_deck(deck: &DeckList) -> Vec<CardNameWithCount> {
 fn card_counts(cards: BTreeMap<String, u8>) -> Vec<CardNameWithCount> {
     cards
         .into_iter()
-        .map(|(name, count)| CardNameWithCount { name, count, is_foil: false })
+        .map(|(name, count)| CardNameWithCount {
+            name,
+            count,
+            is_foil: false,
+        })
         .collect()
 }
