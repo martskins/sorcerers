@@ -16,9 +16,20 @@ impl ActivatedAbility for DealDamage {
         state: &State,
     ) -> anyhow::Result<bool> {
         Ok(CardQuery::new()
+            .magics()
             .in_zone(Zone::Hand)
             .owned_by(player_id)
             .any(state))
+    }
+
+    fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
+        let controller_id = state.get_card(card_id).get_controller_id(state);
+        Ok(Cost::additional_only(AdditionalCost::discard(
+            CardQuery::new()
+                .magics()
+                .in_zone(Zone::Hand)
+                .owned_by(&controller_id),
+        )))
     }
 
     async fn on_select(

@@ -2,7 +2,7 @@ use crate::zone::{Location, Zone};
 use crate::{
     card::{
         Ability, ArtifactBase, Card, CardBaseMethods, CardStatus, Cost, Damage, FootSoldier, Frog,
-        Region, Rubble, UnitBase,
+        MinionType, MoonClanWerewolf, Region, Rubble, UnitBase,
     },
     game::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, distribute_damage,
@@ -1497,8 +1497,10 @@ impl Effect {
                     Some(spellcaster),
                 )?;
                 Box::pin(costs.pay(state, player_id)).await?;
-                let card = state.get_card(card_id);
-                let is_minion = card.is_minion();
+                let (is_minion, is_moon_clan_werewolf) = {
+                    let card = state.get_card(card_id);
+                    (card.is_minion(), card.get_name() == MoonClanWerewolf::NAME)
+                };
                 let snapshot = state.clone();
 
                 // If playing a site and there is a rubble on that zone, remove it.
@@ -1515,6 +1517,32 @@ impl Effect {
                 }
 
                 if is_minion {
+                    // Moon Clan Werewolf's alternative cost is a sacrifice, and its
+                    // destination is defined by that sacrificed Mortal rather than the
+                    // location selected before costs are paid.
+                    let summon_location = if is_moon_clan_werewolf {
+                        state
+                            .effect_log()
+                            .iter()
+                            .rev()
+                            .find_map(|logged| match logged.effect {
+                                Effect::BuryCard { card_id: sacrificed_id }
+                                    if state.get_card(&sacrificed_id).is_minion()
+                                        && state
+                                            .get_card(&sacrificed_id)
+                                            .get_unit_base()
+                                            .is_some_and(|base| {
+                                                base.types.contains(&MinionType::Mortal)
+                                    }) => state
+                                        .marked_for_death
+                                        .get(&sacrificed_id)
+                                        .and_then(|zone| zone.location().cloned()),
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| location.clone())
+                    } else {
+                        location.clone()
+                    };
                     // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, summon hooks, and genesis in one place.
                     state.queue_one(Effect::SummonCards {
@@ -1522,7 +1550,7 @@ impl Effect {
                             player_id: *player_id,
                             card_id: *card_id,
                             from_zone: Zone::Hand,
-                            to_location: location.clone(),
+                            to_location: summon_location,
                         }],
                     });
                 } else {

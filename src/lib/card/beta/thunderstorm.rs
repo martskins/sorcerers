@@ -100,15 +100,7 @@ impl Card for Thunderstorm {
                     .id_not_in(vec![*self.get_id()])
                     .pick(&self.get_controller_id(state), state)
                     .await?;
-                let mut effects = vec![Effect::MoveCard {
-                    player_id: self.get_controller_id(state),
-                    card_id: *self.get_id(),
-                    from: self.get_location().clone(),
-                    to: LocationQuery::from_locations(zones)
-                        .with_prompt("Pick a zone to move Thunderstorm to"),
-                    tap: false,
-                    through_path: None,
-                }];
+                let mut effects = vec![];
 
                 if let Some(picked_card_id) = picked_card_id {
                     effects.push(Effect::TakeDamage {
@@ -117,6 +109,25 @@ impl Card for Thunderstorm {
                         damage: Damage::basic(3),
                     });
                 };
+
+                if yes_or_no(
+                    &self.get_controller_id(state),
+                    state,
+                    "Move Thunderstorm one step?",
+                    *self.get_id(),
+                )
+                .await?
+                {
+                    effects.push(Effect::MoveCard {
+                        player_id: self.get_controller_id(state),
+                        card_id: *self.get_id(),
+                        from: self.get_location().clone(),
+                        to: LocationQuery::from_locations(zones)
+                            .with_prompt("Pick a zone to move Thunderstorm to"),
+                        tap: false,
+                        through_path: None,
+                    });
+                }
 
                 Ok(effects)
             }

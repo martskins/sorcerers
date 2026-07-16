@@ -67,23 +67,21 @@ impl Magic for PoisonNova {
         let nearby_minions = CardQuery::new()
             .minions()
             .near_to(&caster_location)
+            .id_not(*caster_id)
             .all(state);
 
         Ok(nearby_minions
             .into_iter()
-            .flat_map(|card_id| {
-                vec![
-                    Effect::TakeDamage {
-                        card_id,
-                        from: *self.get_id(),
-                        damage: Damage::basic(1),
-                    },
-                    Effect::KillMinion {
-                        card_id,
-                        killer_id: *caster_id,
-                        from_attack: false,
-                    },
-                ]
+            .map(|card_id| Effect::TakeDamage {
+                card_id,
+                from: *self.get_id(),
+                damage: Damage {
+                    amount: 1,
+                    is_attack: false,
+                    is_ranged: false,
+                    is_lethal: true,
+                    is_strike: false,
+                },
             })
             .collect())
     }

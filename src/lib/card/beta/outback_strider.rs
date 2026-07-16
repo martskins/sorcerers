@@ -16,7 +16,7 @@ impl OutbackStrider {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                abilities: vec![],
+                abilities: vec![Ability::MovesFreely],
                 types: vec![MinionType::Mortal],
                 tapped: false,
                 ..Default::default()
@@ -55,6 +55,36 @@ impl Card for OutbackStrider {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
+        Ok(CardQuery::new()
+            .land_sites()
+            .in_play()
+            .all(state)
+            .into_iter()
+            .map(|site_id| state.get_card(&site_id).get_location().clone())
+            .filter(|location| {
+                CardQuery::new()
+                    .units()
+                    .in_location(location.clone())
+                    .id_not(*self.get_id())
+                    .all(state)
+                    .is_empty()
+            })
+            .collect())
+    }
+
+    async fn get_valid_move_paths(
+        &self,
+        state: &State,
+        to: &Location,
+    ) -> anyhow::Result<Vec<Vec<Location>>> {
+        if self.get_valid_move_locations(state).await?.contains(to) {
+            Ok(vec![vec![self.get_location().clone(), to.clone()]])
+        } else {
+            Ok(vec![])
+        }
     }
 }
 

@@ -149,6 +149,12 @@ impl Magic for WarpSpasm {
             .unwrap_or_default() as i16;
 
         Ok(vec![
+            // Deferred hooks are resolved from the spell card, so remember the
+            // minion chosen while the spell is resolving.
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(target_id),
+            },
             Effect::AddCounter {
                 card_id: target_id,
                 counter: Counter {
@@ -165,7 +171,7 @@ impl Magic for WarpSpasm {
                     timing: HookTiming::After,
                     trigger_on_effect: EffectQuery::UnitKilled {
                         unit: Box::new(CardQuery::new().minions()),
-                        killer: Some(self.get_id().into()),
+                        killer: Some(target_id.into()),
                         from_attack: Some(true),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),

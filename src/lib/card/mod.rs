@@ -2370,6 +2370,9 @@ pub enum Ability {
     CanSeeStealthed,
     Lethal,
     Movement(u8),
+    /// Moving does not require tapping. This is distinct from Movement +N,
+    /// which increases the distance of a normal movement action.
+    MovesFreely,
     Leap,
     Burrowing,
     Landbound,
@@ -2416,6 +2419,7 @@ impl Ability {
             | Ability::CanSeeStealthed
             | Ability::Lethal
             | Ability::Movement(_)
+            | Ability::MovesFreely
             | Ability::Leap
             | Ability::Burrowing
             | Ability::Landbound

@@ -25,6 +25,7 @@ impl ActivatedAbility for ShootPayload {
         let mana_cost = state
             .effect_log()
             .iter()
+            .rev()
             .find_map(|e| {
                 if e.turn != state.turns {
                     return None;
@@ -79,7 +80,7 @@ impl ActivatedAbility for ShootPayload {
                             .controlled_by(&bearer.get_controller_id(state)),
                     )))
             }
-            None => Ok(Cost::ZERO.clone()),
+            None => Err(anyhow::anyhow!("Payload Trebuchet must have a bearer")),
         }
     }
 }

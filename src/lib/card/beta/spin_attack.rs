@@ -69,7 +69,8 @@ impl Magic for SpinAttack {
         };
         let ally = state.get_card(&ally_id);
         let ally_zone = ally.get_zone().clone();
-        let ally_power = ally.get_unit_base().map(|ub| ub.power).unwrap_or(0);
+        let ally_power = ally.get_power(state)?.unwrap_or_default();
+        let is_lethal = ally.has_ability(state, &Ability::Lethal);
         let enemies: Vec<Effect> = CardQuery::new()
             .units()
             .in_zone(&ally_zone)
@@ -82,7 +83,13 @@ impl Magic for SpinAttack {
             .map(|enemy_id| Effect::TakeDamage {
                 card_id: enemy_id,
                 from: ally_id,
-                damage: Damage::strike(ally_power, false),
+                damage: Damage {
+                    amount: ally_power,
+                    is_attack: true,
+                    is_ranged: false,
+                    is_lethal,
+                    is_strike: true,
+                },
             })
             .collect();
         Ok(enemies)

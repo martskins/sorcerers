@@ -67,9 +67,9 @@ impl Card for UpdraftRidge {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantAbility {
-            ability: Ability::Movement(1),
+            ability: Ability::MovesFreely,
             affected_cards: Box::new(CardQuery::new()
-                .units()
+                .minions()
                 .in_zone_of_card(self.get_id())
                 .with_abilities(vec![Ability::Airborne])),
         }])

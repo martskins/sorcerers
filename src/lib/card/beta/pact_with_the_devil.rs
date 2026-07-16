@@ -59,7 +59,7 @@ impl Magic for PactWithTheDevil {
     async fn resolve_magic(
         &self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -73,11 +73,28 @@ impl Magic for PactWithTheDevil {
         let half_hp = current_hp.div_ceil(2);
         let life_loss = i16::try_from(half_hp).unwrap_or(i16::MAX);
 
-        Ok(vec![
+        let choice = pick_option(
+            &controller_id,
+            &["Sacrifice the caster".to_string(), "Lose half your life".to_string()],
+            state,
+            "Pact with the Devil: choose a cost",
+            false,
+        )
+        .await?;
+
+        let payment = if choice == 0 {
+            Effect::BuryCard {
+                card_id: *caster_id,
+            }
+        } else {
             Effect::AdjustAvatarLife {
                 player_id: controller_id,
                 amount: -life_loss,
-            },
+            }
+        };
+
+        Ok(vec![
+            payment,
             Effect::DrawCard {
                 player_id: controller_id,
                 count: 3,

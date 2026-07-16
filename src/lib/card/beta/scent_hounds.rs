@@ -62,7 +62,7 @@ impl Card for ScentHounds {
     }
 
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        Ok(vec![OngoingEffect::RemoveAbilities {
+        Ok(vec![OngoingEffect::PermanentlyRemoveAbilities {
             removal: AbilityRemoval::Exact(vec![Ability::Stealth]),
             affected_cards: Box::new(CardQuery::new()
                 .units()

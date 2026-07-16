@@ -93,16 +93,18 @@ impl Card for PanoramaManticore {
                 let turn_effects: Vec<&LoggedEffect> = state
                     .effect_log()
                     .iter()
+                    .rev()
                     .take_while(|e| e.turn == state.turns)
                     .collect();
-                let played_fire_spell = turn_effects
+                let played_non_fire_spell = turn_effects
                     .iter()
                     .find(|le| match le.effect {
                         Effect::PlayCard {
                             card_id, player_id, ..
                         } if player_id == controller_id => {
                             let card = state.get_card(&card_id);
-                            card.get_elements(state)
+                            !card
+                                .get_elements(state)
                                 .unwrap_or_default()
                                 .contains(&Element::Fire)
                         }
@@ -110,7 +112,8 @@ impl Card for PanoramaManticore {
                             card_id, player_id, ..
                         } if player_id == controller_id => {
                             let card = state.get_card(&card_id);
-                            card.get_elements(state)
+                            !card
+                                .get_elements(state)
                                 .unwrap_or_default()
                                 .contains(&Element::Fire)
                         }
@@ -118,7 +121,7 @@ impl Card for PanoramaManticore {
                     })
                     .is_some();
 
-                if played_fire_spell {
+                if played_non_fire_spell {
                     return Ok(vec![Effect::SetTapped {
                         card_id: *self.get_id(),
                         tapped: false,

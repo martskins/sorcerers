@@ -21,9 +21,12 @@ impl ActivatedAbility for DiscardToGainControlAbility {
         }])
     }
 
-    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
+        let controller_id = state.get_card(card_id).get_controller_id(state);
         Ok(Cost::additional_only(AdditionalCost::discard(
-            CardQuery::new().in_zone(&Zone::Hand),
+            CardQuery::new()
+                .in_zone(&Zone::Hand)
+                .owned_by(&controller_id),
         )))
     }
 }
@@ -86,7 +89,10 @@ impl Card for SeasonedSellsword {
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(DiscardToGainControlAbility),
-            affected_cards: Box::new(CardQuery::new().avatars().in_play()),
+            affected_cards: Box::new(CardQuery::new()
+                .avatars()
+                .nearby_to_card(self.get_id())
+                .in_play()),
         }])
     }
 }

@@ -73,8 +73,26 @@ impl Magic for WhirlingBlades {
 
         let ally = state.get_card(&ally_id);
         let from_location = ally.get_location().clone();
-        let mut destinations = ally.get_locations_within_steps_of(state, 2, &from_location);
-        destinations.retain(|zone| zone.get_site(state).is_some());
+        let destinations = ally
+            .get_valid_move_locations(state)
+            .await?
+            .into_iter()
+            .filter(|zone| zone != &from_location)
+            .collect::<Vec<_>>();
+        let mut destinations = {
+            let mut valid = Vec::new();
+            for destination in destinations {
+                if ally
+                    .get_valid_move_paths(state, &destination)
+                    .await?
+                    .iter()
+                    .any(|path| path.len() <= 3)
+                {
+                    valid.push(destination);
+                }
+            }
+            valid
+        };
         destinations.push(from_location.clone());
         destinations.sort();
         destinations.dedup();
@@ -84,10 +102,18 @@ impl Magic for WhirlingBlades {
             .pick(&controller_id, state)
             .await?;
 
-        let mut path_zones = vec![from_location.clone().into(), destination.clone().into()];
-        path_zones.sort();
-        path_zones.dedup();
+        let path = if destination == from_location {
+            vec![from_location.clone()]
+        } else {
+            ally.get_valid_move_paths(state, &destination)
+                .await?
+                .into_iter()
+                .find(|path| path.len() <= 3)
+                .ok_or_else(|| anyhow::anyhow!("no legal path for Whirling Blades"))?
+        };
+        let path_zones = path.iter().cloned().map(Zone::from).collect::<Vec<_>>();
         let power = ally.get_power(state)?.unwrap_or_default();
+        let is_lethal = ally.has_ability(state, &Ability::Lethal);
         let mut effects = vec![];
         if destination != from_location {
             effects.push(Effect::MoveCard {
@@ -98,7 +124,7 @@ impl Magic for WhirlingBlades {
                     destination.with_region(ally.get_region(state).clone()),
                 ),
                 tap: false,
-                through_path: None,
+                through_path: Some(path.clone()),
             });
         }
 
@@ -107,7 +133,13 @@ impl Magic for WhirlingBlades {
                 effects.push(Effect::TakeDamage {
                     card_id: enemy_id,
                     from: ally_id,
-                    damage: Damage::strike(power, false),
+                    damage: Damage {
+                        amount: power,
+                        is_attack: true,
+                        is_ranged: false,
+                        is_lethal,
+                        is_strike: true,
+                    },
                 });
             }
         }

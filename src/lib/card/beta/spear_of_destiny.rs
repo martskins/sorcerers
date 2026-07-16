@@ -10,7 +10,10 @@ impl ActivatedAbility for SpearStrike {
     }
 
     fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
-        let bearer_id = state.get_card(card_id).get_bearer_id()?.unwrap_or(*card_id);
+        let bearer_id = state
+            .get_card(card_id)
+            .get_bearer_id()?
+            .ok_or_else(|| anyhow::anyhow!("Spear of Destiny must have a bearer"))?;
         Ok(Cost::additional_only(AdditionalCost::tap(bearer_id)))
     }
 

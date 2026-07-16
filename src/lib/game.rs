@@ -1092,8 +1092,11 @@ impl ActivatedAbility for UnitAction {
         }
     }
 
-    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
         let cost = match self {
+            UnitAction::Move if state
+                .get_card(card_id)
+                .has_ability(state, &Ability::MovesFreely) => Cost::ZERO.clone(),
             UnitAction::Move
             | UnitAction::Attack
             | UnitAction::RangedAttack

@@ -69,30 +69,28 @@ impl Magic for Windblast {
         .await?;
 
         let mut effects = vec![];
-        let units = CardQuery::new().units().in_play().all(state);
-        for unit_id in units {
-            let unit = state.get_card(&unit_id);
-            if unit.get_region(state) != &Region::Surface
-                || unit.get_location().get_site(state).is_none()
+        let cards = CardQuery::new().in_play().all(state);
+        for card_id in cards {
+            let card = state.get_card(&card_id);
+            if card.get_region(state) != &Region::Surface
+                || card.get_location().get_site(state).is_none()
             {
                 continue;
             }
 
-            let from_location = unit.get_location();
+            let from_location = card.get_location();
             let Some(to_location) =
-                from_location.step_in_direction(&direction, state, Some(&unit_id))
+                from_location.step_in_direction(&direction, state, Some(&card_id))
             else {
                 continue;
             };
-            if to_location.get_site(state).is_none()
-                || !unit.can_move_between_locations(state, from_location, &to_location)?
-            {
+            if to_location.get_site(state).is_none() {
                 continue;
             }
 
             effects.push(Effect::MoveCard {
-                player_id: unit.get_controller_id(state),
-                card_id: unit_id,
+                player_id: card.get_controller_id(state),
+                card_id,
                 from: from_location.clone(),
                 to: LocationQuery::from_location(to_location.with_region(Region::Surface)),
                 tap: false,
