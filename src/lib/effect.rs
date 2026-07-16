@@ -471,6 +471,8 @@ impl Effect {
     pub async fn sound_effect(&self) -> anyhow::Result<Option<SoundEffect>> {
         let sound = match self {
             Effect::PlayCard { .. } => Some(SoundEffect::PlayCard),
+            Effect::DrawCard { .. } => Some(SoundEffect::DrawCard),
+            Effect::ShuffleDeck { .. } => Some(SoundEffect::Shuffle),
             _ => None,
         };
 

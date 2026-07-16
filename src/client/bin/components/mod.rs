@@ -50,6 +50,7 @@ pub enum ComponentCommand {
     DropHandCard {
         card_id: CardId,
         pos: egui::Pos2,
+        from_rect: Rect,
     },
     CloseOverlay,
 }

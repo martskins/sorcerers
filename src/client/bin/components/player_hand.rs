@@ -313,7 +313,7 @@ impl Component for PlayerHandComponent {
         }
 
         let mut clicked_card: Option<(uuid::Uuid, Rect, Pos2)> = None;
-        let mut dropped_card: Option<(uuid::Uuid, egui::Pos2)> = None;
+        let mut dropped_card: Option<(uuid::Uuid, egui::Pos2, Rect)> = None;
         let can_click_cards = matches!(
             data.status,
             Status::Idle | Status::Mulligan | Status::SelectingCard { .. }
@@ -395,7 +395,7 @@ impl Component for PlayerHandComponent {
 
             if resp.drag_stopped() && self.dragging_card == Some(fan_card.card.id) {
                 if let Some(pos) = ui.ctx().pointer_latest_pos() {
-                    dropped_card = Some((fan_card.card.id, pos));
+                    dropped_card = Some((fan_card.card.id, pos, fan_card.rect));
                 }
                 self.dragging_card = None;
                 self.drag_visual_pos = None;
@@ -428,8 +428,8 @@ impl Component for PlayerHandComponent {
             }
         }
 
-        if let Some((card_id, pos)) = dropped_card {
-            return Ok(Some(ComponentCommand::DropHandCard { card_id, pos }));
+        if let Some((card_id, pos, from_rect)) = dropped_card {
+            return Ok(Some(ComponentCommand::DropHandCard { card_id, pos, from_rect }));
         }
 
         if let Some((card_id, card_rect, click_pos)) = clicked_card {

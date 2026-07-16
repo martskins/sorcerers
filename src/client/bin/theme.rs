@@ -27,7 +27,7 @@ pub const ELEMENT_WATER: Color32 = Color32::from_rgb(50, 150, 230);
 
 // The realm is a physical play surface, not another application panel.
 pub const TABLE_RAIL: Color32 = Color32::from_rgb(10, 14, 19);
-pub const TABLE_FELT: Color32 = Color32::from_rgb(22, 33, 28);
+pub const TABLE_FELT: Color32 = Color32::from_rgba_unmultiplied_const(22, 33, 28, 238);
 pub const TABLE_EDGE: Color32 = Color32::from_rgb(103, 86, 48);
 
 pub const BUTTON_HEIGHT: f32 = 48.0;

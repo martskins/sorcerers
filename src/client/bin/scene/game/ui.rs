@@ -1,6 +1,12 @@
 use super::*;
 
 impl Game {
+    fn play_button_click(&mut self) {
+        if let Ok(sound_data) = StaticSoundData::from_file("assets/sounds/button_click.wav") {
+            self.audio_manager.play(sound_data).ok();
+        }
+    }
+
     pub(super) fn render_match_chrome(&self, painter: &Painter) {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
         let top_bar = Rect::from_min_size(sr.min, vec2(sr.width(), 54.0));
@@ -25,6 +31,32 @@ impl Game {
             egui::Stroke::new(1.0, theme::PANEL_BORDER),
             egui::StrokeKind::Outside,
         );
+        let rail_center = player_rail.center().x;
+        let ornament_y = player_rail.center().y;
+        painter.line_segment(
+            [
+                pos2(rail_center, player_rail.min.y + 12.0),
+                pos2(rail_center, ornament_y - 18.0),
+            ],
+            egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(126, 132, 120, 56)),
+        );
+        painter.line_segment(
+            [
+                pos2(rail_center, ornament_y + 18.0),
+                pos2(rail_center, player_rail.max.y - 12.0),
+            ],
+            egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(126, 132, 120, 56)),
+        );
+        painter.add(egui::epaint::Shape::convex_polygon(
+            vec![
+                pos2(rail_center, ornament_y - 8.0),
+                pos2(rail_center + 8.0, ornament_y),
+                pos2(rail_center, ornament_y + 8.0),
+                pos2(rail_center - 8.0, ornament_y),
+            ],
+            Color32::from_rgba_unmultiplied(177, 149, 78, 24),
+            egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(177, 149, 78, 112)),
+        ));
     }
 
     pub(super) fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
@@ -77,6 +109,7 @@ impl Game {
             let client = self.client.clone();
             let player_id = self.data.player_id;
             let game_id = self.game_id;
+            let mut passed_turn = false;
             let btn_size = vec2(160.0, 42.0);
             let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, sr.min.y + 6.0);
             egui::Area::new(egui::Id::new("pass_turn_btn"))
@@ -92,8 +125,12 @@ impl Game {
                         client
                             .send(ClientMessage::EndTurn { player_id, game_id })
                             .ok();
+                        passed_turn = true;
                     }
                 });
+            if passed_turn {
+                self.play_button_click();
+            }
         } else if matches!(
             self.data.status,
             Status::SelectingCard { multiple: true, .. }
@@ -121,6 +158,7 @@ impl Game {
                     }
                 });
             if done {
+                self.play_button_click();
                 self.broadcast_command(&ComponentCommand::DonePicking);
             }
         }

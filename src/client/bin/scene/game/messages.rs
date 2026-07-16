@@ -24,8 +24,13 @@ impl Game {
                 self.data.status = Status::Idle;
                 None
             }
-            ServerMessage::PlaySoundEffect { .. } => {
-                if let Ok(sound_data) = StaticSoundData::from_file("assets/sounds/play_card.mp3") {
+            ServerMessage::PlaySoundEffect { sound_effect, .. } => {
+                let file = match sound_effect {
+                    sorcerers::game::SoundEffect::DrawCard => "assets/sounds/select.wav",
+                    sorcerers::game::SoundEffect::PlayCard => "assets/sounds/card_play.wav",
+                    sorcerers::game::SoundEffect::Shuffle => "assets/sounds/turn_start.wav",
+                };
+                if let Ok(sound_data) = StaticSoundData::from_file(file) {
                     self.audio_manager.play(sound_data).ok();
                 }
                 None
@@ -319,6 +324,9 @@ impl Game {
                 effect_queue,
                 ..
             } => {
+                let turn_started = self.data.turn_player != uuid::Uuid::nil()
+                    && self.data.turn_player != *turn_player
+                    && *turn_player == self.player_id;
                 retain_aura_affected_zones(
                     &mut self.data.aura_areas_of_effect,
                     &self.data.cards,
@@ -334,6 +342,11 @@ impl Game {
                 self.data.highlighted_ongoing_effect = None;
                 self.data.stepped_effects = *stepped_effects;
                 self.data.effect_queue = effect_queue.clone();
+                if turn_started
+                    && let Ok(sound_data) = StaticSoundData::from_file("assets/sounds/turn_start.wav")
+                {
+                    self.audio_manager.play(sound_data).ok();
+                }
                 self.open_controlled_hand_viewer();
                 None
             }

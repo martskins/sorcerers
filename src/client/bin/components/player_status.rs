@@ -49,8 +49,44 @@ impl PlayerStatusComponent {
 /// Air   = upward triangle + horizontal midline
 /// Earth = downward triangle + horizontal midline
 /// Water = downward triangle              (▽)
-fn element_symbol(ui: &mut Ui, count: u8, element: Element) {
-    element_icon::element_symbol_widget(ui, count, &element, THRESH_SYM, 1.5);
+fn threshold_cell(painter: &Painter, center: egui::Pos2, count: u8, element: Element) {
+    element_icon::draw_element_triangle(
+        painter,
+        &element,
+        center + vec2(-6.0, 0.0),
+        THRESH_SYM,
+        1.5,
+    );
+    painter.text(
+        center + vec2(8.0, 1.5),
+        Align2::CENTER_CENTER,
+        count.to_string(),
+        FontId::proportional(THRESH_SYM * 0.85),
+        element_icon::element_color(&element),
+    );
+}
+
+fn threshold_grid(ui: &mut Ui, thresholds: Thresholds) {
+    let (rect, _) = ui.allocate_exact_size(vec2(78.0, 34.0), egui::Sense::hover());
+    let painter = ui.painter();
+    let left = rect.center().x - 18.0;
+    let right = rect.center().x + 18.0;
+    let top = rect.min.y + 9.0;
+    let bottom = rect.min.y + 25.0;
+    threshold_cell(painter, pos2(left, top), thresholds.fire, Element::Fire);
+    threshold_cell(painter, pos2(right, top), thresholds.air, Element::Air);
+    threshold_cell(
+        painter,
+        pos2(left, bottom),
+        thresholds.earth,
+        Element::Earth,
+    );
+    threshold_cell(
+        painter,
+        pos2(right, bottom),
+        thresholds.water,
+        Element::Water,
+    );
 }
 
 #[derive(Clone, Copy)]
@@ -94,11 +130,17 @@ fn status_icon(painter: &Painter, rect: Rect, icon: StatIcon, color: Color32) {
             );
             painter.rect_stroke(stone, 4.0, stroke, egui::StrokeKind::Inside);
             painter.line_segment(
-                [pos2(center.x, stone.min.y + 3.0), pos2(center.x, stone.max.y - 3.0)],
+                [
+                    pos2(center.x, stone.min.y + 3.0),
+                    pos2(center.x, stone.max.y - 3.0),
+                ],
                 stroke,
             );
             painter.line_segment(
-                [pos2(center.x - 3.0, center.y + 2.0), pos2(center.x + 3.0, center.y + 2.0)],
+                [
+                    pos2(center.x - 3.0, center.y + 2.0),
+                    pos2(center.x + 3.0, center.y + 2.0),
+                ],
                 stroke,
             );
         }
@@ -128,7 +170,7 @@ fn side_stat(
 ) -> Response {
     let response = ui
         .push_id(id, |ui| {
-            let (rect, response) = ui.allocate_exact_size(vec2(78.0, 25.0), egui::Sense::click());
+            let (rect, response) = ui.allocate_exact_size(vec2(82.0, 25.0), egui::Sense::click());
             let hovered = clickable && response.hovered();
             let fill = if hovered {
                 Color32::from_rgba_unmultiplied(60, 78, 96, 230)
@@ -142,23 +184,22 @@ fn side_stat(
                 Stroke::new(1.0, if hovered { theme::PICKABLE } else { BORDER }),
                 egui::StrokeKind::Outside,
             );
-            let icon_rect = Rect::from_center_size(
-                pos2(rect.min.x + 14.0, rect.center().y),
-                vec2(16.0, 16.0),
-            );
+            let icon_rect =
+                Rect::from_center_size(pos2(rect.min.x + 14.0, rect.center().y), vec2(16.0, 16.0));
             status_icon(ui.painter(), icon_rect, icon, color);
             ui.painter().text(
-                pos2(rect.min.x + 28.0, rect.min.y + 4.0),
+                pos2(rect.min.x + 27.0, rect.min.y + 5.0),
                 Align2::LEFT_TOP,
                 label,
-                FontId::proportional(8.0),
+                FontId::proportional(7.0),
                 theme::TURN_WAITING,
             );
+            let value_center = pos2(rect.max.x - 11.0, rect.center().y);
             ui.painter().text(
-                pos2(rect.max.x - 8.0, rect.center().y + 3.0),
-                Align2::RIGHT_CENTER,
+                value_center + vec2(0.0, 1.5),
+                Align2::CENTER_CENTER,
                 value.to_string(),
-                FontId::proportional(14.0),
+                FontId::proportional(11.0),
                 color,
             );
             response
@@ -172,6 +213,88 @@ fn side_stat(
     response
 }
 
+fn draw_seat_housing(painter: &Painter, rect: Rect, is_self: bool) {
+    let edge = if is_self {
+        Color32::from_rgb(66, 118, 142)
+    } else {
+        Color32::from_rgb(128, 75, 62)
+    };
+    let outer = rect.expand(3.0);
+    painter.rect_filled(
+        outer,
+        CornerRadius::same(9),
+        Color32::from_rgba_unmultiplied(5, 8, 10, 244),
+    );
+    painter.rect_stroke(
+        outer,
+        CornerRadius::same(9),
+        Stroke::new(
+            1.5,
+            Color32::from_rgba_unmultiplied(edge.r(), edge.g(), edge.b(), 190),
+        ),
+        egui::StrokeKind::Outside,
+    );
+    painter.rect_filled(
+        rect,
+        CornerRadius::same(7),
+        Color32::from_rgba_unmultiplied(15, 20, 22, 242),
+    );
+    painter.rect_stroke(
+        rect.shrink(4.0),
+        CornerRadius::same(5),
+        Stroke::new(1.0, Color32::from_rgba_unmultiplied(190, 202, 190, 40)),
+        egui::StrokeKind::Inside,
+    );
+    let highlight = Color32::from_rgba_unmultiplied(222, 231, 218, 54);
+    let shadow = Color32::from_rgba_unmultiplied(0, 0, 0, 170);
+    painter.line_segment(
+        [
+            pos2(rect.min.x + 7.0, rect.min.y + 3.0),
+            pos2(rect.max.x - 7.0, rect.min.y + 3.0),
+        ],
+        Stroke::new(1.0, highlight),
+    );
+    painter.line_segment(
+        [
+            pos2(rect.min.x + 3.0, rect.min.y + 7.0),
+            pos2(rect.min.x + 3.0, rect.max.y - 7.0),
+        ],
+        Stroke::new(1.0, highlight),
+    );
+    painter.line_segment(
+        [
+            pos2(rect.min.x + 7.0, rect.max.y - 3.0),
+            pos2(rect.max.x - 7.0, rect.max.y - 3.0),
+        ],
+        Stroke::new(1.5, shadow),
+    );
+    painter.line_segment(
+        [
+            pos2(rect.max.x - 3.0, rect.min.y + 7.0),
+            pos2(rect.max.x - 3.0, rect.max.y - 7.0),
+        ],
+        Stroke::new(1.5, shadow),
+    );
+    for corner in [
+        pos2(rect.min.x + 8.0, rect.min.y + 8.0),
+        pos2(rect.max.x - 8.0, rect.min.y + 8.0),
+        pos2(rect.min.x + 8.0, rect.max.y - 8.0),
+        pos2(rect.max.x - 8.0, rect.max.y - 8.0),
+    ] {
+        painter.circle_filled(corner, 2.5, Color32::from_rgb(20, 26, 28));
+        painter.circle_stroke(
+            corner,
+            2.5,
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(189, 169, 112, 120)),
+        );
+        painter.circle_filled(
+            corner + vec2(-0.6, -0.6),
+            0.8,
+            Color32::from_rgb(205, 207, 188),
+        );
+    }
+}
+
 fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
     let max_health = 20.0;
     let fill_fraction = if deaths_door {
@@ -179,53 +302,95 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
     } else {
         (health as f32 / max_health).clamp(0.0, 1.0)
     };
-    let (rect, _) = ui.allocate_exact_size(vec2(78.0, 54.0), egui::Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(vec2(78.0, 66.0), egui::Sense::hover());
     let painter = ui.painter();
-    let rounding = CornerRadius::same(8);
-    painter.rect_filled(
-        rect,
-        rounding,
-        Color32::from_rgba_unmultiplied(28, 18, 22, 230),
-    );
-    painter.rect_stroke(
-        rect,
-        rounding,
-        Stroke::new(
-            1.0,
-            if deaths_door {
-                Color32::from_rgb(255, 210, 80)
-            } else {
-                Color32::from_rgb(130, 52, 58)
-            },
-        ),
-        egui::StrokeKind::Outside,
-    );
-
-    painter.text(
-        pos2(rect.center().x, rect.min.y + 8.0),
-        Align2::CENTER_CENTER,
-        "VITALITY",
-        FontId::proportional(8.0),
-        theme::TURN_WAITING,
-    );
-    let fill_w = (rect.width() - 10.0) * fill_fraction;
-    let fill_rect = Rect::from_min_max(
-        pos2(rect.min.x + 5.0, rect.max.y - 10.0),
-        pos2(rect.min.x + 5.0 + fill_w, rect.max.y - 5.0),
-    );
-    let fill = if deaths_door {
+    let center = pos2(rect.center().x, rect.center().y + 3.0);
+    let rim = if deaths_door {
         Color32::from_rgb(235, 184, 58)
     } else {
-        Color32::from_rgb(176, 32, 48)
+        Color32::from_rgb(147, 54, 61)
     };
-    painter.rect_filled(fill_rect, CornerRadius::same(5), fill);
-    painter.text(
-        rect.center(),
-        Align2::CENTER_CENTER,
-        health.to_string(),
-        FontId::proportional(24.0),
-        Color32::WHITE,
+    painter.circle_filled(center, 31.0, Color32::from_rgb(7, 9, 10));
+    painter.circle_stroke(
+        center,
+        30.0,
+        Stroke::new(2.0, Color32::from_rgb(78, 82, 74)),
     );
+    painter.circle_stroke(center, 27.0, Stroke::new(1.5, rim));
+    for (radius, color) in [
+        (24.5, Color32::from_rgb(49, 15, 19)),
+        (21.0, Color32::from_rgb(75, 19, 24)),
+        (17.0, Color32::from_rgb(101, 25, 31)),
+        (13.0, Color32::from_rgb(126, 30, 37)),
+    ] {
+        painter.circle_filled(center, radius, color);
+    }
+    if fill_fraction > 0.45 {
+        painter.circle_filled(
+            center + vec2(-7.0, -8.0),
+            7.5,
+            Color32::from_rgba_unmultiplied(240, 116, 106, 72),
+        );
+        painter.circle_filled(
+            center + vec2(-9.5, -10.5),
+            3.0,
+            Color32::from_rgba_unmultiplied(255, 226, 206, 110),
+        );
+    }
+    painter.circle_stroke(
+        center,
+        24.5,
+        Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 206, 192, 45)),
+    );
+    if response.hovered() {
+        painter.text(
+            center + vec2(0.0, 3.0),
+            Align2::CENTER_CENTER,
+            health.to_string(),
+            FontId::proportional(18.0),
+            Color32::WHITE,
+        );
+    }
+}
+
+fn seat_crest(ui: &mut Ui, is_self: bool) {
+    let (rect, _) = ui.allocate_exact_size(vec2(78.0, 14.0), egui::Sense::hover());
+    let accent = if is_self {
+        Color32::from_rgb(90, 176, 218)
+    } else {
+        Color32::from_rgb(190, 112, 86)
+    };
+    let painter = ui.painter();
+    let center = rect.center();
+    let gap = 8.0;
+    let line = Stroke::new(
+        1.0,
+        Color32::from_rgba_unmultiplied(accent.r(), accent.g(), accent.b(), 145),
+    );
+    painter.line_segment(
+        [
+            pos2(rect.min.x + 2.0, center.y),
+            pos2(center.x - gap, center.y),
+        ],
+        line,
+    );
+    painter.line_segment(
+        [
+            pos2(center.x + gap, center.y),
+            pos2(rect.max.x - 2.0, center.y),
+        ],
+        line,
+    );
+    painter.add(Shape::convex_polygon(
+        vec![
+            pos2(center.x, center.y - 4.0),
+            pos2(center.x + 4.0, center.y),
+            pos2(center.x, center.y + 4.0),
+            pos2(center.x - 4.0, center.y),
+        ],
+        Color32::from_rgba_unmultiplied(accent.r(), accent.g(), accent.b(), 52),
+        line,
+    ));
 }
 
 impl Component for PlayerStatusComponent {
@@ -248,7 +413,7 @@ impl Component for PlayerStatusComponent {
         let panel_w = 98.0;
         let top_margin = 72.0;
         let bottom_margin = 96.0;
-        let panel_h = 264.0;
+        let panel_h = 316.0;
         let panel_y = if self.player {
             sr.max.y - bottom_margin - panel_h
         } else {
@@ -293,11 +458,13 @@ impl Component for PlayerStatusComponent {
             .count();
         let is_self = data.player_id == self.player_id;
         let name = if is_self { "YOUR TABLE" } else { "OPPONENT" };
-        let seat_label = if is_self { "YOUR SIDE" } else { "OPPOSING SIDE" };
-        let unseen = data.unseen_events;
+        let seat_label = if is_self {
+            "YOUR SIDE"
+        } else {
+            "OPPOSING SIDE"
+        };
 
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
-        let mut open_log = false;
         let mut open_hand = false;
         let mut open_cemetery = false;
         let mut open_banish = false;
@@ -308,6 +475,7 @@ impl Component for PlayerStatusComponent {
             .fixed_pos(panel_pos)
             .order(egui::Order::Foreground)
             .show(&ctx, |ui| {
+                draw_seat_housing(ui.painter(), panel_rect, is_self);
                 egui::Frame::new()
                     .fill(Color32::TRANSPARENT)
                     .stroke(Stroke::NONE)
@@ -318,6 +486,7 @@ impl Component for PlayerStatusComponent {
                         ui.set_max_width(panel_w - (PAD_H as f32) * 2.0);
                         ui.vertical_centered(|ui| {
                             ui.spacing_mut().item_spacing = vec2(4.0, 3.0);
+                            seat_crest(ui, is_self);
                             ui.label(
                                 egui::RichText::new(name)
                                     .color(Color32::from_rgb(190, 210, 255))
@@ -399,48 +568,10 @@ impl Component for PlayerStatusComponent {
                             }
 
                             ui.add_space(3.0);
-                            ui.horizontal_centered(|ui| {
-                                ui.vertical(|ui| {
-                                    ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
-                                    ui.horizontal(|ui| {
-                                        element_symbol(ui, resources.thresholds.fire, Element::Fire);
-                                        element_symbol(ui, resources.thresholds.air, Element::Air);
-                                    });
-                                    ui.horizontal(|ui| {
-                                        element_symbol(ui, resources.thresholds.earth, Element::Earth);
-                                        element_symbol(ui, resources.thresholds.water, Element::Water);
-                                    });
-                                });
-                            });
-
-                            if is_self {
-                                ui.add_space(3.0);
-                                let label = if unseen > 0 {
-                                    format!("log {unseen}")
-                                } else {
-                                    "log".to_string()
-                                };
-                                if ui
-                                    .link(
-                                        egui::RichText::new(label)
-                                            .color(Color32::from_rgb(100, 200, 255))
-                                            .size(11.0),
-                                    )
-                                    .clicked()
-                                {
-                                    open_log = true;
-                                }
-                            }
+                            threshold_grid(ui, resources.thresholds);
                         });
                     });
             });
-
-        if open_log {
-            return Ok(Some(ComponentCommand::SetVisibility {
-                component_type: ComponentType::EventLog,
-                visible: true,
-            }));
-        }
 
         if open_cemetery {
             let title = if data.player_id == self.player_id {

@@ -10,6 +10,7 @@ use egui::{
     pos2, vec2,
 };
 use rand::SeedableRng;
+use std::collections::HashMap;
 use sorcerers::{
     card::{CardData, CardType, Region},
     game::{CardId, Direction, PlayerId},
@@ -30,7 +31,7 @@ use geometry::{
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
     Color32::from_rgba_unmultiplied_const(255, 255, 255, 22);
 
-const CARD_FLIGHT_DURATION: f64 = 0.28;
+const CARD_FLIGHT_DURATION: f64 = 0.42;
 const PROJECTILE_FLIGHT_DURATION: f64 = 0.42;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,6 +143,7 @@ pub struct RealmComponent {
     projectile_flights: Vec<ProjectileFlight>,
     card_filter: RealmCardFilter,
     pending_zone_choice: Option<PendingLocationChoice>,
+    hand_origins: HashMap<CardId, Rect>,
 }
 
 impl RealmComponent {
@@ -186,6 +188,7 @@ impl RealmComponent {
             projectile_flights: Vec::new(),
             card_filter: RealmCardFilter::All,
             pending_zone_choice: None,
+            hand_origins: HashMap::new(),
         }
     }
 
@@ -502,6 +505,18 @@ impl RealmComponent {
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
+                        if existing.is_none()
+                            && let Some(from_rect) = self.hand_origins.remove(&card.id)
+                        {
+                            pending_flights.push((
+                                card.clone(),
+                                image.clone(),
+                                from_rect,
+                                Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
+                                0.0,
+                                card_rotation(card),
+                            ));
+                        }
                         if let Some(existing) = existing
                             && existing.card.zone.is_in_play()
                         {
@@ -547,6 +562,18 @@ impl RealmComponent {
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
+                        if existing.is_none()
+                            && let Some(from_rect) = self.hand_origins.remove(&card.id)
+                        {
+                            pending_flights.push((
+                                card.clone(),
+                                image.clone(),
+                                from_rect,
+                                card_rect,
+                                0.0,
+                                card_rotation(card),
+                            ));
+                        }
                         if let Some(existing) = existing
                             && existing.card.zone.is_in_play()
                         {
@@ -1039,8 +1066,60 @@ impl RealmComponent {
             theme::TABLE_FELT,
             Stroke::new(1.0, theme::TABLE_EDGE),
         ));
+        let felt = board.shrink(9.0);
+        let center_y = felt.center().y;
+
+        // The two halves of the realm read as opposing territories without
+        // obscuring cards or turning the board into a decorative illustration.
+        painter.rect_filled(
+            Rect::from_min_max(felt.min, pos2(felt.max.x, center_y)),
+            2.0,
+            Color32::from_rgba_unmultiplied(62, 72, 104, 15),
+        );
+        painter.rect_filled(
+            Rect::from_min_max(pos2(felt.min.x, center_y), felt.max),
+            2.0,
+            Color32::from_rgba_unmultiplied(53, 92, 67, 14),
+        );
+        painter.line_segment(
+            [pos2(felt.min.x, center_y), pos2(felt.max.x, center_y)],
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(184, 159, 92, 100)),
+        );
+
+        // A restrained table inlay anchors the middle of the play space and
+        // gives the otherwise-empty board a tangible centre point.
+        let inlay_center = felt.center();
+        let inlay = 7.0;
+        painter.add(Shape::convex_polygon(
+            vec![
+                pos2(inlay_center.x, inlay_center.y - inlay),
+                pos2(inlay_center.x + inlay, inlay_center.y),
+                pos2(inlay_center.x, inlay_center.y + inlay),
+                pos2(inlay_center.x - inlay, inlay_center.y),
+            ],
+            Color32::from_rgba_unmultiplied(160, 136, 75, 32),
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(202, 174, 95, 145)),
+        ));
+
+        for (x, y, x_dir, y_dir) in [
+            (felt.min.x, felt.min.y, 1.0, 1.0),
+            (felt.max.x, felt.min.y, -1.0, 1.0),
+            (felt.min.x, felt.max.y, 1.0, -1.0),
+            (felt.max.x, felt.max.y, -1.0, -1.0),
+        ] {
+            let corner = pos2(x, y);
+            let line_color = Color32::from_rgba_unmultiplied(190, 165, 94, 92);
+            painter.line_segment(
+                [corner + vec2(x_dir * 12.0, 0.0), corner + vec2(x_dir * 34.0, 0.0)],
+                Stroke::new(1.0, line_color),
+            );
+            painter.line_segment(
+                [corner + vec2(0.0, y_dir * 12.0), corner + vec2(0.0, y_dir * 34.0)],
+                Stroke::new(1.0, line_color),
+            );
+        }
         painter.rect_stroke(
-            board.shrink(8.0),
+            felt,
             5.0,
             Stroke::new(1.0, Color32::from_rgba_unmultiplied(220, 225, 210, 40)),
             egui::StrokeKind::Inside,
@@ -1280,8 +1359,9 @@ impl RealmComponent {
         &mut self,
         data: &mut GameData,
         ui: &mut Ui,
-    ) -> anyhow::Result<Option<OngoingEffectData>> {
+    ) -> anyhow::Result<(Option<OngoingEffectData>, bool)> {
         let mut hovered_effect = None;
+        let mut open_log = false;
         let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 8.0);
         egui::Area::new(egui::Id::new("realm_view_controls"))
             .fixed_pos(button_pos)
@@ -1315,6 +1395,13 @@ impl RealmComponent {
                                 if data.show_ongoing_effects {
                                     data.ongoing_effects = None;
                                 }
+                            }
+                            if ui
+                                .selectable_label(false, "Log")
+                                .on_hover_text("Open match log")
+                                .clicked()
+                            {
+                                open_log = true;
                             }
                 });
             });
@@ -1364,7 +1451,7 @@ impl RealmComponent {
                 game_id: self.game_id,
             })?;
         }
-        Ok(hovered_effect)
+        Ok((hovered_effect, open_log))
     }
 
     fn card_visible_in_filter(&self, card: &CardData) -> bool {
@@ -1755,15 +1842,17 @@ impl Component for RealmComponent {
         self.card_flights.retain_mut(|flight| {
             let elapsed = now - flight.started_at;
             let progress = (elapsed / CARD_FLIGHT_DURATION).clamp(0.0, 1.0) as f32;
-            let eased = progress * progress * (3.0 - 2.0 * progress);
+            let eased = 1.0 - (1.0 - progress).powi(4);
             if flight.image.is_none() {
                 flight.image = TextureCache::get_card_texture_blocking(&flight.card, ui.ctx());
             }
             let from = flight.from;
             let to = flight.to;
+            let lift = (std::f32::consts::PI * progress).sin()
+                * -(from.center().distance(to.center()) * 0.12).clamp(18.0, 76.0);
             let min = pos2(
                 from.min.x + (to.min.x - from.min.x) * eased,
-                from.min.y + (to.min.y - from.min.y) * eased,
+                from.min.y + (to.min.y - from.min.y) * eased + lift,
             );
             let size = vec2(
                 from.width() + (to.width() - from.width()) * eased,
@@ -1771,7 +1860,11 @@ impl Component for RealmComponent {
             );
             let rotation =
                 flight.from_rotation + (flight.to_rotation - flight.from_rotation) * eased;
-            let rect = Rect::from_min_size(min, size);
+            let settle = 1.0 + (std::f32::consts::PI * progress).sin() * 0.055;
+            let rect = Rect::from_center_size(
+                Rect::from_min_size(min, size).center(),
+                size * settle,
+            );
             let card_rect = CardRect {
                 rect,
                 card: flight.card.clone(),
@@ -1806,7 +1899,14 @@ impl Component for RealmComponent {
 
         self.render_paths(ui, data, painter);
         self.render_direction_picker(ui, data, painter)?;
-        data.highlighted_ongoing_effect = self.render_view_controls(data, ui)?;
+        let (highlighted_effect, open_log) = self.render_view_controls(data, ui)?;
+        data.highlighted_ongoing_effect = highlighted_effect;
+        if open_log {
+            return Ok(Some(ComponentCommand::SetVisibility {
+                component_type: ComponentType::EventLog,
+                visible: true,
+            }));
+        }
         self.render_zone_choice_picker(ui, data)?;
 
         Ok(None)
@@ -1851,7 +1951,8 @@ impl Component for RealmComponent {
                 self.rect = *rect;
                 self.refresh_geometry();
             }
-            ComponentCommand::DropHandCard { card_id, pos } => {
+            ComponentCommand::DropHandCard { card_id, pos, from_rect } => {
+                self.hand_origins.insert(*card_id, *from_rect);
                 if let Status::PreviewingPlayableLocations {
                     card_id: preview_card_id,
                     locations,
