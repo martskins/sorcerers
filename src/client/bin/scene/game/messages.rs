@@ -23,7 +23,10 @@ impl Game {
         // effect eliminates a player. Once the outcome arrives it must remain the
         // terminal client state instead of being overwritten before the next frame.
         if matches!(self.data.status, Status::GameOver { .. })
-            && !matches!(message, ServerMessage::GameOver { .. })
+            && !matches!(
+                message,
+                ServerMessage::GameOver { .. } | ServerMessage::MatchRewards { .. }
+            )
         {
             return None;
         }
@@ -86,6 +89,17 @@ impl Game {
                     winner_id: *winner_id,
                     winner_name: winner_name.clone(),
                 };
+                None
+            }
+            ServerMessage::MatchRewards {
+                points_earned,
+                reward_points,
+                won,
+            } => {
+                self.match_reward = Some((*points_earned, *reward_points, *won));
+                if let Some(menu) = &mut self.return_menu {
+                    menu.set_reward_points(*reward_points);
+                }
                 None
             }
             ServerMessage::Resume { .. } => {

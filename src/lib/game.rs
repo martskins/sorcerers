@@ -1350,6 +1350,13 @@ pub struct Game {
     server_receiver: Receiver<ServerMessage>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameOutcome {
+    pub game_id: uuid::Uuid,
+    pub winner_id: PlayerId,
+    pub player_ids: Vec<PlayerId>,
+}
+
 impl Game {
     pub fn new(
         players_with_streams: Vec<(PlayerWithDeck, Arc<Mutex<OwnedWriteHalf>>)>,
@@ -1373,7 +1380,7 @@ impl Game {
         }
     }
 
-    pub async fn start(&mut self) -> anyhow::Result<()> {
+    pub async fn start(&mut self) -> anyhow::Result<GameOutcome> {
         self.state.queue(self.place_avatars());
         self.state.queue(self.draw_initial_six());
 
@@ -1415,8 +1422,16 @@ impl Game {
                     self.update().await?;
                 }
             }
+            if let Some(outcome) = self.game_outcome() {
+                self.end_game()?;
+                return Ok(outcome);
+            }
             let message = self.client_receiver.recv().await?;
             self.process_message(&message).await?;
+            if let Some(outcome) = self.game_outcome() {
+                self.end_game()?;
+                return Ok(outcome);
+            }
         }
     }
 
@@ -2363,6 +2378,15 @@ impl Game {
             player_id: winner.id,
             winner_id: winner.id,
             winner_name: winner.name.clone(),
+        })
+    }
+
+    fn game_outcome(&self) -> Option<GameOutcome> {
+        let winner = self.state.winner_if_game_over()?;
+        Some(GameOutcome {
+            game_id: self.id,
+            winner_id: winner.id,
+            player_ids: self.state.players.iter().map(|player| player.id).collect(),
         })
     }
 

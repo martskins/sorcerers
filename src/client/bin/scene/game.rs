@@ -237,6 +237,7 @@ pub struct Game {
     game_id: uuid::Uuid,
     player_id: PlayerId,
     client: networking::client::Client,
+    return_menu: Option<Menu>,
     current_player: PlayerId,
     overlay: Option<GameOverlay>,
     components: GameComponents,
@@ -248,6 +249,7 @@ pub struct Game {
     controlled_hand_opened_for: Option<PlayerId>,
     match_stage_background: Option<TextureHandle>,
     game_over_started_at: Option<f64>,
+    match_reward: Option<(u32, u32, bool)>,
 }
 
 enum GameOverlay {
@@ -397,11 +399,17 @@ impl Game {
         cards: Vec<CardData>,
         client: networking::client::Client,
         audio_manager: AudioManager<DefaultBackend>,
+        return_menu: Menu,
+        reward_points: u32,
     ) -> Self {
+        let mut return_menu = return_menu;
+        return_menu.set_reward_points(reward_points);
+
         Self {
             game_id,
             player_id,
             client: client.clone(),
+            return_menu: Some(return_menu),
             current_player: uuid::Uuid::nil(),
             overlay: None,
             components: GameComponents::new(
@@ -419,7 +427,13 @@ impl Game {
             controlled_hand_opened_for: None,
             match_stage_background: None,
             game_over_started_at: None,
+            match_reward: None,
         }
+    }
+
+    fn return_to_menu(&mut self) -> Option<Scene> {
+        self.data.status = Status::Idle;
+        self.return_menu.take().map(Scene::Menu)
     }
 
     fn render_match_stage(&mut self, ui: &mut Ui) {

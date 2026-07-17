@@ -22,6 +22,7 @@ const MENU_BORDER: Color32 = theme::PANEL_BORDER;
 const MENU_TEXT: Color32 = Color32::from_rgb(235, 236, 225);
 const MENU_TEXT_MUTED: Color32 = Color32::from_rgb(171, 179, 168);
 const MENU_GOLD: Color32 = Color32::from_rgb(255, 200, 60);
+const BETA_BOOSTER_COST: u32 = 30;
 const MENU_BACKGROUND: &[u8] =
     include_bytes!("../../../../assets/images/menu/enchanted_table_v1.png");
 
@@ -44,6 +45,10 @@ pub struct Menu {
     auth_requested: bool,
     auth_error: Option<String>,
     booster_reward: Option<String>,
+    reward_points: u32,
+    show_rewards: bool,
+    reward_redemption_requested: bool,
+    reward_feedback: Option<String>,
     unopened_booster_packs: Vec<UnopenedBoosterPack>,
     opened_booster_pack: Option<BoosterPack>,
     show_packs: bool,
@@ -73,6 +78,10 @@ impl std::fmt::Debug for Menu {
 }
 
 impl Menu {
+    pub(crate) fn set_reward_points(&mut self, reward_points: u32) {
+        self.reward_points = reward_points;
+    }
+
     pub fn new(client: networking::client::Client) -> Self {
         Self {
             client,
@@ -93,6 +102,10 @@ impl Menu {
             auth_requested: false,
             auth_error: None,
             booster_reward: None,
+            reward_points: 0,
+            show_rewards: false,
+            reward_redemption_requested: false,
+            reward_feedback: None,
             unopened_booster_packs: vec![],
             opened_booster_pack: None,
             show_packs: false,
@@ -134,6 +147,10 @@ impl Menu {
             auth_requested: false,
             auth_error: None,
             booster_reward: None,
+            reward_points: 0,
+            show_rewards: false,
+            reward_redemption_requested: false,
+            reward_feedback: None,
             unopened_booster_packs: vec![],
             opened_booster_pack: None,
             show_packs: false,
@@ -577,6 +594,310 @@ impl Menu {
         });
     }
 
+    fn render_reward_balance(&mut self, ui: &mut Ui) {
+        let screen = ui.max_rect();
+        egui::Area::new(egui::Id::new("reward_points_balance"))
+            .fixed_pos(pos2(screen.right() - 188.0, screen.top() + 16.0))
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                let response = ui.add(
+                    egui::Button::new(
+                        egui::RichText::new(format!("✦  {} points", self.reward_points))
+                            .color(MENU_GOLD)
+                            .size(15.0)
+                            .strong(),
+                    )
+                    .min_size(vec2(172.0, 38.0)),
+                );
+                if response.clicked() {
+                    self.show_rewards = true;
+                    self.reward_feedback = None;
+                }
+                response.on_hover_text("View and claim match rewards");
+            });
+    }
+
+    fn render_rewards_screen(&mut self, ui: &mut Ui) {
+        let content_width = ui.available_width().min(1_040.0);
+        let left_padding = ((ui.available_width() - content_width) / 2.0).max(0.0);
+
+        ui.add_space(52.0);
+        ui.horizontal(|ui| {
+            ui.add_space(left_padding);
+            ui.vertical(|ui| {
+                ui.set_width(content_width);
+
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(
+                            egui::Button::new(egui::RichText::new("← Back").size(15.0))
+                                .min_size(vec2(88.0, 40.0)),
+                        )
+                        .clicked()
+                    {
+                        self.show_rewards = false;
+                        self.reward_feedback = None;
+                    }
+                    ui.add_space(14.0);
+                    ui.vertical(|ui| {
+                        ui.label(
+                            egui::RichText::new("Match rewards")
+                                .color(MENU_TEXT)
+                                .font(theme::display_bold_font(38.0)),
+                        );
+                        ui.label(
+                            egui::RichText::new(
+                                "Build toward new cards every time you take a seat at the table.",
+                            )
+                            .color(MENU_TEXT_MUTED)
+                            .size(15.0),
+                        );
+                    });
+                });
+                ui.add_space(26.0);
+
+                egui::Frame::new()
+                    .fill(theme::PANEL_BG)
+                    .stroke(egui::Stroke::new(1.0, MENU_BORDER))
+                    .corner_radius(8.0)
+                    .inner_margin(egui::Margin::same(24))
+                    .show(ui, |ui| {
+                        let compact = ui.available_width() < 760.0;
+                        let mut render_booster = |ui: &mut Ui| {
+                            ui.horizontal_top(|ui| {
+                                let pack_size = vec2(152.0, 198.0);
+                                let (pack_rect, _) =
+                                    ui.allocate_exact_size(pack_size, egui::Sense::hover());
+                                if let Some(texture) = TextureCache::get_texture_blocking(
+                                    "assets/images/beta_booster_1.webp",
+                                    ui.ctx(),
+                                ) {
+                                    egui::Image::new(egui::ImageSource::Texture(
+                                        egui::load::SizedTexture::from_handle(&texture),
+                                    ))
+                                    .paint_at(ui, pack_rect);
+                                } else {
+                                    ui.painter()
+                                        .rect_filled(pack_rect, 6.0, theme::SURFACE_INSET);
+                                    ui.painter().rect_stroke(
+                                        pack_rect,
+                                        6.0,
+                                        egui::Stroke::new(1.0, MENU_BORDER),
+                                        egui::StrokeKind::Inside,
+                                    );
+                                    ui.painter().text(
+                                        pack_rect.center(),
+                                        egui::Align2::CENTER_CENTER,
+                                        "BETA\nBOOSTER",
+                                        theme::display_bold_font(18.0),
+                                        MENU_GOLD,
+                                    );
+                                    ui.ctx().request_repaint();
+                                }
+
+                                ui.add_space(22.0);
+                                ui.vertical(|ui| {
+                                    ui.label(
+                                        egui::RichText::new("Beta Booster")
+                                            .color(MENU_TEXT)
+                                            .size(23.0)
+                                            .strong(),
+                                    );
+                                    ui.add_space(2.0);
+                                    ui.label(
+                                        egui::RichText::new(
+                                            "A fresh Beta pack, ready to join your collection.",
+                                        )
+                                        .color(MENU_TEXT_MUTED)
+                                        .size(14.0),
+                                    );
+                                    ui.add_space(16.0);
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "{BETA_BOOSTER_COST} points"
+                                        ))
+                                        .color(MENU_GOLD)
+                                        .size(17.0)
+                                        .strong(),
+                                    );
+                                    ui.add_space(8.0);
+
+                                    let progress = (self.reward_points as f32
+                                        / BETA_BOOSTER_COST as f32)
+                                        .min(1.0);
+                                    let progress_width = ui.available_width().min(360.0);
+                                    let (progress_rect, _) = ui.allocate_exact_size(
+                                        vec2(progress_width, 30.0),
+                                        egui::Sense::hover(),
+                                    );
+                                    ui.painter().rect_filled(
+                                        progress_rect,
+                                        5.0,
+                                        theme::SURFACE_INSET,
+                                    );
+                                    if progress > 0.0 {
+                                        let filled = egui::Rect::from_min_size(
+                                            progress_rect.min,
+                                            vec2(progress_rect.width() * progress, 30.0),
+                                        );
+                                        ui.painter().rect_filled(filled, 5.0, MENU_GOLD);
+                                    }
+                                    ui.painter().rect_stroke(
+                                        progress_rect,
+                                        5.0,
+                                        egui::Stroke::new(1.0, MENU_BORDER),
+                                        egui::StrokeKind::Inside,
+                                    );
+                                    ui.painter().text(
+                                        progress_rect.center(),
+                                        egui::Align2::CENTER_CENTER,
+                                        format!(
+                                            "{} / {BETA_BOOSTER_COST} points",
+                                            self.reward_points
+                                        ),
+                                        egui::FontId::proportional(14.0),
+                                        MENU_TEXT,
+                                    );
+                                    ui.add_space(10.0);
+
+                                    if self.reward_points < BETA_BOOSTER_COST {
+                                        ui.label(
+                                            egui::RichText::new(format!(
+                                                "{} more points to claim this pack",
+                                                BETA_BOOSTER_COST - self.reward_points
+                                            ))
+                                            .color(MENU_TEXT_MUTED)
+                                            .size(14.0),
+                                        );
+                                    } else {
+                                        ui.label(
+                                            egui::RichText::new("Ready to claim")
+                                                .color(theme::PICKABLE)
+                                                .size(14.0)
+                                                .strong(),
+                                        );
+                                    }
+                                    ui.add_space(12.0);
+
+                                    let claim = ui.add_enabled(
+                                        self.reward_points >= BETA_BOOSTER_COST
+                                            && !self.reward_redemption_requested,
+                                        egui::Button::new(
+                                            egui::RichText::new(
+                                                if self.reward_redemption_requested {
+                                                    "Claiming…"
+                                                } else {
+                                                    "Claim Beta Booster"
+                                                },
+                                            )
+                                            .color(Color32::WHITE)
+                                            .size(16.0),
+                                        )
+                                        .min_size(vec2(250.0, theme::BUTTON_HEIGHT)),
+                                    );
+                                    if claim.clicked() {
+                                        match self.client.send(ClientMessage::RedeemBetaBooster) {
+                                            Ok(()) => {
+                                                self.reward_redemption_requested = true;
+                                                self.reward_feedback = None;
+                                            }
+                                            Err(_) => {
+                                                self.reward_feedback = Some(
+                                                    "Unable to reach the server. Please try again."
+                                                        .to_string(),
+                                                );
+                                            }
+                                        }
+                                    }
+                                    if let Some(feedback) = &self.reward_feedback {
+                                        ui.add_space(8.0);
+                                        ui.label(
+                                            egui::RichText::new(feedback)
+                                                .color(MENU_GOLD)
+                                                .size(13.0),
+                                        );
+                                    }
+                                });
+                            });
+                        };
+
+                        let render_summary = |ui: &mut Ui| {
+                            ui.vertical(|ui| {
+                                ui.label(
+                                    egui::RichText::new("Your balance")
+                                        .color(MENU_TEXT_MUTED)
+                                        .size(13.0),
+                                );
+                                ui.add_space(2.0);
+                                ui.label(
+                                    egui::RichText::new(format!("✦ {}", self.reward_points))
+                                        .color(MENU_GOLD)
+                                        .size(34.0)
+                                        .strong(),
+                                );
+                                ui.label(
+                                    egui::RichText::new("reward points")
+                                        .color(MENU_TEXT_MUTED)
+                                        .size(14.0),
+                                );
+                                ui.add_space(24.0);
+                                ui.separator();
+                                ui.add_space(18.0);
+                                ui.label(
+                                    egui::RichText::new("Earn points by playing")
+                                        .color(MENU_TEXT)
+                                        .size(15.0)
+                                        .strong(),
+                                );
+                                ui.add_space(10.0);
+                                ui.label(
+                                    egui::RichText::new("Win a match  +10")
+                                        .color(MENU_TEXT_MUTED)
+                                        .size(14.0),
+                                );
+                                ui.add_space(4.0);
+                                ui.label(
+                                    egui::RichText::new("Complete a match  +2")
+                                        .color(MENU_TEXT_MUTED)
+                                        .size(14.0),
+                                );
+                            });
+                        };
+
+                        if compact {
+                            render_booster(ui);
+                            ui.add_space(24.0);
+                            ui.separator();
+                            ui.add_space(20.0);
+                            render_summary(ui);
+                        } else {
+                            ui.horizontal_top(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.set_width((ui.available_width() - 270.0).max(400.0));
+                                    render_booster(ui);
+                                });
+                                ui.add_space(24.0);
+                                ui.separator();
+                                ui.add_space(24.0);
+                                ui.vertical(|ui| {
+                                    ui.set_width(220.0);
+                                    render_summary(ui);
+                                });
+                            });
+                        }
+                    });
+                ui.add_space(16.0);
+                ui.label(
+                    egui::RichText::new(
+                        "More sets and card rewards will appear here as they become available.",
+                    )
+                    .color(MENU_TEXT_MUTED)
+                    .size(13.0),
+                );
+            });
+        });
+    }
+
     fn render_custom_section(
         &mut self,
         ui: &mut Ui,
@@ -809,60 +1130,68 @@ impl Menu {
         let Some(pack) = self.opened_booster_pack.clone() else {
             return;
         };
+        let tray_width = ui.available_width().min(1_200.0);
+        let left_padding = ((ui.available_width() - tray_width) / 2.0).max(0.0);
 
+        ui.add_space(36.0);
         ui.vertical_centered(|ui| {
-            ui.add_space(12.0);
             ui.label(
                 egui::RichText::new(format!("{} Booster Opened", pack.set_name))
-                    .color(Color32::from_rgb(255, 200, 60))
-                    .size(32.0)
-                    .strong(),
+                    .color(MENU_GOLD)
+                    .font(theme::display_bold_font(38.0)),
             );
+            ui.add_space(2.0);
             ui.label(
                 egui::RichText::new("All cards in this pack have been added to your collection.")
-                    .color(Color32::from_rgb(180, 190, 215))
+                    .color(MENU_TEXT_MUTED)
                     .size(15.0),
             );
-            ui.add_space(10.0);
+        });
+        ui.add_space(20.0);
 
-            let tray_width = ui.available_width().min(880.0);
-            ui.allocate_ui_with_layout(
-                vec2(tray_width, 710.0),
-                egui::Layout::top_down(egui::Align::Center),
-                |ui| {
-                    egui::Frame::new()
-                        .fill(theme::PANEL_BG)
-                        .stroke(egui::Stroke::new(1.0, MENU_BORDER))
-                        .corner_radius(8.0)
-                        .inner_margin(egui::Margin::same(14))
-                        .show(ui, |ui| {
-                            egui::Grid::new("opened_booster_pack_grid")
-                                .num_columns(5)
-                                .spacing(vec2(10.0, 12.0))
-                                .show(ui, |ui| {
-                                    for (index, card) in pack.cards.iter().enumerate() {
-                                        Self::render_reward_card(ui, card, vec2(150.0, 205.0));
-                                        if index % 5 == 4 {
-                                            ui.end_row();
-                                        }
+        ui.horizontal(|ui| {
+            ui.add_space(left_padding);
+            ui.vertical(|ui| {
+                ui.set_width(tray_width);
+                egui::Frame::new()
+                    .fill(theme::PANEL_BG)
+                    .stroke(egui::Stroke::new(1.0, MENU_BORDER))
+                    .corner_radius(8.0)
+                    .inner_margin(egui::Margin::same(18))
+                    .show(ui, |ui| {
+                        egui::Grid::new("opened_booster_pack_grid")
+                            .num_columns(5)
+                            .spacing(vec2(14.0, 14.0))
+                            .show(ui, |ui| {
+                                for (index, card) in pack.cards.iter().enumerate() {
+                                    Self::render_reward_card(ui, card, vec2(218.0, 266.0));
+                                    if index % 5 == 4 {
+                                        ui.end_row();
                                     }
-                                });
-                        });
-                },
-            );
-            ui.add_space(10.0);
-            let continue_clicked = ui.button("Continue").clicked()
+                                }
+                            });
+                    });
+            });
+        });
+        ui.add_space(8.0);
+        ui.vertical_centered(|ui| {
+            let continue_clicked = ui
+                .add(
+                    egui::Button::new(egui::RichText::new("Continue").size(16.0))
+                        .min_size(vec2(136.0, theme::BUTTON_HEIGHT)),
+                )
+                .clicked()
                 || ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
             if continue_clicked {
                 self.opened_booster_pack = None;
             }
         });
+        ui.add_space(28.0);
     }
 
     fn render_reward_card(ui: &mut Ui, booster_card: &BoosterCard, size: egui::Vec2) {
         let card_name = &booster_card.name;
         let card = Self::card_preview_data(card_name);
-        let image_size = vec2(135.0, 178.0);
         let response =
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
                 if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
@@ -870,49 +1199,30 @@ impl Menu {
                         egui::Image::new(egui::ImageSource::Texture(
                             egui::load::SizedTexture::from_handle(&texture),
                         ))
-                        .max_size(image_size),
+                        .max_size(size),
                     );
                     if booster_card.is_foil {
                         Self::paint_foil_effect(ui, image.rect);
                     }
                 } else {
                     ui.ctx().request_repaint();
-                    ui.allocate_space(image_size);
+                    ui.allocate_space(size);
                 }
-                ui.label(
-                    egui::RichText::new(card_name)
-                        .color(if booster_card.is_foil {
-                            Color32::from_rgb(255, 222, 125)
-                        } else {
-                            Color32::from_rgb(230, 235, 250)
-                        })
-                        .size(11.0)
-                        .strong(),
-                );
             });
         response.response.on_hover_ui(|ui| {
-            ui.label(
-                egui::RichText::new(if booster_card.is_foil {
-                    format!("✦ Foil {card_name}")
-                } else {
-                    card_name.to_owned()
-                })
-                .color(Color32::from_rgb(255, 200, 80))
-                .strong(),
-            );
             if let Some(texture) = TextureCache::get_card_texture_blocking(&card, ui.ctx()) {
                 let preview = ui.add(
                     egui::Image::new(egui::ImageSource::Texture(
                         egui::load::SizedTexture::from_handle(&texture),
                     ))
-                    .max_size(vec2(310.0, 410.0)),
+                    .max_size(vec2(420.0, 554.0)),
                 );
                 if booster_card.is_foil {
                     Self::paint_foil_effect(ui, preview.rect);
                 }
             } else {
                 ui.ctx().request_repaint();
-                ui.allocate_space(vec2(310.0, 410.0));
+                ui.allocate_space(vec2(420.0, 554.0));
             }
         });
     }
@@ -1169,6 +1479,7 @@ impl Menu {
                 saved_decks,
                 collection,
                 unopened_booster_packs,
+                reward_points,
             } => {
                 self.available_decks = available_decks.clone();
                 self.saved_decks = saved_decks.clone();
@@ -1181,6 +1492,7 @@ impl Menu {
                 self.auth_error = None;
                 self.awaiting_email_confirmation = false;
                 self.unopened_booster_packs = unopened_booster_packs.clone();
+                self.reward_points = *reward_points;
                 self.booster_reward = (!unopened_booster_packs.is_empty()).then(|| {
                     format!(
                         "Weekly reward: {} unopened Beta booster packs.",
@@ -1238,6 +1550,18 @@ impl Menu {
                 self.opened_booster_pack = Some(pack.clone());
                 None
             }
+            ServerMessage::BoosterRedeemed { reward_points, pack } => {
+                self.reward_points = *reward_points;
+                self.unopened_booster_packs.push(pack.clone());
+                self.reward_redemption_requested = false;
+                self.reward_feedback = Some("Beta Booster added to your packs.".to_string());
+                None
+            }
+            ServerMessage::RewardRedemptionFailed { message } => {
+                self.reward_redemption_requested = false;
+                self.reward_feedback = Some(message.clone());
+                None
+            }
             ServerMessage::GameStarted {
                 player1,
                 player2,
@@ -1265,6 +1589,15 @@ impl Menu {
                     cards.clone(),
                     self.client.clone(),
                     manager,
+                    Menu::restore(
+                        self.client.clone(),
+                        self.player_id,
+                        self.player_name.clone(),
+                        self.available_decks.clone(),
+                        self.saved_decks.clone(),
+                        self.collection.clone(),
+                    ),
+                    self.reward_points,
                 )))
             }
             _ => None,
@@ -1309,9 +1642,14 @@ impl Menu {
                     self.render_packs(ui);
                     return;
                 }
+                if self.show_rewards {
+                    self.render_rewards_screen(ui);
+                    return;
+                }
                 let deck_selection_visible =
                     !self.available_decks.is_empty() && !self.looking_for_match;
                 if deck_selection_visible {
+                    self.render_reward_balance(ui);
                     egui::ScrollArea::vertical()
                         .id_salt("deck_selection_screen")
                         .auto_shrink([false, false])

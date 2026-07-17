@@ -2,7 +2,101 @@ use sorcerers::booster::{BoosterCard, BoosterPack, UnopenedBoosterPack};
 
 use super::{UserRepository, UserRepositoryError};
 
+pub const WIN_REWARD_POINTS: i32 = 10;
+pub const PLAY_REWARD_POINTS: i32 = 2;
+pub const BETA_BOOSTER_COST: i32 = WIN_REWARD_POINTS * 3;
+
+pub struct MatchReward {
+    pub points_earned: u32,
+    pub reward_points: u32,
+}
+
 impl UserRepository {
+    pub async fn reward_points(&self, user_id: uuid::Uuid) -> Result<u32, UserRepositoryError> {
+        let points: i32 = sqlx::query_scalar("SELECT reward_points FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(points.max(0) as u32)
+    }
+
+    pub async fn award_match_points(
+        &self,
+        game_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+        won: bool,
+    ) -> Result<MatchReward, UserRepositoryError> {
+        let points = if won { WIN_REWARD_POINTS } else { PLAY_REWARD_POINTS };
+        let mut transaction = self.pool.begin().await?;
+        let awarded: Option<i32> = sqlx::query_scalar(
+            "INSERT INTO game_rewards (game_id, user_id, points) VALUES ($1, $2, $3)
+             ON CONFLICT (game_id, user_id) DO NOTHING
+             RETURNING points",
+        )
+        .bind(game_id)
+        .bind(user_id)
+        .bind(points)
+        .fetch_optional(&mut *transaction)
+        .await?;
+        let reward_points: i32 = if let Some(points_earned) = awarded {
+            sqlx::query_scalar(
+                "UPDATE users SET reward_points = reward_points + $1 WHERE id = $2 RETURNING reward_points",
+            )
+            .bind(points_earned)
+            .bind(user_id)
+            .fetch_one(&mut *transaction)
+            .await?
+        } else {
+            sqlx::query_scalar("SELECT reward_points FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&mut *transaction)
+                .await?
+        };
+        transaction.commit().await?;
+        Ok(MatchReward {
+            points_earned: awarded.unwrap_or_default().max(0) as u32,
+            reward_points: reward_points.max(0) as u32,
+        })
+    }
+
+    pub async fn redeem_beta_booster(
+        &self,
+        user_id: uuid::Uuid,
+        pack: BoosterPack,
+    ) -> Result<(u32, UnopenedBoosterPack), UserRepositoryError> {
+        let mut transaction = self.pool.begin().await?;
+        let reward_points: Option<i32> = sqlx::query_scalar(
+            "UPDATE users SET reward_points = reward_points - $1
+             WHERE id = $2 AND reward_points >= $1
+             RETURNING reward_points",
+        )
+        .bind(BETA_BOOSTER_COST)
+        .bind(user_id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+        let Some(reward_points) = reward_points else {
+            transaction.rollback().await?;
+            return Err(UserRepositoryError::InsufficientRewardPoints);
+        };
+        let cards = serde_json::to_string(&pack.cards)
+            .map_err(|_| UserRepositoryError::Serialization)?;
+        let pack_id = uuid::Uuid::new_v4();
+        sqlx::query(
+            "INSERT INTO booster_packs (id, user_id, set_name, cards) VALUES ($1, $2, $3, $4::jsonb)",
+        )
+        .bind(pack_id)
+        .bind(user_id)
+        .bind(&pack.set_name)
+        .bind(cards)
+        .execute(&mut *transaction)
+        .await?;
+        transaction.commit().await?;
+        Ok((
+            reward_points.max(0) as u32,
+            UnopenedBoosterPack { id: pack_id, pack },
+        ))
+    }
+
     pub async fn claim_weekly_boosters(
         &self,
         user_id: uuid::Uuid,
@@ -102,5 +196,15 @@ impl UserRepository {
         }
         transaction.commit().await?;
         Ok(Some(BoosterPack { set_name, cards }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BETA_BOOSTER_COST, WIN_REWARD_POINTS};
+
+    #[test]
+    fn beta_booster_costs_three_wins() {
+        assert_eq!(BETA_BOOSTER_COST, WIN_REWARD_POINTS * 3);
     }
 }

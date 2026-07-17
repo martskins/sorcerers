@@ -120,6 +120,7 @@ pub enum ServerMessage {
         saved_decks: Vec<DeckList>,
         collection: Vec<CollectedCard>,
         unopened_booster_packs: Vec<UnopenedBoosterPack>,
+        reward_points: u32,
     },
     AuthenticationFailure {
         message: String,
@@ -135,6 +136,18 @@ pub enum ServerMessage {
     BoosterPackOpened {
         pack_id: uuid::Uuid,
         pack: BoosterPack,
+    },
+    MatchRewards {
+        points_earned: u32,
+        reward_points: u32,
+        won: bool,
+    },
+    BoosterRedeemed {
+        reward_points: u32,
+        pack: UnopenedBoosterPack,
+    },
+    RewardRedemptionFailed {
+        message: String,
     },
     GameStarted {
         game_id: uuid::Uuid,
@@ -256,6 +269,9 @@ impl ServerMessage {
             ServerMessage::EmailConfirmationRequired { .. } => uuid::Uuid::nil(),
             ServerMessage::StarterDeckSelection { .. } => uuid::Uuid::nil(),
             ServerMessage::BoosterPackOpened { .. } => uuid::Uuid::nil(),
+            ServerMessage::MatchRewards { .. } => uuid::Uuid::nil(),
+            ServerMessage::BoosterRedeemed { .. } => uuid::Uuid::nil(),
+            ServerMessage::RewardRedemptionFailed { .. } => uuid::Uuid::nil(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => *player_id,
@@ -289,6 +305,7 @@ pub enum ClientMessage {
     ResendEmailConfirmation { email: String },
     ChooseStarterDeck { deck: PreconDeck },
     OpenBoosterPack { pack_id: uuid::Uuid },
+    RedeemBetaBooster,
     ResolveAction {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -405,6 +422,7 @@ impl ClientMessage {
             ClientMessage::ResendEmailConfirmation { .. } => uuid::Uuid::nil(),
             ClientMessage::ChooseStarterDeck { .. } => uuid::Uuid::nil(),
             ClientMessage::OpenBoosterPack { .. } => uuid::Uuid::nil(),
+            ClientMessage::RedeemBetaBooster => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
             ClientMessage::PlayerDisconnected { game_id, .. } => *game_id,
             ClientMessage::PickCard { game_id, .. } => *game_id,
@@ -439,6 +457,7 @@ impl ClientMessage {
             ClientMessage::ResendEmailConfirmation { .. } => &NIL,
             ClientMessage::ChooseStarterDeck { .. } => &NIL,
             ClientMessage::OpenBoosterPack { .. } => &NIL,
+            ClientMessage::RedeemBetaBooster => &NIL,
             ClientMessage::PlayerDisconnected { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,

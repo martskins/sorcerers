@@ -674,12 +674,9 @@ impl Game {
                     )
                     .clicked()
                 {
-                    new_scene = Some(Scene::Menu(Menu::new(self.client.clone())));
+                    new_scene = self.return_to_menu();
                 }
             });
-        if new_scene.is_some() {
-            self.data.status = Status::Idle;
-        }
         new_scene
     }
 
@@ -720,7 +717,7 @@ impl Game {
         let opacity = (raw_progress * 2.4).clamp(0.0, 1.0);
 
         let base_w = 448.0_f32.min(sr.width() - 32.0);
-        let base_h = 278.0_f32.min(sr.height() - 32.0);
+        let base_h = 316.0_f32.min(sr.height() - 32.0);
         let scale = 0.94 + progress * 0.06;
         let panel_w = base_w * scale;
         let panel_h = base_h * scale;
@@ -819,6 +816,22 @@ impl Game {
                                     .size(17.0)
                                     .color(theme::TEXT_BRIGHT),
                             );
+                            if let Some((points_earned, reward_points, reward_won)) =
+                                self.match_reward
+                            {
+                                ui.add_space(12.0);
+                                let reward_copy = if reward_won {
+                                    format!("✦ +{points_earned} reward points · {reward_points} total")
+                                } else {
+                                    format!("✦ +{points_earned} points for playing · {reward_points} total")
+                                };
+                                ui.label(
+                                    RichText::new(reward_copy)
+                                        .size(15.0)
+                                        .strong()
+                                        .color(Color32::from_rgb(255, 200, 60)),
+                                );
+                            }
                             ui.add_space(22.0);
                             if ui
                                 .add(
@@ -839,8 +852,7 @@ impl Game {
 
         if return_clicked {
             self.play_button_click();
-            self.data.status = Status::Idle;
-            return Some(Scene::Menu(Menu::new(self.client.clone())));
+            return self.return_to_menu();
         }
 
         None

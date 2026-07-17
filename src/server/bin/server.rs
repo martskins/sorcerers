@@ -31,6 +31,7 @@ pub struct Server {
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
     addr_to_user: HashMap<std::net::SocketAddr, uuid::Uuid>,
+    player_to_user: HashMap<uuid::Uuid, uuid::Uuid>,
     pending_starter_selection: HashMap<std::net::SocketAddr, User>,
     users: UserRepository,
     email_sender: EmailSender,
@@ -48,6 +49,7 @@ impl Server {
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
             addr_to_user: HashMap::new(),
+            player_to_user: HashMap::new(),
             pending_starter_selection: HashMap::new(),
             users,
             email_sender,
@@ -66,18 +68,16 @@ impl Server {
                 username,
                 email,
                 password,
-            }) => {
-                match self.users.register(username, email, password).await {
-                    Ok(pending) => {
-                        self.send_email_confirmation_required(pending.email, pending.code, stream)
-                            .await?
-                    }
-                    Err(error) => {
-                        self.send_authentication_failure(error.user_message().to_string(), stream)
-                            .await?
-                    }
+            }) => match self.users.register(username, email, password).await {
+                Ok(pending) => {
+                    self.send_email_confirmation_required(pending.email, pending.code, stream)
+                        .await?
                 }
-            }
+                Err(error) => {
+                    self.send_authentication_failure(error.user_message().to_string(), stream)
+                        .await?
+                }
+            },
             Message::ClientMessage(ClientMessage::Login { username, password }) => {
                 match self.users.verify_login(username, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
@@ -183,6 +183,36 @@ impl Server {
                     .await?;
                 }
             }
+            Message::ClientMessage(ClientMessage::RedeemBetaBooster) => {
+                let Some(&user_id) = self.addr_to_user.get(addr) else {
+                    return Ok(());
+                };
+                match self
+                    .users
+                    .redeem_beta_booster(user_id, BoosterPack::beta())
+                    .await
+                {
+                    Ok((reward_points, pack)) => {
+                        Client::send_to_stream(
+                            &ServerMessage::BoosterRedeemed {
+                                reward_points,
+                                pack,
+                            },
+                            stream,
+                        )
+                        .await?;
+                    }
+                    Err(error) => {
+                        Client::send_to_stream(
+                            &ServerMessage::RewardRedemptionFailed {
+                                message: error.user_message().to_string(),
+                            },
+                            stream,
+                        )
+                        .await?;
+                    }
+                }
+            }
             Message::ClientMessage(ClientMessage::JoinQueue {
                 player_id,
                 player_name,
@@ -216,6 +246,7 @@ impl Server {
                 self.looking_for_match.retain(|(id, _)| id != &player_id);
                 self.pending_starter_selection.remove(addr);
                 self.addr_to_user.remove(addr);
+                self.player_to_user.remove(&player_id);
                 self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
 
                 if player_id == uuid::Uuid::nil() {
@@ -318,8 +349,10 @@ impl Server {
         addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
         let user_id = user.id;
+        let reward_points = self.users.reward_points(user_id).await?;
         if let Some(previous_player_id) = self.addr_to_player.remove(addr) {
             self.streams.remove(&previous_player_id);
+            self.player_to_user.remove(&previous_player_id);
             self.looking_for_match
                 .retain(|(player_id, _)| *player_id != previous_player_id);
         }
@@ -332,6 +365,7 @@ impl Server {
                 saved_decks,
                 collection,
                 unopened_booster_packs,
+                reward_points,
             },
             Arc::clone(&stream),
         )
@@ -339,6 +373,7 @@ impl Server {
         self.streams.insert(player_id, stream);
         self.addr_to_player.insert(*addr, player_id);
         self.addr_to_user.insert(*addr, user_id);
+        self.player_to_user.insert(player_id, user_id);
         Ok(())
     }
 
@@ -369,7 +404,11 @@ impl Server {
         code: String,
         stream: Arc<Mutex<OwnedWriteHalf>>,
     ) -> anyhow::Result<()> {
-        let delivery_failed = if let Err(error) = self.email_sender.send_confirmation_code(&email, &code).await {
+        let delivery_failed = if let Err(error) = self
+            .email_sender
+            .send_confirmation_code(&email, &code)
+            .await
+        {
             eprintln!("failed to send confirmation email to {email}: {error}");
             true
         } else {
@@ -408,6 +447,19 @@ impl Server {
             .remove(&player2.id)
             .ok_or(anyhow::anyhow!("failed to get player2 stream"))?
             .clone();
+        let reward_recipients = [
+            (
+                player1.id,
+                self.player_to_user.get(&player1.id).copied(),
+                Arc::clone(&stream1),
+            ),
+            (
+                player2.id,
+                self.player_to_user.get(&player2.id).copied(),
+                Arc::clone(&stream2),
+            ),
+        ];
+        let users = self.users.clone();
 
         let players = vec![
             (
@@ -436,7 +488,37 @@ impl Server {
             self.setup_test_state(&mut game);
         }
         tokio::spawn(async move {
-            game.start().await.expect("game to start");
+            let outcome = match game.start().await {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    eprintln!("game ended unexpectedly: {error}");
+                    return;
+                }
+            };
+            for (player_id, user_id, stream) in reward_recipients {
+                let Some(user_id) = user_id else {
+                    continue;
+                };
+                match users
+                    .award_match_points(outcome.game_id, user_id, player_id == outcome.winner_id)
+                    .await
+                {
+                    Ok(reward) if reward.points_earned > 0 => {
+                        Client::send_to_stream(
+                            &ServerMessage::MatchRewards {
+                                points_earned: reward.points_earned,
+                                reward_points: reward.reward_points,
+                                won: player_id == outcome.winner_id,
+                            },
+                            stream,
+                        )
+                        .await
+                        .ok();
+                    }
+                    Ok(_) => {}
+                    Err(error) => eprintln!("failed to award match points: {error}"),
+                }
+            }
         });
 
         Ok(())
@@ -548,10 +630,10 @@ impl Server {
         );
         game.state.add_card(card);
 
-        // let avatar_id = game.state.get_player_avatar_id(&player_one).unwrap();
-        // let avatar_card = game.state.get_card_mut(&avatar_id);
-        // avatar_card.get_unit_base_mut().unwrap().damage = 20;
-        // avatar_card.get_avatar_base_mut().unwrap().deaths_door = true;
+        let avatar_id = game.state.get_player_avatar_id(&player_one).unwrap();
+        let avatar_card = game.state.get_card_mut(&avatar_id);
+        avatar_card.get_unit_base_mut().unwrap().damage = 20;
+        avatar_card.get_avatar_base_mut().unwrap().deaths_door = true;
 
         let player_mana = game.state.get_player_mana_mut(&player_one);
         *player_mana = 10;

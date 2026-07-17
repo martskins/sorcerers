@@ -34,6 +34,8 @@ pub enum UserRepositoryError {
     ConfirmationAttemptsExceeded,
     #[error("that email address has already been confirmed")]
     EmailAlreadyConfirmed,
+    #[error("not enough reward points")]
+    InsufficientRewardPoints,
     #[error("a starter deck has already been selected")]
     StarterDeckAlreadySelected,
     #[error(transparent)]
@@ -101,6 +103,21 @@ impl UserRepository {
         sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_booster_week DATE")
             .execute(&self.pool)
             .await?;
+        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reward_points INTEGER NOT NULL DEFAULT 0")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS game_rewards (
+                game_id UUID NOT NULL,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                points INTEGER NOT NULL CHECK (points > 0),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (game_id, user_id)
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS user_cards (
@@ -183,6 +200,7 @@ impl UserRepositoryError {
                 "too many confirmation attempts; request a new code"
             }
             Self::EmailAlreadyConfirmed => "that email address has already been confirmed",
+            Self::InsufficientRewardPoints => "not enough reward points for that booster",
             Self::StarterDeckAlreadySelected => "a starter deck has already been selected",
             Self::Database(_) | Self::Password | Self::Serialization => {
                 "authentication service is unavailable"
