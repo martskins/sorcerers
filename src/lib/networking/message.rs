@@ -124,6 +124,10 @@ pub enum ServerMessage {
     AuthenticationFailure {
         message: String,
     },
+    EmailConfirmationRequired {
+        email: String,
+        delivery_failed: bool,
+    },
     StarterDeckSelection {
         username: String,
         available_decks: Vec<PreconDeck>,
@@ -249,6 +253,7 @@ impl ServerMessage {
             ServerMessage::ConnectResponse { player_id, .. } => *player_id,
             ServerMessage::AuthenticationSuccess { player_id, .. } => *player_id,
             ServerMessage::AuthenticationFailure { .. } => uuid::Uuid::nil(),
+            ServerMessage::EmailConfirmationRequired { .. } => uuid::Uuid::nil(),
             ServerMessage::StarterDeckSelection { .. } => uuid::Uuid::nil(),
             ServerMessage::BoosterPackOpened { .. } => uuid::Uuid::nil(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
@@ -274,8 +279,14 @@ impl ToMessage for ServerMessage {
 pub enum ClientMessage {
     Connect,
     Disconnect,
-    Register { username: String, password: String },
+    Register {
+        username: String,
+        email: String,
+        password: String,
+    },
     Login { username: String, password: String },
+    ConfirmEmail { email: String, code: String },
+    ResendEmailConfirmation { email: String },
     ChooseStarterDeck { deck: PreconDeck },
     OpenBoosterPack { pack_id: uuid::Uuid },
     ResolveAction {
@@ -390,6 +401,8 @@ impl ClientMessage {
             ClientMessage::Disconnect => uuid::Uuid::nil(),
             ClientMessage::Register { .. } => uuid::Uuid::nil(),
             ClientMessage::Login { .. } => uuid::Uuid::nil(),
+            ClientMessage::ConfirmEmail { .. } => uuid::Uuid::nil(),
+            ClientMessage::ResendEmailConfirmation { .. } => uuid::Uuid::nil(),
             ClientMessage::ChooseStarterDeck { .. } => uuid::Uuid::nil(),
             ClientMessage::OpenBoosterPack { .. } => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
@@ -422,6 +435,8 @@ impl ClientMessage {
             ClientMessage::Disconnect => &NIL,
             ClientMessage::Register { .. } => &NIL,
             ClientMessage::Login { .. } => &NIL,
+            ClientMessage::ConfirmEmail { .. } => &NIL,
+            ClientMessage::ResendEmailConfirmation { .. } => &NIL,
             ClientMessage::ChooseStarterDeck { .. } => &NIL,
             ClientMessage::OpenBoosterPack { .. } => &NIL,
             ClientMessage::PlayerDisconnected { player_id, .. } => player_id,

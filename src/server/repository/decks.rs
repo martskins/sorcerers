@@ -1,23 +1,6 @@
 use sorcerers::deck::DeckList;
-use sqlx::PgPool;
 
 use super::{UserRepository, UserRepositoryError};
-
-pub(super) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS user_decks (
-            id UUID PRIMARY KEY,
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            name TEXT NOT NULL,
-            deck JSONB NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            UNIQUE (user_id, name)
-        )",
-    )
-    .execute(pool)
-    .await?;
-    Ok(())
-}
 
 impl UserRepository {
     pub async fn load_decks(

@@ -2,14 +2,17 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
+use chrono::{DateTime, Duration, Utc};
+use email_address::EmailAddress;
 use sorcerers::deck::{CardNameWithCount, DeckList, precon::PreconDeck};
-use sqlx::PgPool;
 
 use super::{UserRepository, UserRepositoryError};
 
 const MIN_USERNAME_LENGTH: usize = 3;
 const MAX_USERNAME_LENGTH: usize = 32;
 const MIN_PASSWORD_LENGTH: usize = 8;
+const CONFIRMATION_CODE_LIFETIME_MINUTES: i64 = 15;
+const MAX_CONFIRMATION_ATTEMPTS: i16 = 5;
 
 #[derive(Clone)]
 pub struct User {
@@ -17,33 +20,20 @@ pub struct User {
     pub username: String,
 }
 
-pub(super) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS users (
-            id UUID PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )",
-    )
-    .execute(pool)
-    .await?;
-    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS starter_deck TEXT")
-        .execute(pool)
-        .await?;
-    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_booster_week DATE")
-        .execute(pool)
-        .await?;
-    Ok(())
+pub struct PendingEmailConfirmation {
+    pub email: String,
+    pub code: String,
 }
 
 impl UserRepository {
     pub async fn register(
         &self,
         username: &str,
+        email: &str,
         password: &str,
-    ) -> Result<User, UserRepositoryError> {
+    ) -> Result<PendingEmailConfirmation, UserRepositoryError> {
         validate_username(username)?;
+        validate_email(email)?;
         if password.len() < MIN_PASSWORD_LENGTH {
             return Err(UserRepositoryError::InvalidPassword);
         }
@@ -52,20 +42,26 @@ impl UserRepository {
             .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
             .map_err(|_| UserRepositoryError::Password)?
             .to_string();
-        let user = User {
-            id: uuid::Uuid::new_v4(),
-            username: username.to_owned(),
-        };
-        let result = sqlx::query("INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)")
-            .bind(user.id)
-            .bind(&user.username)
+        let pending = new_pending_email_confirmation(email)?;
+        let result = sqlx::query(
+            "INSERT INTO users (id, username, email, password_hash, confirmation_code_hash, confirmation_code_expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+            .bind(uuid::Uuid::new_v4())
+            .bind(username)
+            .bind(&pending.email)
             .bind(password_hash)
+            .bind(hash_confirmation_code(&pending.code)?)
+            .bind(Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES))
             .execute(&self.pool)
             .await;
         match result {
-            Ok(_) => Ok(user),
+            Ok(_) => Ok(pending),
             Err(sqlx::Error::Database(error)) if error.code().as_deref() == Some("23505") => {
-                Err(UserRepositoryError::UsernameTaken)
+                if error.constraint() == Some("users_email_unique_idx") {
+                    Err(UserRepositoryError::EmailTaken)
+                } else {
+                    Err(UserRepositoryError::UsernameTaken)
+                }
             }
             Err(error) => Err(error.into()),
         }
@@ -76,22 +72,82 @@ impl UserRepository {
         username: &str,
         password: &str,
     ) -> Result<User, UserRepositoryError> {
-        let row: Option<(uuid::Uuid, String)> =
-            sqlx::query_as("SELECT id, password_hash FROM users WHERE username = $1")
+        let row: Option<(uuid::Uuid, String, Option<String>, Option<DateTime<Utc>>)> =
+            sqlx::query_as("SELECT id, password_hash, email, email_confirmed_at FROM users WHERE username = $1")
                 .bind(username)
                 .fetch_optional(&self.pool)
                 .await?;
-        let Some((id, password_hash)) = row else {
+        let Some((id, password_hash, email, email_confirmed_at)) = row else {
             return Err(UserRepositoryError::InvalidCredentials);
         };
         let parsed_hash = PasswordHash::new(&password_hash).map_err(|_| UserRepositoryError::Password)?;
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
             .map_err(|_| UserRepositoryError::InvalidCredentials)?;
+        if let Some(email) = email
+            && email_confirmed_at.is_none()
+        {
+            return Err(UserRepositoryError::EmailConfirmationRequired(email));
+        }
         Ok(User {
             id,
             username: username.to_owned(),
         })
+    }
+
+    pub async fn resend_email_confirmation(
+        &self,
+        email: &str,
+    ) -> Result<PendingEmailConfirmation, UserRepositoryError> {
+        validate_email(email)?;
+        let pending = new_pending_email_confirmation(email)?;
+        let result = sqlx::query(
+            "UPDATE users SET confirmation_code_hash = $1, confirmation_code_expires_at = $2, confirmation_attempts = 0 WHERE email = $3 AND email_confirmed_at IS NULL",
+        )
+        .bind(hash_confirmation_code(&pending.code)?)
+        .bind(Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES))
+        .bind(&pending.email)
+        .execute(&self.pool)
+        .await?;
+        if result.rows_affected() == 0 {
+            return Err(UserRepositoryError::EmailAlreadyConfirmed);
+        }
+        Ok(pending)
+    }
+
+    pub async fn confirm_email(&self, email: &str, code: &str) -> Result<User, UserRepositoryError> {
+        validate_email(email)?;
+        let row: Option<(uuid::Uuid, String, Option<String>, Option<DateTime<Utc>>, i16)> = sqlx::query_as(
+            "SELECT id, username, confirmation_code_hash, confirmation_code_expires_at, confirmation_attempts FROM users WHERE email = $1 AND email_confirmed_at IS NULL",
+        )
+        .bind(email.trim())
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some((id, username, code_hash, expires_at, attempts)) = row else {
+            return Err(UserRepositoryError::InvalidConfirmationCode);
+        };
+        if attempts >= MAX_CONFIRMATION_ATTEMPTS {
+            return Err(UserRepositoryError::ConfirmationAttemptsExceeded);
+        }
+        let is_valid = expires_at.is_some_and(|expires_at| expires_at > Utc::now())
+            && code_hash
+                .as_deref()
+                .and_then(|hash| PasswordHash::new(hash).ok())
+                .is_some_and(|hash| Argon2::default().verify_password(code.as_bytes(), &hash).is_ok());
+        if !is_valid {
+            sqlx::query("UPDATE users SET confirmation_attempts = confirmation_attempts + 1 WHERE id = $1")
+                .bind(id)
+                .execute(&self.pool)
+                .await?;
+            return Err(UserRepositoryError::InvalidConfirmationCode);
+        }
+        sqlx::query(
+            "UPDATE users SET email_confirmed_at = NOW(), confirmation_code_hash = NULL, confirmation_code_expires_at = NULL, confirmation_attempts = 0 WHERE id = $1",
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(User { id, username })
     }
 
     pub async fn selected_starter_deck(
@@ -168,14 +224,45 @@ fn validate_username(username: &str) -> Result<(), UserRepositoryError> {
     Ok(())
 }
 
+fn validate_email(email: &str) -> Result<(), UserRepositoryError> {
+    EmailAddress::is_valid(email.trim()).then_some(()).ok_or(UserRepositoryError::InvalidEmail)
+}
+
+fn new_pending_email_confirmation(email: &str) -> Result<PendingEmailConfirmation, UserRepositoryError> {
+    let email = email.trim().to_lowercase();
+    validate_email(&email)?;
+    let code = format!("{:06}", uuid::Uuid::new_v4().as_u128() % 1_000_000);
+    Ok(PendingEmailConfirmation { email, code })
+}
+
+fn hash_confirmation_code(code: &str) -> Result<String, UserRepositoryError> {
+    Argon2::default()
+        .hash_password(code.as_bytes(), &SaltString::generate(&mut OsRng))
+        .map_err(|_| UserRepositoryError::Password)
+        .map(|hash| hash.to_string())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::validate_username;
+    use super::{new_pending_email_confirmation, validate_email, validate_username};
 
     #[test]
     fn username_validation_rejects_unsafe_names() {
         assert!(validate_username("mage_7").is_ok());
         assert!(validate_username("no").is_err());
         assert!(validate_username("mage name").is_err());
+    }
+
+    #[test]
+    fn email_validation_requires_a_deliverable_shape() {
+        assert!(validate_email("player@example.com").is_ok());
+        assert!(validate_email("not-an-email").is_err());
+    }
+
+    #[test]
+    fn confirmation_codes_are_six_digits() {
+        let pending = new_pending_email_confirmation("player@example.com").unwrap();
+        assert_eq!(pending.code.len(), 6);
+        assert!(pending.code.chars().all(|character| character.is_ascii_digit()));
     }
 }

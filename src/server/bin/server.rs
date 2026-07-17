@@ -19,7 +19,10 @@ use std::{
 };
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
-use crate::repository::{User, UserRepository};
+use crate::{
+    email::EmailSender,
+    repository::{User, UserRepository, UserRepositoryError},
+};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
@@ -30,13 +33,14 @@ pub struct Server {
     addr_to_user: HashMap<std::net::SocketAddr, uuid::Uuid>,
     pending_starter_selection: HashMap<std::net::SocketAddr, User>,
     users: UserRepository,
+    email_sender: EmailSender,
     /// When `true`, seed newly-created games with the local development test board.
     /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
     pub test_state: bool,
 }
 
 impl Server {
-    pub fn new(test_state: bool, users: UserRepository) -> Self {
+    pub fn new(test_state: bool, users: UserRepository, email_sender: EmailSender) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
@@ -46,6 +50,7 @@ impl Server {
             addr_to_user: HashMap::new(),
             pending_starter_selection: HashMap::new(),
             users,
+            email_sender,
             test_state,
         }
     }
@@ -57,9 +62,16 @@ impl Server {
         addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
         match message {
-            Message::ClientMessage(ClientMessage::Register { username, password }) => {
-                match self.users.register(username, password).await {
-                    Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
+            Message::ClientMessage(ClientMessage::Register {
+                username,
+                email,
+                password,
+            }) => {
+                match self.users.register(username, email, password).await {
+                    Ok(pending) => {
+                        self.send_email_confirmation_required(pending.email, pending.code, stream)
+                            .await?
+                    }
                     Err(error) => {
                         self.send_authentication_failure(error.user_message().to_string(), stream)
                             .await?
@@ -69,6 +81,46 @@ impl Server {
             Message::ClientMessage(ClientMessage::Login { username, password }) => {
                 match self.users.verify_login(username, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
+                    Err(UserRepositoryError::EmailConfirmationRequired(email)) => {
+                        match self.users.resend_email_confirmation(&email).await {
+                            Ok(pending) => {
+                                self.send_email_confirmation_required(
+                                    pending.email,
+                                    pending.code,
+                                    stream,
+                                )
+                                .await?
+                            }
+                            Err(error) => {
+                                self.send_authentication_failure(
+                                    error.user_message().to_string(),
+                                    stream,
+                                )
+                                .await?
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        self.send_authentication_failure(error.user_message().to_string(), stream)
+                            .await?
+                    }
+                }
+            }
+            Message::ClientMessage(ClientMessage::ConfirmEmail { email, code }) => {
+                match self.users.confirm_email(email, code).await {
+                    Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
+                    Err(error) => {
+                        self.send_authentication_failure(error.user_message().to_string(), stream)
+                            .await?
+                    }
+                }
+            }
+            Message::ClientMessage(ClientMessage::ResendEmailConfirmation { email }) => {
+                match self.users.resend_email_confirmation(email).await {
+                    Ok(pending) => {
+                        self.send_email_confirmation_required(pending.email, pending.code, stream)
+                            .await?
+                    }
                     Err(error) => {
                         self.send_authentication_failure(error.user_message().to_string(), stream)
                             .await?
@@ -309,6 +361,28 @@ impl Server {
         stream: Arc<Mutex<OwnedWriteHalf>>,
     ) -> anyhow::Result<()> {
         Client::send_to_stream(&ServerMessage::AuthenticationFailure { message }, stream).await
+    }
+
+    async fn send_email_confirmation_required(
+        &self,
+        email: String,
+        code: String,
+        stream: Arc<Mutex<OwnedWriteHalf>>,
+    ) -> anyhow::Result<()> {
+        let delivery_failed = if let Err(error) = self.email_sender.send_confirmation_code(&email, &code).await {
+            eprintln!("failed to send confirmation email to {email}: {error}");
+            true
+        } else {
+            false
+        };
+        Client::send_to_stream(
+            &ServerMessage::EmailConfirmationRequired {
+                email,
+                delivery_failed,
+            },
+            stream,
+        )
+        .await
     }
 
     pub async fn create_game(

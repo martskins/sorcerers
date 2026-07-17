@@ -36,8 +36,11 @@ pub struct Menu {
     looking_for_match: bool,
     player_name: String,
     username: String,
+    email: String,
     password: String,
+    confirmation_code: String,
     registering: bool,
+    awaiting_email_confirmation: bool,
     auth_requested: bool,
     auth_error: Option<String>,
     booster_reward: Option<String>,
@@ -82,8 +85,11 @@ impl Menu {
             looking_for_match: false,
             player_name: String::new(),
             username: String::new(),
+            email: String::new(),
             password: String::new(),
+            confirmation_code: String::new(),
             registering: false,
+            awaiting_email_confirmation: false,
             auth_requested: false,
             auth_error: None,
             booster_reward: None,
@@ -120,8 +126,11 @@ impl Menu {
             looking_for_match: false,
             player_name,
             username: String::new(),
+            email: String::new(),
             password: String::new(),
+            confirmation_code: String::new(),
             registering: false,
+            awaiting_email_confirmation: false,
             auth_requested: false,
             auth_error: None,
             booster_reward: None,
@@ -225,6 +234,10 @@ impl Menu {
     }
 
     fn render_auth_card(&mut self, ui: &mut Ui) {
+        if self.awaiting_email_confirmation {
+            self.render_email_confirmation_card(ui);
+            return;
+        }
         let title = if self.registering {
             "Create your player account"
         } else {
@@ -266,6 +279,22 @@ impl Menu {
                 ui.add_space(6.0);
                 Self::render_auth_input(ui, &mut self.username, "Choose a username", false);
                 ui.add_space(16.0);
+                if self.registering {
+                    ui.label(
+                        egui::RichText::new("Email address")
+                            .color(MENU_TEXT)
+                            .size(14.0)
+                            .strong(),
+                    );
+                    ui.add_space(6.0);
+                    Self::render_auth_input(
+                        ui,
+                        &mut self.email,
+                        "you@example.com",
+                        false,
+                    );
+                    ui.add_space(16.0);
+                }
                 ui.label(
                     egui::RichText::new("Password")
                         .color(MENU_TEXT)
@@ -294,6 +323,7 @@ impl Menu {
                 ui.add_space(22.0);
                 let can_submit = !self.auth_requested
                     && !self.username.trim().is_empty()
+                    && (!self.registering || !self.email.trim().is_empty())
                     && !self.password.is_empty();
                 let submit_label = if self.auth_requested {
                     "Connecting…"
@@ -311,6 +341,7 @@ impl Menu {
                     let message = if self.registering {
                         ClientMessage::Register {
                             username: self.username.clone(),
+                            email: self.email.trim().to_string(),
                             password: self.password.clone(),
                         }
                     } else {
@@ -341,6 +372,122 @@ impl Menu {
                     .clicked()
                 {
                     self.registering = !self.registering;
+                    self.awaiting_email_confirmation = false;
+                    self.auth_error = None;
+                }
+            });
+    }
+
+    fn render_email_confirmation_card(&mut self, ui: &mut Ui) {
+        egui::Frame::new()
+            .fill(Color32::from_rgba_premultiplied(7, 11, 11, 176))
+            .stroke(egui::Stroke::NONE)
+            .corner_radius(8.0)
+            .inner_margin(egui::Margin::same(24))
+            .show(ui, |ui| {
+                ui.set_width(360.0);
+                ui.label(
+                    egui::RichText::new("Confirm your email")
+                        .color(MENU_TEXT)
+                        .size(24.0)
+                        .strong(),
+                );
+                ui.add_space(7.0);
+                ui.label(
+                    egui::RichText::new(format!(
+                        "Enter the six-digit code sent to {}. It expires after 15 minutes.",
+                        self.email
+                    ))
+                    .color(MENU_TEXT_MUTED)
+                    .size(14.0),
+                );
+                ui.add_space(24.0);
+                ui.label(
+                    egui::RichText::new("Confirmation code")
+                        .color(MENU_TEXT)
+                        .size(14.0)
+                        .strong(),
+                );
+                ui.add_space(6.0);
+                Self::render_auth_input(
+                    ui,
+                    &mut self.confirmation_code,
+                    "000000",
+                    false,
+                );
+                if let Some(error) = &self.auth_error {
+                    ui.add_space(12.0);
+                    ui.label(
+                        egui::RichText::new(error)
+                            .color(Color32::from_rgb(255, 195, 192))
+                            .size(14.0),
+                    );
+                }
+                ui.add_space(22.0);
+                let verify = ui.add_enabled(
+                    !self.auth_requested && self.confirmation_code.len() == 6,
+                    egui::Button::new(egui::RichText::new(if self.auth_requested {
+                        "Confirming…"
+                    } else {
+                        "Confirm email"
+                    })
+                    .size(17.0))
+                    .min_size(vec2(360.0, theme::BUTTON_HEIGHT)),
+                );
+                if verify.clicked() {
+                    match self.client.send(ClientMessage::ConfirmEmail {
+                        email: self.email.clone(),
+                        code: self.confirmation_code.trim().to_string(),
+                    }) {
+                        Ok(()) => {
+                            self.auth_requested = true;
+                            self.auth_error = None;
+                        }
+                        Err(_) => {
+                            self.auth_error = Some(
+                                "Unable to reach the server. Check your connection and try again."
+                                    .to_string(),
+                            );
+                        }
+                    }
+                }
+                ui.add_space(12.0);
+                let resend = ui
+                    .add_enabled(
+                        !self.auth_requested,
+                        egui::Link::new(
+                            egui::RichText::new("Resend confirmation code")
+                                .color(Color32::from_rgb(122, 194, 245)),
+                        ),
+                    )
+                    .clicked();
+                if resend {
+                    match self.client.send(ClientMessage::ResendEmailConfirmation {
+                        email: self.email.clone(),
+                    }) {
+                        Ok(()) => {
+                            self.auth_requested = true;
+                            self.auth_error = None;
+                        }
+                        Err(_) => {
+                            self.auth_error = Some(
+                                "Unable to reach the server. Check your connection and try again."
+                                    .to_string(),
+                            );
+                        }
+                    }
+                }
+                ui.add_space(12.0);
+                if ui
+                    .link(
+                        egui::RichText::new("Use a different email")
+                            .color(Color32::from_rgb(122, 194, 245)),
+                    )
+                    .clicked()
+                {
+                    self.awaiting_email_confirmation = false;
+                    self.registering = true;
+                    self.confirmation_code.clear();
                     self.auth_error = None;
                 }
             });
@@ -1029,8 +1176,10 @@ impl Menu {
                 self.player_id = Some(*player_id);
                 self.player_name = username.clone();
                 self.password.clear();
+                self.confirmation_code.clear();
                 self.auth_requested = false;
                 self.auth_error = None;
+                self.awaiting_email_confirmation = false;
                 self.unopened_booster_packs = unopened_booster_packs.clone();
                 self.booster_reward = (!unopened_booster_packs.is_empty()).then(|| {
                     format!(
@@ -1044,6 +1193,19 @@ impl Menu {
             ServerMessage::AuthenticationFailure { message } => {
                 self.auth_requested = false;
                 self.auth_error = Some(message.clone());
+                None
+            }
+            ServerMessage::EmailConfirmationRequired {
+                email,
+                delivery_failed,
+            } => {
+                self.email = email.clone();
+                self.awaiting_email_confirmation = true;
+                self.auth_requested = false;
+                self.auth_error = delivery_failed.then(|| {
+                    "We could not send a code. Check your email details and try resending."
+                        .to_string()
+                });
                 None
             }
             ServerMessage::StarterDeckSelection {

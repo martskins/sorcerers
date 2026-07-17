@@ -1,23 +1,6 @@
 use sorcerers::booster::{BoosterCard, BoosterPack, UnopenedBoosterPack};
-use sqlx::PgPool;
 
 use super::{UserRepository, UserRepositoryError};
-
-pub(super) async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS booster_packs (
-            id UUID PRIMARY KEY,
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            set_name TEXT NOT NULL,
-            cards JSONB NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            opened_at TIMESTAMPTZ
-        )",
-    )
-    .execute(pool)
-    .await?;
-    Ok(())
-}
 
 impl UserRepository {
     pub async fn claim_weekly_boosters(
