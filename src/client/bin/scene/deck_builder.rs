@@ -35,7 +35,7 @@ const HEADER_H: f32 = 48.0;
 const LEFT_FRAC: f32 = 0.62;
 const CARD_THUMB_W: f32 = 44.0;
 const CARD_THUMB_H: f32 = 62.0;
-const ROW_H: f32 = 88.0;
+const ROW_H: f32 = 92.0;
 const THRESH_SZ: f32 = 10.0;
 
 // ── DeckBuilder scene ────────────────────────────────────────────────────────
@@ -427,16 +427,6 @@ impl DeckBuilder {
                 {
                     return false;
                 }
-                match ownership_filter {
-                    OwnershipFilter::All => {}
-                    OwnershipFilter::Owned if !self.collection.contains_key(&c.name) => {
-                        return false;
-                    }
-                    OwnershipFilter::Unowned if self.collection.contains_key(&c.name) => {
-                        return false;
-                    }
-                    _ => {}
-                }
                 match &elem_filter {
                     ElemFilter::All => {}
                     ElemFilter::Fire => {
@@ -658,6 +648,9 @@ impl DeckBuilder {
                     let (regular_count, foil_count) = self.collection_counts(&entry.name);
                     let printing_owned_count = if is_foil { foil_count } else { regular_count };
                     let is_owned = printing_owned_count > 0;
+                    if !ownership_filter.matches_printing(is_owned) {
+                        continue;
+                    }
                     let map = if is_site {
                         &self.deck_sites
                     } else {
@@ -702,20 +695,20 @@ impl DeckBuilder {
                         image_size = vec2(CARD_THUMB_H, CARD_THUMB_W);
                     }
                     let thumb_rect = Rect::from_min_size(
-                        row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0),
+                        row_rect.min + vec2(4.0, (ROW_H - image_size.y) / 2.0),
                         image_size,
-                    )
-                    // Keep the card art inside its row; some card textures render a
-                    // couple of pixels beyond their requested bounds otherwise.
-                    .shrink2(vec2(2.0, 5.0));
+                    );
 
                     if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx)
                     {
-                        egui::Image::new(egui::ImageSource::Texture(
-                            egui::load::SizedTexture::from_handle(&tex),
-                        ))
-                        .max_size(image_size)
-                        .paint_at(ui, thumb_rect);
+                        // Paint through a row-clipped painter: card textures can otherwise
+                        // bleed a few pixels into the neighbouring list item.
+                        ui.painter().with_clip_rect(row_rect).image(
+                            tex.id(),
+                            thumb_rect,
+                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                            Color32::WHITE,
+                        );
                     } else {
                         ui.painter().rect_filled(
                             thumb_rect,
@@ -739,7 +732,7 @@ impl DeckBuilder {
                     }
 
                     // Card info
-                    let info_x = thumb_rect.min.x + CARD_THUMB_H + 8.0;
+                    let info_x = thumb_rect.max.x + 8.0;
                     let name_pos = pos2(info_x, row_rect.min.y + 10.0);
                     ui.painter().text(
                         name_pos,
@@ -878,7 +871,19 @@ impl DeckBuilder {
                     let can_add = current_in_deck < printing_owned_count
                         && total_in_deck < entry.max_copies();
 
-                    let minus_response = ui.allocate_rect(minus_rect, Sense::click());
+                    // `allocate_rect` moves the parent layout cursor. Since these rects
+                    // live inside the row already allocated above, use `interact` so they
+                    // do not pull the next row upward over this card.
+                    let minus_response = ui.interact(
+                        minus_rect,
+                        ui.id().with((
+                            "deck_builder_card_action",
+                            entry.name.as_str(),
+                            is_foil,
+                            "minus",
+                        )),
+                        Sense::click(),
+                    );
                     ui.painter().rect_filled(
                         minus_rect,
                         CornerRadius::same(3),
@@ -895,7 +900,16 @@ impl DeckBuilder {
                         egui::FontId::proportional(15.0),
                         Color32::WHITE,
                     );
-                    let plus_response = ui.allocate_rect(plus_rect, Sense::click());
+                    let plus_response = ui.interact(
+                        plus_rect,
+                        ui.id().with((
+                            "deck_builder_card_action",
+                            entry.name.as_str(),
+                            is_foil,
+                            "plus",
+                        )),
+                        Sense::click(),
+                    );
                     ui.painter().rect_filled(
                         plus_rect,
                         CornerRadius::same(3),
@@ -943,7 +957,6 @@ impl DeckBuilder {
                         Stroke::new(0.5, Color32::from_rgb(30, 35, 60)),
                     );
 
-                    ui.add_space(6.0);
                 }
                 }
             });

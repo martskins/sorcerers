@@ -36,6 +36,29 @@ impl OwnershipFilter {
             Self::Unowned => "Unowned",
         }
     }
+
+    pub(super) fn matches_printing(&self, is_owned: bool) -> bool {
+        match self {
+            Self::All => true,
+            Self::Owned => is_owned,
+            Self::Unowned => !is_owned,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OwnershipFilter;
+
+    #[test]
+    fn ownership_filter_matches_each_printing_independently() {
+        assert!(OwnershipFilter::All.matches_printing(false));
+        assert!(OwnershipFilter::All.matches_printing(true));
+        assert!(!OwnershipFilter::Owned.matches_printing(false));
+        assert!(OwnershipFilter::Owned.matches_printing(true));
+        assert!(OwnershipFilter::Unowned.matches_printing(false));
+        assert!(!OwnershipFilter::Unowned.matches_printing(true));
+    }
 }
 
 #[derive(Clone, PartialEq)]
