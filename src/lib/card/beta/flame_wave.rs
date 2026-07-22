@@ -67,8 +67,9 @@ impl Magic for FlameWave {
             &controller_id,
             &options,
             state,
-            "Flame Wave: Pick where the wave starts",
+            "Pick where the wave starts",
             false,
+            Some(*self.get_id()),
         )
         .await?
             == 0;

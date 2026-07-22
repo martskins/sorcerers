@@ -48,8 +48,9 @@ impl MonasteryGargoyle {
             &controller_id,
             &options,
             state,
-            "Monastery Gargoyle: Choose form",
+            "Choose form",
             false,
+            Some(card_id),
         )
         .await?;
 

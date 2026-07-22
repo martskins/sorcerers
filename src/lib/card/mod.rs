@@ -16,7 +16,7 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
         ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
-        UnitAction, pick_amount, pick_option,
+        UnitAction, pick_amount,
     },
     query::{CardQuery, LocationQuery},
     state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
@@ -754,9 +754,15 @@ impl CostOptions {
                     .iter()
                     .map(|c| c.get_label())
                     .collect::<Vec<_>>();
-                let picked_cost_idx =
-                    pick_option(player_id, &cost_labels, state, "Pick a cost to pay", false)
-                        .await?;
+                let picked_cost_idx = pick_option(
+                    player_id,
+                    &cost_labels,
+                    state,
+                    "Pick a cost to pay",
+                    false,
+                    None,
+                )
+                .await?;
                 Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await
             }
         }
@@ -1898,6 +1904,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 state,
                                 "Choose how to play artifact",
                                 false,
+                                Some(*self.get_id()),
                             )
                             .await?;
                         }

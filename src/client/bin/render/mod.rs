@@ -1,4 +1,7 @@
-use crate::config::{CARD_ASPECT_RATIO, screen_rect};
+use crate::{
+    config::{CARD_ASPECT_RATIO, screen_rect},
+    theme,
+};
 use egui::{
     Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
@@ -631,36 +634,63 @@ pub fn popup_action_menu(
         Center,
     }
 
-    const MIN_MENU_W: f32 = 220.0;
-    const MAX_MENU_W: f32 = 320.0;
-    const HEADER_H: f32 = 34.0;
-    const ROW_H: f32 = 40.0;
+    const MIN_MENU_W: f32 = 360.0;
+    const MAX_MENU_W: f32 = 480.0;
+    const COMPACT_HEADER_H: f32 = 72.0;
+    const SPLIT_HEADER_H: f32 = 98.0;
+    const ROW_H: f32 = 64.0;
+    const ROW_GAP: f32 = 8.0;
     const CORNER: u8 = 8;
-    const GAP: f32 = 12.0;
-    const MARGIN: f32 = 10.0;
+    const GAP: f32 = 16.0;
+    const MARGIN: f32 = 16.0;
     const POINTER: f32 = 9.0;
-    const PAD_X: f32 = 14.0;
-    const BG: Color32 = Color32::from_rgb(18, 21, 28);
-    const BG_TOP: Color32 = Color32::from_rgb(28, 35, 48);
-    const BG_ROW_HOVER: Color32 = Color32::from_rgb(45, 62, 83);
-    const BORDER: Color32 = Color32::from_rgb(126, 154, 184);
-    const ACCENT: Color32 = Color32::from_rgb(224, 191, 110);
-    const TEXT: Color32 = Color32::from_rgb(229, 234, 238);
-    const MUTED: Color32 = Color32::from_rgb(148, 164, 178);
-    const SEP: Color32 = Color32::from_rgb(48, 55, 66);
+    const PAD_X: f32 = 18.0;
+    const BG: Color32 = Color32::from_rgb(11, 15, 16);
+    const BG_TOP: Color32 = Color32::from_rgb(14, 19, 25);
+    const BG_ROW: Color32 = Color32::from_rgb(11, 18, 20);
+    const BG_ROW_HOVER: Color32 = Color32::from_rgb(35, 78, 118);
+    const BORDER: Color32 = Color32::from_rgb(91, 94, 85);
+    const ACCENT: Color32 = Color32::from_rgb(78, 150, 190);
+    const TEXT: Color32 = Color32::from_rgb(235, 236, 225);
+    const MUTED: Color32 = Color32::from_rgb(171, 179, 168);
+    const SEP: Color32 = Color32::from_rgb(56, 63, 61);
 
-    let total_h = HEADER_H + options.len() as f32 * ROW_H;
+    let (context, instruction) = prompt
+        .split_once(": ")
+        .map_or((prompt, None), |(context, instruction)| {
+            (context, Some(instruction))
+        });
+    let header_h = if instruction.is_some() {
+        SPLIT_HEADER_H
+    } else {
+        COMPACT_HEADER_H
+    };
+
+    let total_h = header_h
+        + PAD_X
+        + options.len() as f32 * ROW_H
+        + options.len().saturating_sub(1) as f32 * ROW_GAP
+        + PAD_X;
     let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
 
     let title = painter.fonts_mut(|f| {
-        f.layout_no_wrap(prompt.to_string(), egui::FontId::proportional(13.0), MUTED)
+        f.layout_no_wrap(context.to_string(), theme::display_bold_font(28.0), TEXT)
+    });
+    let instruction = instruction.map(|instruction| {
+        painter.fonts_mut(|f| {
+            f.layout_no_wrap(
+                instruction.to_string(),
+                egui::FontId::proportional(16.0),
+                MUTED,
+            )
+        })
     });
 
     let option_galleys = options
         .iter()
         .map(|option| {
             painter.fonts_mut(|f| {
-                f.layout_no_wrap(option.clone(), egui::FontId::proportional(16.0), TEXT)
+                f.layout_no_wrap(option.clone(), egui::FontId::proportional(19.0), TEXT)
             })
         })
         .collect::<Vec<_>>();
@@ -668,8 +698,16 @@ pub fn popup_action_menu(
     let widest_text = option_galleys
         .iter()
         .map(|galley| galley.size().x)
-        .fold(title.size().x, f32::max);
-    let total_w = (widest_text + PAD_X * 2.0 + 24.0).clamp(MIN_MENU_W, MAX_MENU_W);
+        .fold(title.size().x, f32::max)
+        .max(
+            instruction
+                .as_ref()
+                .map(|galley| galley.size().x)
+                .unwrap_or_default(),
+        );
+    let total_w = (widest_text + PAD_X * 2.0 + 58.0)
+        .clamp(MIN_MENU_W, MAX_MENU_W)
+        .min((screen.width() - MARGIN * 2.0).max(180.0));
 
     let (origin, side) = if let Some(card_rect) = anchor {
         let right_space = screen.max.x - card_rect.max.x - MARGIN;
@@ -775,11 +813,6 @@ pub fn popup_action_menu(
         .show(ui, |ui| {
             let p = ui.painter();
 
-            p.rect_filled(
-                menu_rect.translate(vec2(0.0, 6.0)),
-                egui::CornerRadius::same(CORNER),
-                Color32::from_black_alpha(92),
-            );
             if let Some(points) = &pointer {
                 p.add(Shape::convex_polygon(
                     points.clone(),
@@ -795,7 +828,7 @@ pub fn popup_action_menu(
                 egui::StrokeKind::Outside,
             );
 
-            let header_rect = Rect::from_min_size(origin, vec2(total_w, HEADER_H));
+            let header_rect = Rect::from_min_size(origin, vec2(total_w, header_h));
             p.rect_filled(
                 header_rect,
                 egui::CornerRadius {
@@ -806,40 +839,52 @@ pub fn popup_action_menu(
                 },
                 BG_TOP,
             );
-            p.rect_filled(
-                Rect::from_min_size(origin, vec2(3.0, total_h)),
-                egui::CornerRadius {
-                    nw: CORNER,
-                    ne: 0,
-                    sw: CORNER,
-                    se: 0,
-                },
-                ACCENT,
-            );
 
             p.galley(
                 pos2(
                     origin.x + PAD_X,
-                    origin.y + (HEADER_H - title.size().y) / 2.0,
+                    origin.y
+                        + if instruction.is_some() {
+                            14.0
+                        } else {
+                            (header_h - title.size().y) / 2.0
+                        },
                 ),
                 title,
-                MUTED,
+                TEXT,
             );
+            if let Some(instruction) = &instruction {
+                p.galley(
+                    pos2(origin.x + PAD_X, origin.y + 52.0),
+                    instruction.clone(),
+                    MUTED,
+                );
+            }
+            let divider_y = header_rect.max.y - 16.0;
+            let divider_center = header_rect.center().x;
+            let divider_stroke = egui::Stroke::new(1.0, ACCENT.linear_multiply(0.65));
+            p.line_segment(
+                [
+                    pos2(origin.x + PAD_X, divider_y),
+                    pos2(divider_center - 12.0, divider_y),
+                ],
+                divider_stroke,
+            );
+            p.line_segment(
+                [
+                    pos2(divider_center + 12.0, divider_y),
+                    pos2(origin.x + total_w - PAD_X, divider_y),
+                ],
+                divider_stroke,
+            );
+            p.circle_filled(pos2(divider_center, divider_y), 2.0, ACCENT);
 
             for (idx, _) in options.iter().enumerate() {
-                let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                let row_rect =
-                    Rect::from_min_size(pos2(origin.x + 3.0, row_y), vec2(total_w - 3.0, ROW_H));
-                let row_cr = if idx + 1 == options.len() {
-                    egui::CornerRadius {
-                        nw: 0,
-                        ne: 0,
-                        sw: 0,
-                        se: CORNER,
-                    }
-                } else {
-                    egui::CornerRadius::ZERO
-                };
+                let row_y = origin.y + header_h + PAD_X + idx as f32 * (ROW_H + ROW_GAP);
+                let row_rect = Rect::from_min_size(
+                    pos2(origin.x + PAD_X, row_y),
+                    vec2(total_w - PAD_X * 2.0, ROW_H),
+                );
 
                 let resp = ui.interact(
                     row_rect,
@@ -847,34 +892,56 @@ pub fn popup_action_menu(
                     egui::Sense::click(),
                 );
                 if resp.hovered() {
-                    p.rect_filled(row_rect, row_cr, BG_ROW_HOVER);
+                    p.rect_filled(row_rect, 6.0, BG_ROW_HOVER);
+                    p.rect_stroke(
+                        row_rect,
+                        6.0,
+                        egui::Stroke::new(1.0, ACCENT),
+                        egui::StrokeKind::Inside,
+                    );
+                } else {
+                    p.rect_filled(row_rect, 6.0, BG_ROW);
+                    p.rect_stroke(
+                        row_rect,
+                        6.0,
+                        egui::Stroke::new(1.0, SEP),
+                        egui::StrokeKind::Inside,
+                    );
                 }
                 if resp.clicked() {
                     result = Some(ActionMenuResponse::Selected(idx));
                 }
 
-                if idx > 0 {
-                    p.hline(
-                        origin.x + PAD_X..=origin.x + total_w - PAD_X,
-                        row_y,
-                        egui::Stroke::new(0.5, SEP),
-                    );
-                }
-
+                let key_rect = Rect::from_center_size(
+                    pos2(row_rect.max.x - 20.0, row_rect.center().y),
+                    vec2(28.0, 28.0),
+                );
+                p.rect_filled(
+                    key_rect,
+                    6.0,
+                    if resp.hovered() {
+                        theme::ACTION
+                    } else {
+                        Color32::from_rgb(29, 47, 68)
+                    },
+                );
+                p.rect_stroke(
+                    key_rect,
+                    6.0,
+                    egui::Stroke::new(1.0, if resp.hovered() { ACCENT } else { BORDER }),
+                    egui::StrokeKind::Inside,
+                );
                 p.text(
-                    pos2(origin.x + PAD_X, row_y + ROW_H / 2.0),
+                    key_rect.center(),
                     egui::Align2::CENTER_CENTER,
-                    format!("{}.", idx + 1),
-                    egui::FontId::proportional(14.0),
-                    if resp.hovered() { ACCENT } else { MUTED },
+                    format!("{}", idx + 1),
+                    egui::FontId::proportional(13.0),
+                    TEXT,
                 );
 
                 let galley = option_galleys[idx].clone();
                 p.galley_with_override_text_color(
-                    pos2(
-                        origin.x + PAD_X + 18.0,
-                        row_y + (ROW_H - galley.size().y) / 2.0,
-                    ),
+                    pos2(row_rect.min.x + 18.0, row_y + (ROW_H - galley.size().y) / 2.0),
                     galley,
                     if resp.hovered() {
                         Color32::WHITE

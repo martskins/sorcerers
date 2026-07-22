@@ -78,8 +78,8 @@ impl Server {
                         .await?
                 }
             },
-            Message::ClientMessage(ClientMessage::Login { username, password }) => {
-                match self.users.verify_login(username, password).await {
+            Message::ClientMessage(ClientMessage::Login { email, password }) => {
+                match self.users.verify_login(email, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
                     Err(UserRepositoryError::EmailConfirmationRequired(email)) => {
                         match self.users.resend_email_confirmation(&email).await {

@@ -116,8 +116,9 @@ impl Card for Seer {
                             &controller_id,
                             &options,
                             state,
-                            "Seer: Pick a deck to inspect",
+                            "Pick a deck to inspect",
                             false,
+                            Some(*self.get_id()),
                         )
                         .await?;
                         Some(choices[picked_option])

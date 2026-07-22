@@ -287,31 +287,27 @@ impl Menu {
                 );
                 ui.add_space(24.0);
 
-                ui.label(
-                    egui::RichText::new("Username")
-                        .color(MENU_TEXT)
-                        .size(14.0)
-                        .strong(),
-                );
-                ui.add_space(6.0);
-                Self::render_auth_input(ui, &mut self.username, "Choose a username", false);
-                ui.add_space(16.0);
                 if self.registering {
                     ui.label(
-                        egui::RichText::new("Email address")
+                        egui::RichText::new("Username")
                             .color(MENU_TEXT)
                             .size(14.0)
                             .strong(),
                     );
                     ui.add_space(6.0);
-                    Self::render_auth_input(
-                        ui,
-                        &mut self.email,
-                        "you@example.com",
-                        false,
-                    );
+                    Self::render_auth_input(ui, &mut self.username, "Choose a username", false);
                     ui.add_space(16.0);
                 }
+
+                ui.label(
+                    egui::RichText::new("Email address")
+                        .color(MENU_TEXT)
+                        .size(14.0)
+                        .strong(),
+                );
+                ui.add_space(6.0);
+                Self::render_auth_input(ui, &mut self.email, "you@example.com", false);
+                ui.add_space(16.0);
                 ui.label(
                     egui::RichText::new("Password")
                         .color(MENU_TEXT)
@@ -339,8 +335,8 @@ impl Menu {
 
                 ui.add_space(22.0);
                 let can_submit = !self.auth_requested
-                    && !self.username.trim().is_empty()
-                    && (!self.registering || !self.email.trim().is_empty())
+                    && (!self.registering || !self.username.trim().is_empty())
+                    && !self.email.trim().is_empty()
                     && !self.password.is_empty();
                 let submit_label = if self.auth_requested {
                     "Connecting…"
@@ -363,7 +359,7 @@ impl Menu {
                         }
                     } else {
                         ClientMessage::Login {
-                            username: self.username.clone(),
+                            email: self.email.clone(),
                             password: self.password.clone(),
                         }
                     };
@@ -426,12 +422,7 @@ impl Menu {
                         .strong(),
                 );
                 ui.add_space(6.0);
-                Self::render_auth_input(
-                    ui,
-                    &mut self.confirmation_code,
-                    "000000",
-                    false,
-                );
+                Self::render_auth_input(ui, &mut self.confirmation_code, "000000", false);
                 if let Some(error) = &self.auth_error {
                     ui.add_space(12.0);
                     ui.label(
@@ -443,12 +434,14 @@ impl Menu {
                 ui.add_space(22.0);
                 let verify = ui.add_enabled(
                     !self.auth_requested && self.confirmation_code.len() == 6,
-                    egui::Button::new(egui::RichText::new(if self.auth_requested {
-                        "Confirming…"
-                    } else {
-                        "Confirm email"
-                    })
-                    .size(17.0))
+                    egui::Button::new(
+                        egui::RichText::new(if self.auth_requested {
+                            "Confirming…"
+                        } else {
+                            "Confirm email"
+                        })
+                        .size(17.0),
+                    )
                     .min_size(vec2(360.0, theme::BUTTON_HEIGHT)),
                 );
                 if verify.clicked() {
@@ -713,12 +706,10 @@ impl Menu {
                                     );
                                     ui.add_space(16.0);
                                     ui.label(
-                                        egui::RichText::new(format!(
-                                            "{BETA_BOOSTER_COST} points"
-                                        ))
-                                        .color(MENU_GOLD)
-                                        .size(17.0)
-                                        .strong(),
+                                        egui::RichText::new(format!("{BETA_BOOSTER_COST} points"))
+                                            .color(MENU_GOLD)
+                                            .size(17.0)
+                                            .strong(),
                                     );
                                     ui.add_space(8.0);
 
@@ -898,12 +889,7 @@ impl Menu {
         });
     }
 
-    fn render_custom_section(
-        &mut self,
-        ui: &mut Ui,
-        next_scene: &mut Option<Scene>,
-        width: f32,
-    ) {
+    fn render_custom_section(&mut self, ui: &mut Ui, next_scene: &mut Option<Scene>, width: f32) {
         egui::Frame::new()
             .fill(theme::PANEL_BG)
             .stroke(egui::Stroke::new(1.0, MENU_BORDER))
@@ -918,8 +904,8 @@ impl Menu {
                             self.saved_decks.len(),
                             if self.saved_decks.len() == 1 { "" } else { "s" }
                         ))
-                            .color(Color32::from_rgb(125, 145, 180))
-                            .size(14.0),
+                        .color(Color32::from_rgb(125, 145, 180))
+                        .size(14.0),
                     );
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -950,7 +936,11 @@ impl Menu {
                                     egui::RichText::new(format!(
                                         "✦ {} unopened pack{}",
                                         self.unopened_booster_packs.len(),
-                                        if self.unopened_booster_packs.len() == 1 { "" } else { "s" }
+                                        if self.unopened_booster_packs.len() == 1 {
+                                            ""
+                                        } else {
+                                            "s"
+                                        }
                                     ))
                                     .size(14.0)
                                     .color(MENU_GOLD),
@@ -997,11 +987,11 @@ impl Menu {
                         .min_scrolled_height(286.0)
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
-                        for (idx, deck_list) in saved.iter().enumerate() {
-                            self.render_saved_deck_row(ui, idx, deck_list.clone(), next_scene);
-                            ui.add_space(6.0);
-                        }
-                    });
+                            for (idx, deck_list) in saved.iter().enumerate() {
+                                self.render_saved_deck_row(ui, idx, deck_list.clone(), next_scene);
+                                ui.add_space(6.0);
+                            }
+                        });
                 }
 
                 let selected_deck = self
@@ -1012,22 +1002,24 @@ impl Menu {
                 ui.separator();
                 ui.add_space(12.0);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        let play_label = selected_deck
-                            .as_ref()
-                            .map(|deck| format!("▶ Play {}", deck.name))
-                            .unwrap_or_else(|| "▶ Play selected deck".to_string());
-                        let play = ui.add_enabled(
-                            selected_deck.is_some(),
-                            egui::Button::new(
-                                egui::RichText::new(play_label)
-                                    .size(16.0)
-                                    .color(Color32::WHITE),
-                            )
-                            .min_size(vec2(250.0, theme::BUTTON_HEIGHT)),
-                        );
-                        if play.clicked() && let Some(deck) = selected_deck {
-                            self.play_custom_deck(deck);
-                        }
+                    let play_label = selected_deck
+                        .as_ref()
+                        .map(|deck| format!("▶ Play {}", deck.name))
+                        .unwrap_or_else(|| "▶ Play selected deck".to_string());
+                    let play = ui.add_enabled(
+                        selected_deck.is_some(),
+                        egui::Button::new(
+                            egui::RichText::new(play_label)
+                                .size(16.0)
+                                .color(Color32::WHITE),
+                        )
+                        .min_size(vec2(250.0, theme::BUTTON_HEIGHT)),
+                    );
+                    if play.clicked()
+                        && let Some(deck) = selected_deck
+                    {
+                        self.play_custom_deck(deck);
+                    }
                 });
             });
     }
@@ -1045,7 +1037,11 @@ impl Menu {
         } else {
             Color32::from_rgb(18, 24, 25)
         };
-        let border = if selected { theme::SELECTION } else { MENU_BORDER };
+        let border = if selected {
+            theme::SELECTION
+        } else {
+            MENU_BORDER
+        };
         let row = egui::Frame::new()
             .fill(fill)
             .stroke(egui::Stroke::new(1.0, border))
@@ -1411,8 +1407,7 @@ impl Menu {
                     if let Some(index) = hovered_index {
                         let lift = lifts[index];
                         let lifted_rect = egui::Rect::from_min_size(
-                            stack_rect.min
-                                + vec2(index as f32 * overlap - 7.0 * lift, -9.0 * lift),
+                            stack_rect.min + vec2(index as f32 * overlap - 7.0 * lift, -9.0 * lift),
                             pack_size + vec2(14.0 * lift, 18.0 * lift),
                         );
                         draw_pack(ui, lifted_rect);
@@ -1550,7 +1545,10 @@ impl Menu {
                 self.opened_booster_pack = Some(pack.clone());
                 None
             }
-            ServerMessage::BoosterRedeemed { reward_points, pack } => {
+            ServerMessage::BoosterRedeemed {
+                reward_points,
+                pack,
+            } => {
                 self.reward_points = *reward_points;
                 self.unopened_booster_packs.push(pack.clone());
                 self.reward_redemption_requested = false;

@@ -75,10 +75,14 @@ impl Magic for PactWithTheDevil {
 
         let choice = pick_option(
             &controller_id,
-            &["Sacrifice the caster".to_string(), "Lose half your life".to_string()],
+            &[
+                "Sacrifice the caster".to_string(),
+                "Lose half your life".to_string(),
+            ],
             state,
-            "Pact with the Devil: choose a cost",
+            "Choose a cost",
             false,
+            Some(*self.get_id()),
         )
         .await?;
 

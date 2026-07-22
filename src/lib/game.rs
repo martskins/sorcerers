@@ -353,7 +353,7 @@ pub async fn yes_or_no(
         .iter()
         .map(|o| o.to_string())
         .collect::<Vec<String>>();
-    let choice = pick_option_source(
+    let choice = pick_option(
         player_id,
         &option_labels,
         state,
@@ -408,16 +408,6 @@ pub async fn pick_amount_source(
 }
 
 pub async fn pick_option(
-    player_id: impl AsRef<PlayerId>,
-    options: &[String],
-    state: &State,
-    prompt: impl AsRef<str>,
-    anchor_on_cursor: bool,
-) -> anyhow::Result<usize> {
-    pick_option_source(player_id, options, state, prompt, anchor_on_cursor, None).await
-}
-
-pub async fn pick_option_source(
     player_id: impl AsRef<PlayerId>,
     options: &[String],
     state: &State,
@@ -1094,9 +1084,13 @@ impl ActivatedAbility for UnitAction {
 
     fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
         let cost = match self {
-            UnitAction::Move if state
-                .get_card(card_id)
-                .has_ability(state, &Ability::MovesFreely) => Cost::ZERO.clone(),
+            UnitAction::Move
+                if state
+                    .get_card(card_id)
+                    .has_ability(state, &Ability::MovesFreely) =>
+            {
+                Cost::ZERO.clone()
+            }
             UnitAction::Move
             | UnitAction::Attack
             | UnitAction::RangedAttack
@@ -1640,6 +1634,7 @@ impl Game {
                         &self.state,
                         "Choose how to play artifact",
                         false,
+                        Some(*card_id),
                     )
                     .await?
                 } else {

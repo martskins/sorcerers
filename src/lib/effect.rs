@@ -1,3 +1,4 @@
+use crate::game::pick_option;
 use crate::zone::{Location, Zone};
 use crate::{
     card::{
@@ -6,7 +7,7 @@ use crate::{
     },
     game::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, distribute_damage,
-        pick_cards, pick_option, resume, wait_for_opponent, yes_or_no,
+        pick_cards, resume, wait_for_opponent, yes_or_no,
     },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache},
@@ -1427,9 +1428,15 @@ impl Effect {
                                     DrawKind::Choice => unreachable!(),
                                 })
                                 .collect::<Vec<_>>();
-                            let picked_option_idx =
-                                pick_option(player_id, &option_labels, state, "Draw a card", false)
-                                    .await?;
+                            let picked_option_idx = pick_option(
+                                player_id,
+                                &option_labels,
+                                state,
+                                "Pick card to draw",
+                                false,
+                                None,
+                            )
+                            .await?;
                             options[picked_option_idx].clone()
                         }
                         kind => kind.clone(),
@@ -1526,17 +1533,21 @@ impl Effect {
                             .iter()
                             .rev()
                             .find_map(|logged| match logged.effect {
-                                Effect::BuryCard { card_id: sacrificed_id }
-                                    if state.get_card(&sacrificed_id).is_minion()
-                                        && state
-                                            .get_card(&sacrificed_id)
-                                            .get_unit_base()
-                                            .is_some_and(|base| {
-                                                base.types.contains(&MinionType::Mortal)
-                                    }) => state
+                                Effect::BuryCard {
+                                    card_id: sacrificed_id,
+                                } if state.get_card(&sacrificed_id).is_minion()
+                                    && state
+                                        .get_card(&sacrificed_id)
+                                        .get_unit_base()
+                                        .is_some_and(|base| {
+                                            base.types.contains(&MinionType::Mortal)
+                                        }) =>
+                                {
+                                    state
                                         .marked_for_death
                                         .get(&sacrificed_id)
-                                        .and_then(|zone| zone.location().cloned()),
+                                        .and_then(|zone| zone.location().cloned())
+                                }
                                 _ => None,
                             })
                             .unwrap_or_else(|| location.clone())
@@ -1712,7 +1723,8 @@ impl Effect {
                         options.iter().map(|a| a.get_name().to_string()).collect();
                     let prompt = "Start Turn: Pick card to draw";
                     let picked_option_idx =
-                        pick_option(turn_controller, &option_labels, state, prompt, false).await?;
+                        pick_option(turn_controller, &option_labels, state, prompt, false, None)
+                            .await?;
                     let effects = options[picked_option_idx]
                         .on_select(player_id, state)
                         .await?;

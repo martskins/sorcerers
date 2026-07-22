@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardData, CardType},
     booster::{BoosterPack, UnopenedBoosterPack},
+    card::{Card, CardData, CardType},
     collection::CollectedCard,
     deck::{Deck, DeckList, precon::PreconDeck},
     game::{CardId, Direction, PlayerId, Resources, SoundEffect},
@@ -300,11 +300,23 @@ pub enum ClientMessage {
         email: String,
         password: String,
     },
-    Login { username: String, password: String },
-    ConfirmEmail { email: String, code: String },
-    ResendEmailConfirmation { email: String },
-    ChooseStarterDeck { deck: PreconDeck },
-    OpenBoosterPack { pack_id: uuid::Uuid },
+    Login {
+        email: String,
+        password: String,
+    },
+    ConfirmEmail {
+        email: String,
+        code: String,
+    },
+    ResendEmailConfirmation {
+        email: String,
+    },
+    ChooseStarterDeck {
+        deck: PreconDeck,
+    },
+    OpenBoosterPack {
+        pack_id: uuid::Uuid,
+    },
     RedeemBetaBooster,
     ResolveAction {
         game_id: uuid::Uuid,
