@@ -10,6 +10,7 @@ path = "bin/main.rs"
 [dependencies]
 anyhow.workspace = true
 argon2.workspace = true
+password-hash.workspace = true
 chrono.workspace = true
 email_address.workspace = true
 async-channel.workspace = true

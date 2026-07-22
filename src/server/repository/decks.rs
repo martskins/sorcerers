@@ -1,16 +1,16 @@
 use sorcerers::deck::DeckList;
 
-use super::{UserRepository, UserRepositoryError};
+use super::{Repository, RepositoryError as UserRepositoryError};
 
-impl UserRepository {
+impl Repository {
     pub async fn load_decks(
         &self,
         user_id: uuid::Uuid,
     ) -> Result<Vec<DeckList>, UserRepositoryError> {
         let decks: Vec<String> = sqlx::query_scalar(
-            "SELECT deck::text FROM user_decks WHERE user_id = $1 ORDER BY created_at",
+            "SELECT CAST(deck AS TEXT) FROM user_decks WHERE user_id = ?1 ORDER BY created_at",
         )
-        .bind(user_id)
+        .bind(user_id.to_string())
         .fetch_all(&self.pool)
         .await?;
         decks

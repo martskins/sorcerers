@@ -4,7 +4,7 @@ mod server;
 mod repository;
 
 use crate::server::Server;
-use crate::repository::UserRepository;
+use crate::repository::Repository;
 use crate::email::EmailSender;
 use sorcerers::{
     networking::{
@@ -28,8 +28,8 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set, for example postgres://user:password@localhost/sorcerers");
-    let users = UserRepository::connect(&database_url).await?;
+        .expect("DATABASE_URL must be set, for example sqlite://sorcerers.db");
+    let users = Repository::connect(&database_url).await?;
     let email_sender = EmailSender::from_env()?;
 
     let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;

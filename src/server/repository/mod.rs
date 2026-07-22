@@ -3,17 +3,17 @@ mod cards;
 mod decks;
 mod users;
 
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 
 pub use users::User;
 
 #[derive(Clone)]
-pub struct UserRepository {
-    pub(super) pool: PgPool,
+pub struct Repository {
+    pub(super) pool: SqlitePool,
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum UserRepositoryError {
+pub enum RepositoryError {
     #[error("username must be 3-32 characters and use only letters, digits, or underscores")]
     InvalidUsername,
     #[error("password must be at least 8 characters")]
@@ -38,6 +38,8 @@ pub enum UserRepositoryError {
     InsufficientRewardPoints,
     #[error("a starter deck has already been selected")]
     StarterDeckAlreadySelected,
+    #[error("DATABASE_URL must use a sqlite: URL")]
+    UnsupportedDatabase,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error("password processing failed")]
@@ -46,11 +48,14 @@ pub enum UserRepositoryError {
     Serialization,
 }
 
-impl UserRepository {
-    pub async fn connect(database_url: &str) -> Result<Self, UserRepositoryError> {
-        let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(database_url)
+impl Repository {
+    pub async fn connect(database_url: &str) -> Result<Self, RepositoryError> {
+        let connection_url = sqlite_connection_url(database_url)?;
+        let pool = SqlitePoolOptions::new()
+            // An in-memory SQLite database exists per connection. A single connection
+            // also avoids avoidable writer contention for the embedded deployment.
+            .max_connections(1)
+            .connect(&connection_url)
             .await?;
         let repository = Self { pool };
         repository.migrate().await?;
@@ -58,125 +63,75 @@ impl UserRepository {
     }
 
     async fn migrate(&self) -> Result<(), sqlx::Error> {
+        // SQLite has no `ADD COLUMN IF NOT EXISTS`, so its complete schema is created
+        // atomically for a new database. SQLite support is new, so there is no prior
+        // SQLite schema to upgrade.
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS users (
-                id UUID PRIMARY KEY,
+                id TEXT PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 email TEXT UNIQUE,
                 password_hash TEXT NOT NULL,
-                email_confirmed_at TIMESTAMPTZ,
+                email_confirmed_at TEXT,
                 confirmation_code_hash TEXT,
-                confirmation_code_expires_at TIMESTAMPTZ,
-                confirmation_attempts SMALLINT NOT NULL DEFAULT 0,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                confirmation_code_expires_at TEXT,
+                confirmation_attempts INTEGER NOT NULL DEFAULT 0,
+                starter_deck TEXT,
+                last_booster_week TEXT,
+                reward_points INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )",
         )
         .execute(&self.pool)
         .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT")
-            .execute(&self.pool)
-            .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMPTZ")
-            .execute(&self.pool)
-            .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS confirmation_code_hash TEXT")
-            .execute(&self.pool)
-            .await?;
         sqlx::query(
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS confirmation_code_expires_at TIMESTAMPTZ",
+            "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx
+             ON users (email) WHERE email IS NOT NULL",
         )
         .execute(&self.pool)
         .await?;
-        sqlx::query(
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS confirmation_attempts SMALLINT NOT NULL DEFAULT 0",
-        )
-        .execute(&self.pool)
-        .await?;
-        sqlx::query(
-            "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx ON users (email) WHERE email IS NOT NULL",
-        )
-        .execute(&self.pool)
-        .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS starter_deck TEXT")
-            .execute(&self.pool)
-            .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_booster_week DATE")
-            .execute(&self.pool)
-            .await?;
-        sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reward_points INTEGER NOT NULL DEFAULT 0")
-            .execute(&self.pool)
-            .await?;
-
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS game_rewards (
-                game_id UUID NOT NULL,
-                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                game_id TEXT NOT NULL,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 points INTEGER NOT NULL CHECK (points > 0),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (game_id, user_id)
             )",
         )
         .execute(&self.pool)
         .await?;
-
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS user_cards (
-                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 card_name TEXT NOT NULL,
                 is_foil BOOLEAN NOT NULL DEFAULT FALSE,
-                quantity SMALLINT NOT NULL CHECK (quantity > 0),
+                quantity INTEGER NOT NULL CHECK (quantity > 0),
                 PRIMARY KEY (user_id, card_name, is_foil)
             )",
         )
         .execute(&self.pool)
         .await?;
         sqlx::query(
-            "ALTER TABLE user_cards ADD COLUMN IF NOT EXISTS is_foil BOOLEAN NOT NULL DEFAULT FALSE",
-        )
-        .execute(&self.pool)
-        .await?;
-        // The first version of the collection schema used `(user_id, card_name)` as
-        // the key. Split foil and non-foil copies without rebuilding the primary
-        // key on every startup.
-        sqlx::query(
-            "DO $$
-            DECLARE previous_key TEXT;
-            BEGIN
-                SELECT conname INTO previous_key
-                FROM pg_constraint
-                WHERE conrelid = 'user_cards'::regclass
-                  AND contype = 'p'
-                  AND pg_get_constraintdef(oid) = 'PRIMARY KEY (user_id, card_name)';
-                IF previous_key IS NOT NULL THEN
-                    EXECUTE format('ALTER TABLE user_cards DROP CONSTRAINT %I', previous_key);
-                    ALTER TABLE user_cards ADD PRIMARY KEY (user_id, card_name, is_foil);
-                END IF;
-            END $$",
-        )
-        .execute(&self.pool)
-        .await?;
-
-        sqlx::query(
             "CREATE TABLE IF NOT EXISTS user_decks (
-                id UUID PRIMARY KEY,
-                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
-                deck JSONB NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                deck TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (user_id, name)
             )",
         )
         .execute(&self.pool)
         .await?;
-
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS booster_packs (
-                id UUID PRIMARY KEY,
-                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 set_name TEXT NOT NULL,
-                cards JSONB NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                opened_at TIMESTAMPTZ
+                cards TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                opened_at TEXT
             )",
         )
         .execute(&self.pool)
@@ -185,7 +140,19 @@ impl UserRepository {
     }
 }
 
-impl UserRepositoryError {
+fn sqlite_connection_url(database_url: &str) -> Result<String, RepositoryError> {
+    if !database_url.starts_with("sqlite:") {
+        return Err(RepositoryError::UnsupportedDatabase);
+    }
+    if database_url == "sqlite::memory:" || database_url.contains("mode=") {
+        return Ok(database_url.to_owned());
+    }
+
+    let separator = if database_url.contains('?') { '&' } else { '?' };
+    Ok(format!("{database_url}{separator}mode=rwc"))
+}
+
+impl RepositoryError {
     pub fn user_message(&self) -> &str {
         match self {
             Self::InvalidUsername => "username must be 3-32 letters, digits, or underscores",
@@ -202,9 +169,92 @@ impl UserRepositoryError {
             Self::EmailAlreadyConfirmed => "that email address has already been confirmed",
             Self::InsufficientRewardPoints => "not enough reward points for that booster",
             Self::StarterDeckAlreadySelected => "a starter deck has already been selected",
-            Self::Database(_) | Self::Password | Self::Serialization => {
-                "authentication service is unavailable"
-            }
+            Self::Database(_)
+            | Self::UnsupportedDatabase
+            | Self::Password
+            | Self::Serialization => "authentication service is unavailable",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Repository, RepositoryError, sqlite_connection_url};
+
+    #[test]
+    fn sqlite_file_urls_create_the_database_by_default() {
+        assert_eq!(
+            sqlite_connection_url("sqlite://sorcerers.db").unwrap(),
+            "sqlite://sorcerers.db?mode=rwc"
+        );
+        assert_eq!(
+            sqlite_connection_url("sqlite://existing.db?mode=ro").unwrap(),
+            "sqlite://existing.db?mode=ro"
+        );
+    }
+
+    #[test]
+    fn non_sqlite_urls_are_rejected() {
+        assert!(matches!(
+            sqlite_connection_url("mysql://localhost/sorcerers"),
+            Err(RepositoryError::UnsupportedDatabase)
+        ));
+    }
+
+    #[tokio::test]
+    async fn sqlite_repository_initializes_and_enforces_unique_emails() {
+        let repository = Repository::connect("sqlite::memory:").await.unwrap();
+
+        let pending = repository
+            .register("mage_one", "mage@example.com", "very-secret-password")
+            .await
+            .unwrap();
+        let user = repository
+            .confirm_email(&pending.email, &pending.code)
+            .await
+            .unwrap();
+        assert_eq!(
+            repository
+                .verify_login("mage@example.com", "very-secret-password")
+                .await
+                .unwrap()
+                .id,
+            user.id
+        );
+
+        let game_id = uuid::Uuid::new_v4();
+        assert_eq!(
+            repository
+                .award_match_points(game_id, user.id, true)
+                .await
+                .unwrap()
+                .points_earned,
+            10
+        );
+        assert_eq!(
+            repository
+                .award_match_points(game_id, user.id, true)
+                .await
+                .unwrap()
+                .points_earned,
+            0
+        );
+        assert_eq!(repository.reward_points(user.id).await.unwrap(), 10);
+
+        let duplicate = repository
+            .register("mage_two", "mage@example.com", "very-secret-password")
+            .await;
+
+        assert!(matches!(duplicate, Err(RepositoryError::EmailTaken)));
+    }
+
+    #[tokio::test]
+    async fn sqlite_file_url_connects_without_a_network_lookup() {
+        let path = std::env::temp_dir().join(format!("sorcerers-{}.db", uuid::Uuid::new_v4()));
+        let database_url = format!("sqlite://{}", path.display());
+
+        let repository = Repository::connect(&database_url).await.unwrap();
+        repository.pool.close().await;
+        std::fs::remove_file(path).unwrap();
     }
 }

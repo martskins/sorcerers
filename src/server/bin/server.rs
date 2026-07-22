@@ -21,7 +21,7 @@ use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 use crate::{
     email::EmailSender,
-    repository::{User, UserRepository, UserRepositoryError},
+    repository::{Repository, RepositoryError, User},
 };
 
 pub struct Server {
@@ -33,7 +33,7 @@ pub struct Server {
     addr_to_user: HashMap<std::net::SocketAddr, uuid::Uuid>,
     player_to_user: HashMap<uuid::Uuid, uuid::Uuid>,
     pending_starter_selection: HashMap<std::net::SocketAddr, User>,
-    users: UserRepository,
+    users: Repository,
     email_sender: EmailSender,
     /// When `true`, seed newly-created games with the local development test board.
     /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
@@ -41,7 +41,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(test_state: bool, users: UserRepository, email_sender: EmailSender) -> Self {
+    pub fn new(test_state: bool, users: Repository, email_sender: EmailSender) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
@@ -81,7 +81,7 @@ impl Server {
             Message::ClientMessage(ClientMessage::Login { email, password }) => {
                 match self.users.verify_login(email, password).await {
                     Ok(user) => self.begin_authenticated_session(user, stream, addr).await?,
-                    Err(UserRepositoryError::EmailConfirmationRequired(email)) => {
+                    Err(RepositoryError::EmailConfirmationRequired(email)) => {
                         match self.users.resend_email_confirmation(&email).await {
                             Ok(pending) => {
                                 self.send_email_confirmation_required(

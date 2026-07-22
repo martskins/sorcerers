@@ -2,11 +2,11 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use email_address::EmailAddress;
 use sorcerers::deck::{CardNameWithCount, DeckList, precon::PreconDeck};
 
-use super::{UserRepository, UserRepositoryError};
+use super::{Repository, RepositoryError as UserRepositoryError};
 
 const MIN_USERNAME_LENGTH: usize = 3;
 const MAX_USERNAME_LENGTH: usize = 32;
@@ -25,7 +25,7 @@ pub struct PendingEmailConfirmation {
     pub code: String,
 }
 
-impl UserRepository {
+impl Repository {
     pub async fn register(
         &self,
         username: &str,
@@ -43,25 +43,32 @@ impl UserRepository {
             .map_err(|_| UserRepositoryError::Password)?
             .to_string();
         let pending = new_pending_email_confirmation(email)?;
+        let id = uuid::Uuid::new_v4();
+        let expires_at = Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES);
         let result = sqlx::query(
-            "INSERT INTO users (id, username, email, password_hash, confirmation_code_hash, confirmation_code_expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO users (id, username, email, password_hash, confirmation_code_hash, confirmation_code_expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         )
-            .bind(uuid::Uuid::new_v4())
+            .bind(id.to_string())
             .bind(username)
             .bind(&pending.email)
             .bind(password_hash)
             .bind(hash_confirmation_code(&pending.code)?)
-            .bind(Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES))
+            .bind(expires_at.to_rfc3339())
             .execute(&self.pool)
             .await;
         match result {
             Ok(_) => Ok(pending),
-            Err(sqlx::Error::Database(error)) if error.code().as_deref() == Some("23505") => {
-                if error.constraint() == Some("users_email_unique_idx") {
-                    Err(UserRepositoryError::EmailTaken)
+            Err(sqlx::Error::Database(error)) if is_unique_violation(error.as_ref()) => {
+                let email_taken: Option<i64> =
+                    sqlx::query_scalar("SELECT CAST(1 AS BIGINT) FROM users WHERE email = ?1")
+                        .bind(&pending.email)
+                        .fetch_optional(&self.pool)
+                        .await?;
+                Err(if email_taken.is_some() {
+                    UserRepositoryError::EmailTaken
                 } else {
-                    Err(UserRepositoryError::UsernameTaken)
-                }
+                    UserRepositoryError::UsernameTaken
+                })
             }
             Err(error) => Err(error.into()),
         }
@@ -72,8 +79,8 @@ impl UserRepository {
         email: &str,
         password: &str,
     ) -> Result<User, UserRepositoryError> {
-        let row: Option<(uuid::Uuid, String, String, Option<DateTime<Utc>>)> = sqlx::query_as(
-            "SELECT id, password_hash, username, email_confirmed_at FROM users WHERE email = $1",
+        let row: Option<(String, String, String, Option<String>)> = sqlx::query_as(
+            "SELECT CAST(id AS TEXT), password_hash, username, CAST(email_confirmed_at AS TEXT) FROM users WHERE email = ?1",
         )
         .bind(email)
         .fetch_optional(&self.pool)
@@ -91,7 +98,10 @@ impl UserRepository {
                 email.to_string(),
             ));
         }
-        Ok(User { id, username })
+        Ok(User {
+            id: id.parse().map_err(|_| UserRepositoryError::Serialization)?,
+            username,
+        })
     }
 
     pub async fn resend_email_confirmation(
@@ -100,11 +110,12 @@ impl UserRepository {
     ) -> Result<PendingEmailConfirmation, UserRepositoryError> {
         validate_email(email)?;
         let pending = new_pending_email_confirmation(email)?;
+        let expires_at = Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES);
         let result = sqlx::query(
-            "UPDATE users SET confirmation_code_hash = $1, confirmation_code_expires_at = $2, confirmation_attempts = 0 WHERE email = $3 AND email_confirmed_at IS NULL",
+            "UPDATE users SET confirmation_code_hash = ?1, confirmation_code_expires_at = ?2, confirmation_attempts = 0 WHERE email = ?3 AND email_confirmed_at IS NULL",
         )
         .bind(hash_confirmation_code(&pending.code)?)
-        .bind(Utc::now() + Duration::minutes(CONFIRMATION_CODE_LIFETIME_MINUTES))
+        .bind(expires_at.to_rfc3339())
         .bind(&pending.email)
         .execute(&self.pool)
         .await?;
@@ -120,19 +131,22 @@ impl UserRepository {
         code: &str,
     ) -> Result<User, UserRepositoryError> {
         validate_email(email)?;
-        let row: Option<(uuid::Uuid, String, Option<String>, Option<DateTime<Utc>>, i16)> = sqlx::query_as(
-            "SELECT id, username, confirmation_code_hash, confirmation_code_expires_at, confirmation_attempts FROM users WHERE email = $1 AND email_confirmed_at IS NULL",
+        let row: Option<(String, String, Option<String>, bool, i64)> = sqlx::query_as(
+            "SELECT CAST(id AS TEXT), username, confirmation_code_hash,
+                    confirmation_code_expires_at > CURRENT_TIMESTAMP,
+                    CAST(confirmation_attempts AS BIGINT)
+             FROM users WHERE email = ?1 AND email_confirmed_at IS NULL",
         )
         .bind(email.trim())
         .fetch_optional(&self.pool)
         .await?;
-        let Some((id, username, code_hash, expires_at, attempts)) = row else {
+        let Some((id, username, code_hash, code_not_expired, attempts)) = row else {
             return Err(UserRepositoryError::InvalidConfirmationCode);
         };
-        if attempts >= MAX_CONFIRMATION_ATTEMPTS {
+        if attempts >= i64::from(MAX_CONFIRMATION_ATTEMPTS) {
             return Err(UserRepositoryError::ConfirmationAttemptsExceeded);
         }
-        let is_valid = expires_at.is_some_and(|expires_at| expires_at > Utc::now())
+        let is_valid = code_not_expired
             && code_hash
                 .as_deref()
                 .and_then(|hash| PasswordHash::new(hash).ok())
@@ -143,20 +157,23 @@ impl UserRepository {
                 });
         if !is_valid {
             sqlx::query(
-                "UPDATE users SET confirmation_attempts = confirmation_attempts + 1 WHERE id = $1",
+                "UPDATE users SET confirmation_attempts = confirmation_attempts + 1 WHERE id = ?1",
             )
-            .bind(id)
+            .bind(&id)
             .execute(&self.pool)
             .await?;
             return Err(UserRepositoryError::InvalidConfirmationCode);
         }
         sqlx::query(
-            "UPDATE users SET email_confirmed_at = NOW(), confirmation_code_hash = NULL, confirmation_code_expires_at = NULL, confirmation_attempts = 0 WHERE id = $1",
+            "UPDATE users SET email_confirmed_at = CURRENT_TIMESTAMP, confirmation_code_hash = NULL, confirmation_code_expires_at = NULL, confirmation_attempts = 0 WHERE id = ?1",
         )
-        .bind(id)
+        .bind(&id)
         .execute(&self.pool)
         .await?;
-        Ok(User { id, username })
+        Ok(User {
+            id: id.parse().map_err(|_| UserRepositoryError::Serialization)?,
+            username,
+        })
     }
 
     pub async fn selected_starter_deck(
@@ -164,8 +181,8 @@ impl UserRepository {
         user_id: uuid::Uuid,
     ) -> Result<Option<PreconDeck>, UserRepositoryError> {
         let deck: Option<String> =
-            sqlx::query_scalar("SELECT starter_deck FROM users WHERE id = $1")
-                .bind(user_id)
+            sqlx::query_scalar("SELECT starter_deck FROM users WHERE id = ?1")
+                .bind(user_id.to_string())
                 .fetch_one(&self.pool)
                 .await?;
         Ok(match deck.as_deref() {
@@ -187,10 +204,10 @@ impl UserRepository {
     ) -> Result<(), UserRepositoryError> {
         let mut transaction = self.pool.begin().await?;
         let result = sqlx::query(
-            "UPDATE users SET starter_deck = $1 WHERE id = $2 AND starter_deck IS NULL",
+            "UPDATE users SET starter_deck = ?1 WHERE id = ?2 AND starter_deck IS NULL",
         )
         .bind(starter_deck.name())
-        .bind(user_id)
+        .bind(user_id.to_string())
         .execute(&mut *transaction)
         .await?;
         if result.rows_affected() != 1 {
@@ -199,11 +216,11 @@ impl UserRepository {
 
         for card in cards {
             sqlx::query(
-                "INSERT INTO user_cards (user_id, card_name, is_foil, quantity) VALUES ($1, $2, FALSE, $3)
+                "INSERT INTO user_cards (user_id, card_name, is_foil, quantity) VALUES (?1, ?2, FALSE, ?3)
                  ON CONFLICT (user_id, card_name, is_foil)
                  DO UPDATE SET quantity = user_cards.quantity + EXCLUDED.quantity",
             )
-            .bind(user_id)
+            .bind(user_id.to_string())
             .bind(&card.name)
             .bind(i16::from(card.count))
             .execute(&mut *transaction)
@@ -212,15 +229,13 @@ impl UserRepository {
 
         let deck_json =
             serde_json::to_string(deck).map_err(|_| UserRepositoryError::Serialization)?;
-        sqlx::query(
-            "INSERT INTO user_decks (id, user_id, name, deck) VALUES ($1, $2, $3, $4::jsonb)",
-        )
-        .bind(uuid::Uuid::new_v4())
-        .bind(user_id)
-        .bind(&deck.name)
-        .bind(deck_json)
-        .execute(&mut *transaction)
-        .await?;
+        sqlx::query("INSERT INTO user_decks (id, user_id, name, deck) VALUES (?1, ?2, ?3, ?4)")
+            .bind(uuid::Uuid::new_v4().to_string())
+            .bind(user_id.to_string())
+            .bind(&deck.name)
+            .bind(deck_json)
+            .execute(&mut *transaction)
+            .await?;
         transaction.commit().await?;
         Ok(())
     }
@@ -257,6 +272,13 @@ fn hash_confirmation_code(code: &str) -> Result<String, UserRepositoryError> {
         .hash_password(code.as_bytes(), &SaltString::generate(&mut OsRng))
         .map_err(|_| UserRepositoryError::Password)
         .map(|hash| hash.to_string())
+}
+
+fn is_unique_violation(error: &dyn sqlx::error::DatabaseError) -> bool {
+    matches!(
+        error.code().as_deref(),
+        Some("23505") | Some("2067") | Some("1555")
+    )
 }
 
 #[cfg(test)]
